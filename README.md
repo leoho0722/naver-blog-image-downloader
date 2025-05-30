@@ -74,8 +74,8 @@ python naver_blog_image_downloader.py \
 
 ## Current Limitations
 
-* Only uses Selenium to download images
-* Only single thread to download images
+* Uses Selenium as the only method for downloading images
+* Only uses a single thread for downloading images
 
 ## Current Issues
 
