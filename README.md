@@ -55,6 +55,28 @@ pip install -r requirements.txt
 
 ### Example
 
+#### Normal mode (will open a browser window)
+
 ```bash
-python naver_blog_image_downloader.py --url https://blog.naver.com/edament/223882152167 --output images --headless
+python naver_blog_image_downloader.py \
+  --url https://blog.naver.com/edament/223882152167 \
+  --output images
 ```
+
+#### Headless mode (will not open a browser window)
+
+```bash
+python naver_blog_image_downloader.py \
+  --url https://blog.naver.com/edament/223882152167 \
+  --output images \
+  --headless
+```
+
+## Current Limitations
+
+* Only uses Selenium to download images
+* Only single thread to download images
+
+## Current Issues
+
+* Sometimes the downloaded images may have incorrect ordering
