@@ -4,44 +4,23 @@
 
 * Python 3.10 or above
 * Google Chrome (**currently supported**)
+* [uv](https://docs.astral.sh/uv/) package manager
 
 ## Environments
 
-### Create Python Virtual Environment
+### Install uv
 
-* macOS/Linux
+If you haven't installed uv yet, please refer to the [official installation guide](https://docs.astral.sh/uv/getting-started/installation/).
 
-```bash
-python3.10 -m venv .venv
-```
-
-* Windows
-
-```bash
-python -m venv .venv
-```
-
-### Activate Python Virtual Environment
-
-* macOS/Linux
-
-```bash
-source .venv/bin/activate
-```
-
-* Windows
-
-```bash
-.venv\Scripts\activate
-```
-
-### Install Python Dependencies
+### Create Python Virtual Environment and Install Dependencies
 
 * macOS/Linux/Windows
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
+
+This command will automatically create a virtual environment and install all dependencies specified in `pyproject.toml`.
 
 ## How to use
 
@@ -58,7 +37,7 @@ pip install -r requirements.txt
 #### Normal mode (will open a browser window)
 
 ```bash
-python naver_blog_image_downloader.py \
+uv run naver_blog_image_downloader.py \
   --url https://blog.naver.com/edament/223882152167 \
   --output images
 ```
@@ -66,7 +45,7 @@ python naver_blog_image_downloader.py \
 #### Headless mode (will not open a browser window)
 
 ```bash
-python naver_blog_image_downloader.py \
+uv run naver_blog_image_downloader.py \
   --url https://blog.naver.com/edament/223882152167 \
   --output images \
   --headless
