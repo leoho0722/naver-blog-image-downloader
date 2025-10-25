@@ -1,6 +1,6 @@
 # Naver Blog Image Downloader
 
-[繁體中文](docs/README_zh-TW.md) | [English](docs/README_en-US.md)
+[English](README_en-US.md)
 
 一個用於自動下載 Naver Blog 文章中原始高畫質圖片的 Python 工具。
 
