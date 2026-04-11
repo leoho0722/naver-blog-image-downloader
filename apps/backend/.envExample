@@ -1,0 +1,18 @@
+# Container Image
+IMAGE_NAME=
+IMAGE_TAG=
+IMAGE_ARCH=
+DOCKERFILE_PATH=
+
+# AWS ECR and Lambda Configuration
+AWS_LAMBDA_FUNCTION_NAME=
+AWS_REGION=
+AWS_ECR_REPOSITORY_URI=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+
+# API Gateway Configuration (REST Client 測試用)
+API_GATEWAY_ID=
+
+# S3 Configuration (非同步任務結果存放)
+S3_BUCKET_NAME=

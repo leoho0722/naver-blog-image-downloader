@@ -1,0 +1,60 @@
+### 變數設定（從 .env 讀取 API_GATEWAY_ID 與 AWS_REGION）
+@baseUrl = https://{{$dotenv API_GATEWAY_ID}}.execute-api.{{$dotenv AWS_REGION}}.amazonaws.com/default
+
+### ===== /api/photos =====
+
+### 提交下載請求
+POST {{baseUrl}}/api/photos
+Content-Type: application/json
+
+{
+  "action": "download",
+  "blog_url": "https://blog.naver.com/username/post_id"
+}
+
+### 查詢任務狀態
+POST {{baseUrl}}/api/photos
+Content-Type: application/json
+
+{
+  "action": "status",
+  "job_id": "替換為實際的 job_id"
+}
+
+### ===== /api/whatsNew =====
+
+### 取得新功能介紹（zh-TW）
+POST {{baseUrl}}/api/whatsNew
+Content-Type: application/json
+
+{
+  "version": "1.4.0",
+  "locale": "zh-TW"
+}
+
+### 取得新功能介紹（en）
+POST {{baseUrl}}/api/whatsNew
+Content-Type: application/json
+
+{
+  "version": "1.4.0",
+  "locale": "en"
+}
+
+### 取得新功能介紹（ja）
+POST {{baseUrl}}/api/whatsNew
+Content-Type: application/json
+
+{
+  "version": "1.4.0",
+  "locale": "ja"
+}
+
+### 取得新功能介紹（ko）
+POST {{baseUrl}}/api/whatsNew
+Content-Type: application/json
+
+{
+  "version": "1.4.0",
+  "locale": "ko"
+}

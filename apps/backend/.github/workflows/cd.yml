@@ -1,0 +1,292 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: write
+
+env:
+  IMAGE_NAME: naver-blog-image-downloader-lambda
+  IMAGE_ARCH: linux/amd64
+  DOCKERFILE_PATH: ./Dockerfile
+
+jobs:
+  deploy:
+    name: Build & Deploy to AWS Lambda
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Generate image tag
+        id: image_tag
+        run: |
+          DATE_PREFIX=$(date +'%y%m%d')
+          # 從 git tag 中找出當日最大序號，換日自動重置為 1
+          LAST_NUM=$(git tag --list "v${DATE_PREFIX}.*" --sort=-version:refname | head -n 1 | sed "s/v${DATE_PREFIX}\.//" || echo "-1")
+          NEXT_NUM=$(( ${LAST_NUM:--1} + 1 ))
+          echo "tag=${DATE_PREFIX}.${NEXT_NUM}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --no-cache \
+            --platform ${{ env.IMAGE_ARCH }} \
+            -t ${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.tag }} \
+            -f ${{ env.DOCKERFILE_PATH }} \
+            .
+
+      - name: Tag and push image to ECR
+        run: |
+          IMAGE_URI=${{ secrets.AWS_ECR_REPOSITORY_URI }}/${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.tag }}
+          docker tag ${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.tag }} ${IMAGE_URI}
+          docker push ${IMAGE_URI}
+
+      - name: Update Lambda function code
+        run: |
+          IMAGE_URI=${{ secrets.AWS_ECR_REPOSITORY_URI }}/${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.tag }}
+          aws lambda update-function-code \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --image-uri ${IMAGE_URI} \
+            --no-cli-pager \
+            --output json
+
+      - name: Wait for Lambda function update
+        run: |
+          aws lambda wait function-updated \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --no-cli-pager
+
+      - name: Update Lambda function configuration
+        run: |
+          # 取得現有環境變數並合併 S3_BUCKET_NAME
+          EXISTING_ENV=$(aws lambda get-function-configuration \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --query 'Environment.Variables' \
+            --output json \
+            --no-cli-pager 2>/dev/null || echo '{}')
+
+          NEW_ENV=$(echo "$EXISTING_ENV" | python3 -c "
+          import sys, json
+          env = json.load(sys.stdin) or {}
+          env['S3_BUCKET_NAME'] = '${{ secrets.S3_BUCKET_NAME }}'
+          print(json.dumps({'Variables': env}))
+          ")
+
+          aws lambda update-function-configuration \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --memory-size 2048 \
+            --timeout 120 \
+            --environment "$NEW_ENV" \
+            --no-cli-pager \
+            --output json
+
+      - name: Wait for Lambda configuration update
+        run: |
+          aws lambda wait function-updated \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --no-cli-pager
+
+      - name: Update IAM policy
+        run: |
+          # 取得 Lambda 執行角色與函數 ARN
+          ROLE_ARN=$(aws lambda get-function \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --query 'Configuration.Role' \
+            --output text \
+            --no-cli-pager)
+          ROLE_NAME=$(echo "$ROLE_ARN" | sed 's|.*/||')
+
+          FUNCTION_ARN=$(aws lambda get-function \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --query 'Configuration.FunctionArn' \
+            --output text \
+            --no-cli-pager)
+
+          POLICY_NAME="naver-blog-downloader-async-policy"
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --no-cli-pager)
+          POLICY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/${POLICY_NAME}"
+
+          # 建立新版本的 policy（覆蓋現有版本）
+          POLICY_DOC=$(cat <<EOF
+          {
+              "Version": "2012-10-17",
+              "Statement": [
+                  {
+                      "Sid": "S3JobStorage",
+                      "Effect": "Allow",
+                      "Action": ["s3:PutObject", "s3:GetObject"],
+                      "Resource": "arn:aws:s3:::${{ secrets.S3_BUCKET_NAME }}/jobs/*"
+                  },
+                  {
+                      "Sid": "S3WhatsNewReadWrite",
+                      "Effect": "Allow",
+                      "Action": ["s3:GetObject", "s3:PutObject"],
+                      "Resource": "arn:aws:s3:::${{ secrets.S3_BUCKET_NAME }}/whatsnew/*"
+                  },
+                  {
+                      "Sid": "S3WhatsNewList",
+                      "Effect": "Allow",
+                      "Action": "s3:ListBucket",
+                      "Resource": "arn:aws:s3:::${{ secrets.S3_BUCKET_NAME }}",
+                      "Condition": {
+                          "StringLike": {
+                              "s3:prefix": "whatsnew/*"
+                          }
+                      }
+                  },
+                  {
+                      "Sid": "LambdaSelfInvoke",
+                      "Effect": "Allow",
+                      "Action": "lambda:InvokeFunction",
+                      "Resource": "${FUNCTION_ARN}"
+                  }
+              ]
+          }
+          EOF
+          )
+
+          # 嘗試建立 policy，若已存在則更新
+          if ! aws iam create-policy \
+            --policy-name "$POLICY_NAME" \
+            --policy-document "$POLICY_DOC" \
+            --no-cli-pager 2>/dev/null; then
+
+            # 刪除最舊的非預設版本，避免超過 5 版上限
+            OLDEST_VERSION=$(aws iam list-policy-versions \
+              --policy-arn "$POLICY_ARN" \
+              --query 'Versions[?IsDefaultVersion==`false`] | [-1].VersionId' \
+              --output text \
+              --no-cli-pager)
+            if [ -n "$OLDEST_VERSION" ] && [ "$OLDEST_VERSION" != "None" ]; then
+              aws iam delete-policy-version \
+                --policy-arn "$POLICY_ARN" \
+                --version-id "$OLDEST_VERSION" \
+                --no-cli-pager
+              echo "已刪除舊版本 ${OLDEST_VERSION}"
+            fi
+
+            aws iam create-policy-version \
+              --policy-arn "$POLICY_ARN" \
+              --policy-document "$POLICY_DOC" \
+              --set-as-default \
+              --no-cli-pager
+          fi
+
+          # 確保 policy 已附加到角色
+          aws iam attach-role-policy \
+            --role-name "$ROLE_NAME" \
+            --policy-arn "$POLICY_ARN" \
+            --no-cli-pager
+
+          echo "IAM policy 已更新並附加到角色 ${ROLE_NAME}"
+
+      - name: Verify Lambda function status
+        run: |
+          aws lambda get-function \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --no-cli-pager \
+            --output table \
+            --query 'Configuration.{FunctionName: FunctionName, PackageType: PackageType, CodeSize: CodeSize, LastModified: LastModified, State: State, LastUpdateStatus: LastUpdateStatus}'
+
+      - name: Create git tag
+        run: |
+          TAG="v${{ steps.image_tag.outputs.tag }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Get commits since last tag
+        id: changelog
+        run: |
+          TAG="v${{ steps.image_tag.outputs.tag }}"
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -v "^${TAG}$" | head -n 1 || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s (%h)")
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREVIOUS_TAG}..HEAD")
+          fi
+          echo "$COMMITS" > /tmp/commits.txt
+          cat /tmp/commits.txt
+
+      - name: Generate release notes with Ollama Cloud (qwen3-coder-next)
+        id: release_notes
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          COMMITS=$(cat /tmp/commits.txt)
+          TAG="v${{ steps.image_tag.outputs.tag }}"
+
+          PROMPT=$(cat <<'PROMPT_EOF'
+          你是一位專業的軟體發布管理員。請根據以下 Git commit 記錄，撰寫正體中文的 Release Notes。
+
+          版本號：__TAG__
+
+          Commit 記錄：
+          __COMMITS__
+
+          要求：
+          1. 使用正體中文撰寫
+          2. 按類別分組（如有）：✨ 新功能、🐛 錯誤修正、📈 改進與優化、🔄 重構、🔧 維護
+          3. 每項用 bullet point 列出
+          4. 簡潔專業
+          5. 直接輸出 Markdown 內容，不要加前綴或後綴說明
+          PROMPT_EOF
+          )
+          PROMPT="${PROMPT/__TAG__/$TAG}"
+          PROMPT="${PROMPT/__COMMITS__/$COMMITS}"
+
+          BODY=$(jq -n \
+            --arg model "qwen3-coder-next:cloud" \
+            --arg prompt "$PROMPT" \
+            '{model: $model, messages: [{role: "user", content: $prompt}], stream: false}')
+
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "https://ollama.com/api/chat" \
+            -H "Authorization: Bearer $OLLAMA_API_KEY" \
+            -d "$BODY")
+
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -1 | sed 's/HTTP_STATUS://')
+          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "API HTTP Status: $HTTP_STATUS"
+
+          echo "$RESPONSE_BODY" | jq -r '.message.content' > /tmp/release_notes.md
+
+          # 若 AI 生成失敗，使用 commit 記錄作為 fallback
+          if [ ! -s /tmp/release_notes.md ] || grep -q "^null$" /tmp/release_notes.md; then
+            echo "⚠️ AI 生成失敗 (HTTP $HTTP_STATUS)，使用 commit 記錄作為 Release Notes"
+            echo "API Response: $RESPONSE_BODY"
+            {
+              echo "## 變更記錄"
+              echo ""
+              cat /tmp/commits.txt
+            } > /tmp/release_notes.md
+          fi
+
+          echo "--- Generated Release Notes ---"
+          cat /tmp/release_notes.md
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v${{ steps.image_tag.outputs.tag }}"
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file /tmp/release_notes.md

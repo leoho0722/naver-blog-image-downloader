@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: ["*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Ruff lint check
+        id: lint_check
+        run: ruff check .
+        continue-on-error: true
+
+      - name: Ruff format check
+        id: format_check
+        run: ruff format --check .
+        continue-on-error: true
+
+      - name: Auto-fix lint & formatting
+        if: steps.lint_check.outcome == 'failure' || steps.format_check.outcome == 'failure'
+        run: |
+          ruff check . --fix --unsafe-fixes
+          ruff format .
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "style: 自動修正程式碼風格 (Ruff)"
+          git push
