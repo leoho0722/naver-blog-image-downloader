@@ -1,10 +1,15 @@
 schema: spec-driven
 
 context: |
-  使用技術：Dart, Flutter, iOS, Android
-  開發風格：遵循 Dart 與 Flutter 官方 Agent Skills，並使用 MVVM 設計模式
-  Git Commit 風格：使用正體中文撰寫 conventional commits 風格的 commit message
-  Domain: Mobile app development for a photo gallery application
+  專案架構：Monorepo，包含三個元件
+    - apps/mobile/  — Flutter iOS/Android app（Dart, Flutter, MVVM，遵循 Dart 與 Flutter 官方 Agent Skills）
+    - apps/backend/ — Python AWS Lambda
+    - apps/web/     — 預留（未來 web 介面，技術棧未定）
+  程式碼註解與 log 語言：所有註解、docstring、log 訊息、錯誤訊息一律以正體中文撰寫，白話說明、避免過度技術術語
+  版號管理：新增功能、重大變更或修正 bug 前，須 bump 該元件 version 檔案（mobile: apps/mobile/pubspec.yaml；backend: apps/backend/pyproject.toml），遵循 semver，tag 格式為 <component>-v<version>
+  Git Commit 風格：使用正體中文撰寫 Conventional Commits（<type>(<scope>): <描述>），body 使用列點格式
+  開發流程：鐵的紀律，所有功能變更皆須走 Spectra SDD 流程（propose → apply ⇄ ingest → archive）
+  Domain: Naver Blog 圖片下載工具，行動端 App + 後端 Lambda 服務
 
 rules:
   design:
