@@ -1,6 +1,9 @@
-# Naver Blog 照片下載器
+# Mobile (Flutter)
 
-輸入 Naver Blog 網址，自動擷取並批次下載文章中的所有照片至本機快取與裝置相簿。
+跨平台 Flutter App（iOS + Android），透過 AWS API Gateway + Lambda 後端擷取 Naver Blog 的圖片並下載至本機快取與裝置相簿。
+
+> 產品定位、系統架構與跨元件流程請參閱 monorepo root [README.md](../../README.md)。
+> API 介面細節請參閱 [apps/backend/README.md](../backend/README.md)。
 
 ## 技術棧
 
@@ -48,14 +51,6 @@ Native（Swift / Kotlin via MethodChannel）— PhotoService 橋接原生相簿 
 Firebase（Auth + Firestore + Crashlytics）— AuthService / LogService / CrashlyticsService 橋接
 ```
 
-## API 通訊（非同步任務模式）
-
-後端為 AWS API Gateway + Lambda，因 Lambda 執行爬蟲超過 API Gateway 29 秒硬限制，採用非同步模式：
-
-1. `POST /api/photos` — `{"action": "download", "blog_url": "..."}` → HTTP 202，回傳 `job_id`
-2. `POST /api/photos` — `{"action": "status", "job_id": "..."}` → 輪詢（每 3 秒，最多 10 分鐘）
-3. 完成 → HTTP 200 + `image_urls` 清單；失敗 → HTTP 500 + `errors` 清單
-
 ## 快取策略
 
 - Blog ID：URL 的 SHA-256 前 16 碼
@@ -68,8 +63,8 @@ Firebase（Auth + Firestore + Crashlytics）— AuthService / LogService / Crash
 透過編譯參數切換 API Gateway 部署階段：
 
 ```bash
-flutter run                              # 預設（default stage）
-flutter run --dart-define=API_STAGE=uat   # UAT 環境
+flutter run                                     # 預設（default stage）
+flutter run --dart-define=API_STAGE=uat         # UAT 環境
 flutter build apk --dart-define=API_STAGE=prod  # 正式環境
 ```
 

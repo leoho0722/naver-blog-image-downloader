@@ -1,8 +1,11 @@
-# Naver Blog Image Downloader Lambda
+# Backend (AWS Lambda)
 
 [繁體中文](docs/README_zh-TW.md) | [English](docs/README_en-US.md)
 
-這是一個部署在 AWS Lambda 上的工具 API，透過模組化路由架構支援多個端點。目前包含從 Naver Blog 文章擷取高畫質圖片 URL，以及新功能介紹等功能。採用 **API Gateway v2 (HTTP API)** + **非同步 Polling** 架構。
+部署於 AWS Lambda（容器映像模式）的工具 API，透過模組化路由架構支援多個端點：`/api/photos`（Naver Blog 圖片擷取，採非同步 Polling）與 `/api/whatsNew`（依 App 版號與語系回傳新功能介紹）。
+
+> 產品定位、系統架構、非同步 Polling 設計脈絡請參閱 monorepo root [README.md](../../README.md)。
+> 共用規範（正體中文註解、Conventional Commits、版號管理）請參閱 monorepo root [CLAUDE.md](../../CLAUDE.md)。
 
 ## 專案架構
 
@@ -182,16 +185,20 @@ S3 路徑格式：`whatsnew/<version>/whats_new_<locale>.json`
 
 ## CI/CD（GitHub Actions）
 
-- **CI**（`.github/workflows/ci.yml`）：所有分支 push 及 PR 到 main 時觸發，執行 Ruff lint + format 檢查
-- **CD**（`.github/workflows/cd.yml`）：push 到 main 時觸發，依序執行：
-  1. 建構 Docker 映像並推送至 ECR
-  2. 更新 AWS Lambda 函數程式碼與設定
-  3. 更新 IAM Policy（S3 + Lambda 自我呼叫權限）
-  4. 建立 git tag（`vYYMMDD.RUN_NUMBER`）
-  5. 透過 Ollama Cloud API 生成正體中文 Release Notes
-  6. 發布 GitHub Release
+- **Backend CI**（`.github/workflows/backend-ci.yml`）：當 `apps/backend/**` 有變動時觸發，執行 Ruff lint + format 檢查。PR 事件下若檢查失敗會自動 `ruff --fix` 並 commit 回 PR branch；`push` 事件下若偵測到未 format 程式則直接 fail（防繞過）。
+- **Backend CD**（`.github/workflows/backend-cd.yml`）：Backend CI 成功後透過 `workflow_run` 觸發，依序執行：
+  1. 從 `apps/backend/pyproject.toml` 讀取 `project.version`，組成 `backend-v<semver>` tag
+  2. 若該 tag 已存在即 fail（強制發版前先 bump version）
+  3. 建構 Docker 映像（context = `apps/backend`，image tag = 純 semver）並推送至 ECR
+  4. 更新 AWS Lambda 函數程式碼與設定（memory=2048MB、timeout=120s）
+  5. 更新 IAM Policy（S3 jobs/whatsNew 權限 + Lambda 自我呼叫權限）
+  6. 建立 git tag `backend-v<semver>` 並 push
+  7. 透過 Ollama Cloud API 生成正體中文 Release Notes（fallback: 使用原始 commit log）
+  8. 發布 GitHub Release（title = `Backend v<semver>`）
 
-**GitHub Secrets**（需手動設定）：`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION`、`AWS_ECR_REPOSITORY_URI`、`AWS_LAMBDA_FUNCTION_NAME`、`S3_BUCKET_NAME`、`OLLAMA_API_KEY`
+**GitHub Secrets**（需手動設定於 monorepo）：`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION`、`AWS_ECR_REPOSITORY_URI`、`AWS_LAMBDA_FUNCTION_NAME`、`S3_BUCKET_NAME`、`OLLAMA_API_KEY`
+
+**發版流程**：修改 `apps/backend/pyproject.toml` 的 `project.version` → 經 PR merge 到 main → Backend CI 綠 → Backend CD 自動觸發並建立 `backend-v<version>` release。
 
 ## Lambda 函數設定建議
 
