@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# Environment files (safety net; per-app .gitignore handles specifics)
+.env
+.env.local
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.ruff_cache/
+
+# Node
+node_modules/
+
+# Editors
+.vscode/
+
+# Claude Code worktrees（local only）
+.claude/worktrees/
+
+# Spectra 向量索引 cache
+openspec/.vector-search.db*
