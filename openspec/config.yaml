@@ -6,21 +6,21 @@ context: |
     - apps/backend/ — Python AWS Lambda
     - apps/web/     — 預留（未來 web 介面，技術棧未定）
   程式碼註解與 log 語言：所有註解、docstring、log 訊息、錯誤訊息一律以正體中文撰寫，白話說明、避免過度技術術語
-  版號管理：新增功能、重大變更或修正 bug 前，須 bump 該元件 version 檔案（mobile: apps/mobile/pubspec.yaml；backend: apps/backend/pyproject.toml），遵循 semver，tag 格式為 <component>-v<version>
+  版號管理：新增功能、重大變更或修正 bug 前，須 bump 該元件 version 檔案（mobile: apps/mobile/pubspec.yaml；backend: apps/backend/pyproject.toml），遵循 semver，tag 格式為 <component>-v<version>（mobile 須移除 +buildNumber 後綴）
   Git Commit 風格：使用正體中文撰寫 Conventional Commits（<type>(<scope>): <描述>），body 使用列點格式
   開發流程：鐵的紀律，所有功能變更皆須走 Spectra SDD 流程（propose → apply ⇄ ingest → archive）
   Domain: Naver Blog 圖片下載工具，行動端 App + 後端 Lambda 服務
 
 rules:
   design:
-    - 請使用正體中文進行撰寫
+    - 強制使用正體中文（zh-TW）撰寫，嚴禁英文或簡體中文
   proposal:
-    - 請使用正體中文進行撰寫
+    - 強制使用正體中文（zh-TW）撰寫，嚴禁英文或簡體中文
   specs:
-    - 請使用正體中文進行撰寫
+    - 強制使用正體中文（zh-TW）撰寫，嚴禁英文或簡體中文
     - 使用 Given/When/Then 格式
   tasks:
-    - 請使用正體中文進行撰寫
+    - 強制使用正體中文（zh-TW）撰寫，嚴禁英文或簡體中文
 
 # Project context (optional)
 # This is shown to AI when creating artifacts.
