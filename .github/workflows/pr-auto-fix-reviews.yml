@@ -1,0 +1,79 @@
+name: PR Auto Fix Reviews
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+
+concurrency:
+  group: claude-fix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-fix:
+    if: |
+      github.event.pull_request.state == 'open' && (
+        (github.event_name == 'pull_request_review' &&
+          endsWith(github.event.review.user.login, '[bot]')) ||
+        (github.event_name == 'pull_request_review_comment' &&
+          endsWith(github.event.comment.user.login, '[bot]'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Count prior auto-fix commits
+        id: count
+        run: |
+          BASE_REF=${{ github.event.pull_request.base.ref }}
+          git fetch origin "$BASE_REF"
+          N=$(git log "origin/${BASE_REF}..HEAD" --grep='^Auto-Fix-Run:' --oneline | wc -l | tr -d ' ')
+          echo "prior=$N" >> "$GITHUB_OUTPUT"
+          echo "next=$((N+1))" >> "$GITHUB_OUTPUT"
+          echo "目前已自動修正 $N 次"
+
+      - name: Stop if limit reached
+        if: steps.count.outputs.prior >= 10
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "⚠️ 已連續自動修正 10 次仍有 unresolved review threads，停止自動修正，請人工介入。"
+
+      - name: Run Claude auto-fix
+        if: steps.count.outputs.prior < 10
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
+          prompt: |
+            PR: ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+            這是第 ${{ steps.count.outputs.next }}/10 次自動修正。
+
+            任務：
+            1. 使用 GraphQL 抓取本 PR 所有 isResolved=false 的 review threads
+            2. 排除作者是你自己（Claude bot）的 reply，避免自我觸發
+            3. 對每個 thread 逐一判斷：
+               - 合理可採納 → 修 code，處理完後 resolve 該 thread
+               - 合理但需商榷 → 在 thread 留 reply 說明 concerns，不 resolve
+               - 不採納 → 在 thread 留 reply 說明理由，不 resolve
+            4. 若有修 code，commit 並 push 到 PR 分支；
+               commit message 遵循專案 CLAUDE.md：
+                 - 正體中文 Conventional Commits 格式
+                 - body 使用列點說明
+                 - 結尾務必加一行 trailer：
+                     Auto-Fix-Run: ${{ steps.count.outputs.next }}
+            5. 若沒有任何可處理的 thread，不要 commit，直接結束
+
+            遵循 openspec/config.yaml 與 CLAUDE.md 的所有規範（註解、log、commit 一律正體中文）。
