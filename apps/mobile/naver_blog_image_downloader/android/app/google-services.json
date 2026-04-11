@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "171984399501",
+    "project_id": "naver-blog-image-downloader",
+    "storage_bucket": "naver-blog-image-downloader.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:171984399501:android:9f12ba67138eb860bc86c4",
+        "android_client_info": {
+          "package_name": "com.leoho.naverBlogImageDownloader.android"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfcyhKdJ1YIhYNOGEApKxmFdcnB8E7Kmk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

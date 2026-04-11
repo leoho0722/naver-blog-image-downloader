@@ -1,0 +1,76 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate image references
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check image references in HTML
+        run: |
+          cd docs
+          MISSING=0
+
+          # 擷取所有 <img src="..."> 引用，排除外部 URL（http/https 開頭）
+          REFS=$(grep -oP '(?<=<img[^>]*src=")[^"]+' index.html 2>/dev/null || true)
+
+          for ref in $REFS; do
+            # 跳過外部 URL
+            if echo "$ref" | grep -qP '^https?://'; then
+              continue
+            fi
+
+            # 檢查檔案是否存在
+            if [ ! -f "$ref" ]; then
+              echo "::error::Missing image: docs/$ref"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+
+          if [ "$MISSING" -gt 0 ]; then
+            echo "::error::Found $MISSING missing image reference(s)"
+            exit 1
+          fi
+
+          echo "All image references are valid."
+
+  deploy:
+    name: Deploy to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: [validate]
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

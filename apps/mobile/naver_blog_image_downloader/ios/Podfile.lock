@@ -1,0 +1,22 @@
+PODS:
+  - amplify_secure_storage (0.0.1):
+    - Flutter
+  - Flutter (1.0.0)
+
+DEPENDENCIES:
+  - amplify_secure_storage (from `.symlinks/plugins/amplify_secure_storage/ios`)
+  - Flutter (from `Flutter`)
+
+EXTERNAL SOURCES:
+  amplify_secure_storage:
+    :path: ".symlinks/plugins/amplify_secure_storage/ios"
+  Flutter:
+    :path: Flutter
+
+SPEC CHECKSUMS:
+  amplify_secure_storage: 3edc30177ffefbcee786c408a21c02f8ab9f168e
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+
+PODFILE CHECKSUM: 3c63482e143d1b91d2d2560aee9fb04ecc74ac7e
+
+COCOAPODS: 1.16.2

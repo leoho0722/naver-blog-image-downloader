@@ -1,0 +1,5 @@
+.spectra/
+.vscode/
+.claude/worktrees/
+openspec/.vector-search.db*
+.DS_Store

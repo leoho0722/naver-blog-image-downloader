@@ -1,0 +1,90 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Naver Blog Photo Downloader",
+
+  "commonCancel": "Cancel",
+  "commonConfirm": "Confirm",
+  "commonOk": "OK",
+
+  "settingsTitle": "Settings",
+  "settingsSectionAppearance": "Appearance",
+  "settingsSectionLanguage": "Language",
+  "settingsSectionCache": "Cache",
+  "settingsSectionAbout": "About",
+  "settingsThemeSystem": "System",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsCacheSizeLabel": "Cache Size",
+  "settingsClearAllTooltip": "Clear All Cache",
+  "settingsClearAllDialogTitle": "Clear All Cache",
+  "settingsClearAllDialogContent": "Are you sure you want to clear all cached photos? This action cannot be undone.",
+  "settingsVersionLabel": "Version",
+
+  "blogInputAppBarTitle": "Photo Downloader",
+  "blogInputUrlLabel": "Naver Blog URL",
+  "blogInputUrlHint": "https://blog.naver.com/...",
+  "blogInputPasteTooltip": "Paste from clipboard",
+  "blogInputFetchButton": "Fetch Photo List",
+  "blogInputClipboardDetectedTitle": "Blog URL Detected",
+  "blogInputPasteButton": "Paste",
+  "blogInputClipboardEmptyTitle": "Clipboard Empty",
+  "blogInputClipboardEmptyContent": "There is no text to paste from the clipboard.",
+  "blogInputClipboardInvalidTitle": "Cannot Paste",
+  "blogInputClipboardInvalidContent": "The clipboard content does not appear to be a Naver Blog URL. Please check and try again.",
+  "blogInputFetchFailureTitle": "Some Photos Failed",
+  "blogInputFetchFailureContent": "Out of {totalImages} photos, {successCount} were retrieved successfully and {failureCount} failed.\n\nWould you like to continue downloading the retrieved photos?",
+  "blogInputCancelDownload": "Cancel Download",
+  "blogInputContinueDownload": "Continue Download",
+  "blogInputErrorDialogTitle": "Error",
+
+  "errorEmptyUrl": "Please enter a Blog URL",
+  "errorTimeout": "Request timed out. Please try again later.",
+  "errorServerUnavailable": "Server temporarily unavailable ({statusCode}). Please try again later.",
+  "errorApiFailed": "API call failed. Please try again later.",
+  "errorServerError": "Server processing failed. Please try again later.",
+  "errorNetworkError": "Network error. Please check your connection.",
+  "errorGeneric": "An error occurred. Please try again later.",
+
+  "statusSubmitting": "Submitting task...",
+  "statusProcessing": "Server processing...",
+  "statusCompleted": "Processing complete",
+
+  "downloadDialogTitle": "Download Photos",
+  "downloadProgress": "{completed} / {total}",
+  "downloadStatusDownloading": "Downloading...",
+  "downloadStatusCompleted": "Download Complete",
+  "downloadFailedCount": "{count} failed to download",
+
+  "galleryTitle": "Photos ({count})",
+  "galleryDeselectMode": "Cancel Selection",
+  "gallerySelectMode": "Select Mode",
+  "gallerySelectAll": "Select All",
+  "gallerySaveSelected": "Save Selected",
+  "gallerySaveAll": "Save All",
+  "galleryEmpty": "No Photos",
+  "gallerySaving": "Saving...",
+  "gallerySaveToGalleryFailed": "Failed to save to gallery",
+
+  "detailPhotoCounter": "{current} / {total}",
+  "detailFileInfo": "File Info",
+  "detailFileSize": "File Size",
+  "detailDimensions": "Dimensions",
+
+  "whatsNewTitle": "What's New in v{version}",
+  "@whatsNewTitle": {
+    "placeholders": {
+      "version": {"type": "String"}
+    }
+  },
+  "whatsNewOnboardingTitle": "Welcome",
+  "whatsNewDismissButton": "Got it",
+  "whatsNewCloseButton": "Close",
+
+  "settingsSectionAppIcon": "App Icon",
+  "settingsAppIconSheetTitle": "Choose App Icon",
+  "settingsAppIconStyleScroll": "Scroll View",
+  "settingsAppIconStyleSheet": "Grid View",
+  "settingsAppIconDefault": "Default",
+  "settingsAppIconNew": "New"
+}

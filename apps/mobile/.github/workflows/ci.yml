@@ -1,0 +1,145 @@
+name: CI — Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'naver_blog_image_downloader/lib/**'
+      - 'naver_blog_image_downloader/test/**'
+      - 'naver_blog_image_downloader/pubspec.yaml'
+      - 'naver_blog_image_downloader/pubspec.lock'
+      - 'naver_blog_image_downloader/analysis_options.yaml'
+      - 'naver_blog_image_downloader/ios/**'
+      - 'naver_blog_image_downloader/android/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'naver_blog_image_downloader/lib/**'
+      - 'naver_blog_image_downloader/test/**'
+      - 'naver_blog_image_downloader/pubspec.yaml'
+      - 'naver_blog_image_downloader/pubspec.lock'
+      - 'naver_blog_image_downloader/analysis_options.yaml'
+      - 'naver_blog_image_downloader/ios/**'
+      - 'naver_blog_image_downloader/android/**'
+  workflow_dispatch:
+
+jobs:
+  flutter-validate:
+    name: Flutter — Test, Analyze & Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: naver_blog_image_downloader
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          pub-cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Code Generation (Riverpod)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Test
+        run: flutter test
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Format
+        run: dart format .
+
+      - name: Commit formatting changes
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "style: 自動格式化 (dart format)"
+          file_pattern: "naver_blog_image_downloader/**/*.dart"
+
+  ios-native-test:
+    name: iOS — Native Unit Tests
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: naver_blog_image_downloader
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Fix Xcodeproj objectVersion 70 support
+        run: gem install specific_install && gem specific_install https://github.com/CocoaPods/Xcodeproj.git
+
+      - name: Pod install
+        run: cd ios && pod install
+
+      - name: Cache Pods build
+        uses: actions/cache@v5
+        with:
+          path: naver_blog_image_downloader/ios/Pods
+          key: pods-${{ runner.os }}-${{ hashFiles('naver_blog_image_downloader/ios/Podfile.lock') }}
+
+      - name: Code Generation (Riverpod)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Run iOS native tests
+        run: |
+          cd ios
+          set -o pipefail
+          xcodebuild test \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -only-testing RunnerTests \
+            | xcpretty
+
+  android-native-test:
+    name: Android — Native Unit Tests (JVM)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: naver_blog_image_downloader
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Code Generation (Riverpod)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Generate Gradle wrapper
+        run: flutter build apk --config-only
+
+      - name: Run Android native tests
+        run: cd android && ./gradlew :app:testDebugUnitTest

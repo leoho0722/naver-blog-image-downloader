@@ -1,0 +1,124 @@
+{
+  "@@locale": "zh_TW",
+
+  "appTitle": "Naver Blog 照片下載器",
+
+  "commonCancel": "取消",
+  "commonConfirm": "確認",
+  "commonOk": "好的",
+
+  "settingsTitle": "設定",
+  "settingsSectionAppearance": "外觀",
+  "settingsSectionLanguage": "語言",
+  "settingsSectionCache": "快取",
+  "settingsSectionAbout": "關於",
+  "settingsThemeSystem": "系統",
+  "settingsThemeLight": "淺色",
+  "settingsThemeDark": "深色",
+  "settingsCacheSizeLabel": "快取大小",
+  "settingsClearAllTooltip": "清除所有快取",
+  "settingsClearAllDialogTitle": "清除全部快取",
+  "settingsClearAllDialogContent": "確定要清除所有已快取的照片嗎？此操作無法復原。",
+  "settingsVersionLabel": "版本",
+
+  "blogInputAppBarTitle": "照片下載器",
+  "blogInputUrlLabel": "Naver Blog 網址",
+  "blogInputUrlHint": "https://blog.naver.com/...",
+  "blogInputPasteTooltip": "從剪貼板貼上",
+  "blogInputFetchButton": "取得照片列表",
+  "blogInputClipboardDetectedTitle": "偵測到 Blog 網址",
+  "blogInputPasteButton": "貼上",
+  "blogInputClipboardEmptyTitle": "剪貼板沒有內容",
+  "blogInputClipboardEmptyContent": "目前剪貼板中沒有可貼上的文字。",
+  "blogInputClipboardInvalidTitle": "無法貼上",
+  "blogInputClipboardInvalidContent": "目前剪貼板的內容似乎不是 Naver Blog 網址，請確認後再試一次。",
+  "blogInputFetchFailureTitle": "部分照片擷取失敗",
+  "blogInputFetchFailureContent": "總共有 {totalImages} 張照片，成功取得 {successCount} 張，無法取得 {failureCount} 張。\n\n請問是否繼續下載已取得的照片？",
+  "@blogInputFetchFailureContent": {
+    "placeholders": {
+      "totalImages": {"type": "int"},
+      "successCount": {"type": "int"},
+      "failureCount": {"type": "int"}
+    }
+  },
+  "blogInputCancelDownload": "取消下載",
+  "blogInputContinueDownload": "繼續下載",
+  "blogInputErrorDialogTitle": "發生錯誤",
+
+  "errorEmptyUrl": "請輸入 Blog 網址",
+  "errorTimeout": "請求逾時，請稍後再試",
+  "errorServerUnavailable": "伺服器暫時無法使用（{statusCode}），請稍後再試",
+  "@errorServerUnavailable": {
+    "placeholders": {
+      "statusCode": {"type": "int"}
+    }
+  },
+  "errorApiFailed": "API 呼叫失敗，請稍後再試",
+  "errorServerError": "伺服器處理失敗，請稍後再試",
+  "errorNetworkError": "網路連線異常，請檢查網路設定",
+  "errorGeneric": "發生錯誤，請稍後再試",
+
+  "statusSubmitting": "正在提交任務...",
+  "statusProcessing": "伺服器處理中...",
+  "statusCompleted": "處理完成",
+
+  "downloadDialogTitle": "下載照片",
+  "downloadProgress": "{completed} / {total}",
+  "@downloadProgress": {
+    "placeholders": {
+      "completed": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "downloadStatusDownloading": "下載中...",
+  "downloadStatusCompleted": "下載完成",
+  "downloadFailedCount": "{count} 張下載失敗",
+  "@downloadFailedCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+
+  "galleryTitle": "照片瀏覽（{count}）",
+  "@galleryTitle": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "galleryDeselectMode": "取消選取",
+  "gallerySelectMode": "選取模式",
+  "gallerySelectAll": "全選",
+  "gallerySaveSelected": "儲存已選取",
+  "gallerySaveAll": "儲存全部",
+  "galleryEmpty": "沒有照片",
+  "gallerySaving": "儲存中...",
+  "gallerySaveToGalleryFailed": "儲存至相簿失敗",
+
+  "detailPhotoCounter": "{current} / {total}",
+  "@detailPhotoCounter": {
+    "placeholders": {
+      "current": {"type": "int"},
+      "total": {"type": "int"}
+    }
+  },
+  "detailFileInfo": "檔案資訊",
+  "detailFileSize": "檔案大小",
+  "detailDimensions": "照片尺寸",
+
+  "whatsNewTitle": "v{version} 新功能",
+  "@whatsNewTitle": {
+    "placeholders": {
+      "version": {"type": "String"}
+    }
+  },
+  "whatsNewOnboardingTitle": "歡迎使用",
+  "whatsNewDismissButton": "知道了",
+  "whatsNewCloseButton": "關閉",
+
+  "settingsSectionAppIcon": "App 圖示",
+  "settingsAppIconSheetTitle": "選擇 App 圖示",
+  "settingsAppIconStyleScroll": "以滑動檢視",
+  "settingsAppIconStyleSheet": "以網格檢視",
+  "settingsAppIconDefault": "預設",
+  "settingsAppIconNew": "新版"
+}
