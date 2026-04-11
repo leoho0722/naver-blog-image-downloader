@@ -1,10 +1,11 @@
-name: Deploy GitHub Pages
+name: Mobile Deploy Pages
 
 on:
   push:
     branches: [main]
     paths:
       - 'docs/**'
+      - '.github/workflows/mobile-deploy-pages.yml'
   workflow_dispatch:
 
 permissions:

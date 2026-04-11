@@ -1,26 +1,16 @@
-name: CI — Validation
+name: Mobile CI
 
 on:
   push:
     branches: [main]
     paths:
-      - 'naver_blog_image_downloader/lib/**'
-      - 'naver_blog_image_downloader/test/**'
-      - 'naver_blog_image_downloader/pubspec.yaml'
-      - 'naver_blog_image_downloader/pubspec.lock'
-      - 'naver_blog_image_downloader/analysis_options.yaml'
-      - 'naver_blog_image_downloader/ios/**'
-      - 'naver_blog_image_downloader/android/**'
+      - 'apps/mobile/**'
+      - '.github/workflows/mobile-ci.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'naver_blog_image_downloader/lib/**'
-      - 'naver_blog_image_downloader/test/**'
-      - 'naver_blog_image_downloader/pubspec.yaml'
-      - 'naver_blog_image_downloader/pubspec.lock'
-      - 'naver_blog_image_downloader/analysis_options.yaml'
-      - 'naver_blog_image_downloader/ios/**'
-      - 'naver_blog_image_downloader/android/**'
+      - 'apps/mobile/**'
+      - '.github/workflows/mobile-ci.yml'
   workflow_dispatch:
 
 jobs:
@@ -29,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: naver_blog_image_downloader
+        working-directory: apps/mobile
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -57,20 +47,34 @@ jobs:
         run: flutter analyze
 
       - name: Format
-        run: dart format .
+        id: format
+        run: |
+          dart format .
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Commit formatting changes
+      - name: Auto-commit formatting changes (PR only)
+        if: github.event_name == 'pull_request' && steps.format.outputs.changed == 'true'
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "style: 自動格式化 (dart format)"
-          file_pattern: "naver_blog_image_downloader/**/*.dart"
+          file_pattern: "apps/mobile/**/*.dart"
+
+      - name: Fail if unformatted on main
+        if: github.event_name == 'push' && steps.format.outputs.changed == 'true'
+        run: |
+          echo "::error::main 上有未格式化的 Dart 程式碼；PR CI 應該已 auto-commit 修正，代表流程被繞過"
+          exit 1
 
   ios-native-test:
     name: iOS — Native Unit Tests
     runs-on: macos-26
     defaults:
       run:
-        working-directory: naver_blog_image_downloader
+        working-directory: apps/mobile
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -93,8 +97,8 @@ jobs:
       - name: Cache Pods build
         uses: actions/cache@v5
         with:
-          path: naver_blog_image_downloader/ios/Pods
-          key: pods-${{ runner.os }}-${{ hashFiles('naver_blog_image_downloader/ios/Podfile.lock') }}
+          path: apps/mobile/ios/Pods
+          key: pods-${{ runner.os }}-${{ hashFiles('apps/mobile/ios/Podfile.lock') }}
 
       - name: Code Generation (Riverpod)
         run: dart run build_runner build --delete-conflicting-outputs
@@ -115,7 +119,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: naver_blog_image_downloader
+        working-directory: apps/mobile
     steps:
       - name: Checkout
         uses: actions/checkout@v6

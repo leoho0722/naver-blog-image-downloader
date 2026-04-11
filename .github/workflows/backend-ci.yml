@@ -1,10 +1,17 @@
-name: CI
+name: Backend CI
 
 on:
   push:
-    branches: ["*"]
+    branches: [main]
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/backend-ci.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/backend-ci.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,6 +20,9 @@ jobs:
   lint:
     name: Lint & Format Check
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -37,8 +47,8 @@ jobs:
         run: ruff format --check .
         continue-on-error: true
 
-      - name: Auto-fix lint & formatting
-        if: steps.lint_check.outcome == 'failure' || steps.format_check.outcome == 'failure'
+      - name: Auto-fix lint & formatting (PR only)
+        if: github.event_name == 'pull_request' && (steps.lint_check.outcome == 'failure' || steps.format_check.outcome == 'failure')
         run: |
           ruff check . --fix --unsafe-fixes
           ruff format .
@@ -47,3 +57,9 @@ jobs:
           git add -A
           git diff --cached --quiet || git commit -m "style: 自動修正程式碼風格 (Ruff)"
           git push
+
+      - name: Fail if unformatted on main
+        if: github.event_name == 'push' && (steps.lint_check.outcome == 'failure' || steps.format_check.outcome == 'failure')
+        run: |
+          echo "::error::main 上有未通過 Ruff 檢查的程式碼；PR CI 應該已 auto-commit 修正，代表流程被繞過"
+          exit 1

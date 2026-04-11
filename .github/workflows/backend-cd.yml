@@ -1,8 +1,8 @@
-name: CD
+name: Backend CD
 
 on:
   workflow_run:
-    workflows: [CI]
+    workflows: [Backend CI]
     branches: [main]
     types: [completed]
 
@@ -12,7 +12,8 @@ permissions:
 env:
   IMAGE_NAME: naver-blog-image-downloader-lambda
   IMAGE_ARCH: linux/amd64
-  DOCKERFILE_PATH: ./Dockerfile
+  DOCKERFILE_PATH: apps/backend/Dockerfile
+  BUILD_CONTEXT: apps/backend
 
 jobs:
   deploy:
@@ -25,14 +26,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate image tag
+      - name: Extract version from pyproject.toml
         id: image_tag
         run: |
-          DATE_PREFIX=$(date +'%y%m%d')
-          # 從 git tag 中找出當日最大序號，換日自動重置為 1
-          LAST_NUM=$(git tag --list "v${DATE_PREFIX}.*" --sort=-version:refname | head -n 1 | sed "s/v${DATE_PREFIX}\.//" || echo "-1")
-          NEXT_NUM=$(( ${LAST_NUM:--1} + 1 ))
-          echo "tag=${DATE_PREFIX}.${NEXT_NUM}" >> "$GITHUB_OUTPUT"
+          # 使用 Python tomllib 解析 pyproject.toml（ubuntu-latest 內建 Python 3.11+）
+          VERSION=$(python3 -c "import tomllib; print(tomllib.load(open('apps/backend/pyproject.toml','rb'))['project']['version'])")
+          if [ -z "$VERSION" ]; then
+            echo "::error::無法從 apps/backend/pyproject.toml 讀取 version 欄位"
+            exit 1
+          fi
+          TAG="backend-v${VERSION}"
+          # 同步 remote tag，確保能偵測到已存在的 tag
+          git fetch --tags --force
+          if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
+            echo "::error::Tag ${TAG} 已存在；請先 bump apps/backend/pyproject.toml 的 version 後再部署"
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5
@@ -49,19 +60,19 @@ jobs:
           docker build \
             --no-cache \
             --platform ${{ env.IMAGE_ARCH }} \
-            -t ${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.tag }} \
+            -t ${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.version }} \
             -f ${{ env.DOCKERFILE_PATH }} \
-            .
+            ${{ env.BUILD_CONTEXT }}
 
       - name: Tag and push image to ECR
         run: |
-          IMAGE_URI=${{ secrets.AWS_ECR_REPOSITORY_URI }}/${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.tag }}
-          docker tag ${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.tag }} ${IMAGE_URI}
+          IMAGE_URI=${{ secrets.AWS_ECR_REPOSITORY_URI }}/${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.version }}
+          docker tag ${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.version }} ${IMAGE_URI}
           docker push ${IMAGE_URI}
 
       - name: Update Lambda function code
         run: |
-          IMAGE_URI=${{ secrets.AWS_ECR_REPOSITORY_URI }}/${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.tag }}
+          IMAGE_URI=${{ secrets.AWS_ECR_REPOSITORY_URI }}/${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.version }}
           aws lambda update-function-code \
             --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
             --image-uri ${IMAGE_URI} \
@@ -208,19 +219,20 @@ jobs:
 
       - name: Create git tag
         run: |
-          TAG="v${{ steps.image_tag.outputs.tag }}"
+          TAG="${{ steps.image_tag.outputs.tag }}"
           git tag "$TAG"
           git push origin "$TAG"
 
-      - name: Get commits since last tag
+      - name: Get commits since last backend tag
         id: changelog
         run: |
-          TAG="v${{ steps.image_tag.outputs.tag }}"
-          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -v "^${TAG}$" | head -n 1 || echo "")
+          TAG="${{ steps.image_tag.outputs.tag }}"
+          # 僅看 backend-v* 前綴，避免抓到未來 mobile / web 的 tag
+          PREVIOUS_TAG=$(git tag --list "backend-v*" --sort=-version:refname | grep -v "^${TAG}$" | head -n 1 || echo "")
           if [ -z "$PREVIOUS_TAG" ]; then
-            COMMITS=$(git log --pretty=format:"- %s (%h)")
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -- apps/backend)
           else
-            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREVIOUS_TAG}..HEAD")
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREVIOUS_TAG}..HEAD" -- apps/backend)
           fi
           echo "$COMMITS" > /tmp/commits.txt
           cat /tmp/commits.txt
@@ -231,7 +243,7 @@ jobs:
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
         run: |
           COMMITS=$(cat /tmp/commits.txt)
-          TAG="v${{ steps.image_tag.outputs.tag }}"
+          TAG="${{ steps.image_tag.outputs.tag }}"
 
           PROMPT=$(cat <<'PROMPT_EOF'
           你是一位專業的軟體發布管理員。請根據以下 Git commit 記錄，撰寫正體中文的 Release Notes。
@@ -286,7 +298,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="v${{ steps.image_tag.outputs.tag }}"
+          TAG="${{ steps.image_tag.outputs.tag }}"
           gh release create "$TAG" \
-            --title "$TAG" \
+            --title "Backend v${{ steps.image_tag.outputs.version }}" \
             --notes-file /tmp/release_notes.md
