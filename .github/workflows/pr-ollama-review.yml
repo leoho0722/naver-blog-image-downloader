@@ -1,4 +1,4 @@
-name: PR AI Review
+name: PR Ollama Review
 
 on:
   pull_request:
@@ -10,34 +10,6 @@ permissions:
   issues: write
 
 jobs:
-  claude-review:
-    name: Claude Review
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout PR
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Claude Code Review
-        uses: anthropics/claude-code-action@v1
-        with:
-          prompt: |
-            你是本 monorepo 的資深 code reviewer。請審查此 PR 的所有變更，涵蓋：
-            1. 正確性：邏輯錯誤、邊界條件、race condition、資料一致性
-            2. 安全性：OWASP top 10、敏感資料處理、權限邊界
-            3. 可維護性：命名、模組邊界、重複程式碼、測試覆蓋
-            4. 專案規範：是否違反 root CLAUDE.md 與 apps/<component>/CLAUDE.md 裡的規則（註解正體中文、Conventional Commits、架構分層、版號管理）
-            5. 效能：明顯的 N+1、不必要的 allocation、阻塞主執行緒
-
-            輸出格式：
-            - **所有內容必須以正體中文撰寫**
-            - 先給一段 2-3 句的總評（blocker / 可接受但建議調整 / 無疑慮）
-            - 再用條列列出具體問題，每項標示嚴重程度（🔴 阻擋合併 / 🟡 建議修正 / 🟢 可選優化）
-            - 涉及特定檔案/行數的問題，使用 `file:line` 格式標記
-            - 最後給一句最終結論
-
   ollama-review:
     name: Ollama Cloud Review
     runs-on: ubuntu-latest
