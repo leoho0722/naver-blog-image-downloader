@@ -1,4 +1,7 @@
-# CLAUDE.md
+# Backend 開發指引
+
+> 詳細部署流程、API 介面與環境變數請參閱 [README.md](README.md)。
+> 共用規範（正體中文註解、Conventional Commits、版號管理、Spectra SDD）請參閱 monorepo root [CLAUDE.md](../../CLAUDE.md)。
 
 ## 專案概述
 
@@ -49,10 +52,10 @@ Naver Blog 工具 API，部署於 AWS Lambda（容器映像模式）。透過模
 
 ### API Routes
 
-| 路徑            | 方法 | 說明                                | 模式            |
-| --------------- | ---- | ----------------------------------- | --------------- |
+| 路徑            | 方法 | 說明                                | 模式             |
+| --------------- | ---- | ----------------------------------- | ---------------- |
 | `/api/photos`   | POST | 圖片擷取（action: download/status） | 非同步 + Polling |
-| `/api/whatsNew` | POST | 依版號與語系從 S3 取得新功能介紹    | 同步回應        |
+| `/api/whatsNew` | POST | 依版號與語系從 S3 取得新功能介紹    | 同步回應         |
 
 ### 新增路由方式
 
@@ -73,21 +76,4 @@ Naver Blog 工具 API，部署於 AWS Lambda（容器映像模式）。透過模
 
 ## 開發慣例
 
-- 程式碼註解與日誌使用正體中文
 - Linter：Ruff，設定於 `pyproject.toml`（src 路徑已配置為 `src/`）
-- 新增功能、重大變更或修正 bug 時，須同步更新 `pyproject.toml` 中的 `version` 欄位
-
-## Commit 風格
-
-使用正體中文撰寫 conventional commits：`<type>: <描述>`
-
-常用 type：`feat`（新功能）、`fix`（修正）、`refactor`（重構）、`docs`（文件）、`chore`（雜項）、`ci`（CI/CD）、`test`（測試）
-
-description（body）使用列點格式，例如：
-
-```text
-refactor(settings-view): 設定頁面 Cupertino → Material 3 重構
-
-- 移除所有 Cupertino 元件
-- 統一採用 Material 3 Card.filled + ListTile 呈現
-```
