@@ -1,0 +1,110 @@
+name: PR Auto Fix Reviews
+
+on:
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+
+concurrency:
+  group: claude-fix-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  auto-fix:
+    if: |
+      github.event.pull_request.state == 'open' &&
+      github.event.pull_request.head.repo.full_name == github.repository && (
+        (github.event_name == 'pull_request_review' && (
+          github.event.review.user.login == 'github-actions[bot]' ||
+          github.event.review.user.login == 'gemini-code-assist[bot]' ||
+          github.event.review.user.login == 'claude[bot]')) ||
+        (github.event_name == 'pull_request_review_comment' && (
+          github.event.comment.user.login == 'github-actions[bot]' ||
+          github.event.comment.user.login == 'gemini-code-assist[bot]' ||
+          github.event.comment.user.login == 'claude[bot]'))
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      actions: read
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Count prior auto-fix commits
+        id: count
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          git fetch origin "$BASE_REF"
+          N=$(git log "origin/${BASE_REF}..HEAD" --grep='^Auto-Fix-Run:' --oneline | wc -l | tr -d ' ')
+          echo "prior=$N" >> "$GITHUB_OUTPUT"
+          echo "next=$((N+1))" >> "$GITHUB_OUTPUT"
+          echo "目前已自動修正 $N 次"
+
+      - name: Stop if limit reached
+        if: fromJSON(steps.count.outputs.prior) >= 10
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "⚠️ 已連續自動修正 10 次仍有 unresolved review threads，停止自動修正，請人工介入。"
+
+      - name: Save pre-fix SHA
+        if: fromJSON(steps.count.outputs.prior) < 10
+        id: pre-fix
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude auto-fix
+        if: fromJSON(steps.count.outputs.prior) < 10
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
+          prompt: |
+            PR: ${{ github.repository }}/pull/${{ github.event.pull_request.number }}
+            這是第 ${{ steps.count.outputs.next }}/10 次自動修正。
+
+            任務：
+            1. 使用 GraphQL 抓取本 PR 所有 isResolved=false 的 review threads
+            2. 排除作者是你自己（Claude bot）的 reply，避免自我觸發
+            3. 對每個 thread 逐一判斷：
+               - 合理可採納 → 修 code，處理完後 resolve 該 thread
+               - 合理但需商榷 → 在 thread 留 reply 說明 concerns，不 resolve
+               - 不採納 → 在 thread 留 reply 說明理由，不 resolve
+            4. 若有修 code，commit 並 push 到 PR 分支；
+               commit message 遵循專案 CLAUDE.md：
+                 - 正體中文 Conventional Commits 格式
+                 - body 使用列點說明
+                 - 結尾務必加一行 trailer：
+                     Auto-Fix-Run: ${{ steps.count.outputs.next }}
+            5. 若沒有任何可處理的 thread，不要 commit，直接結束
+
+            安全限制：
+            - 嚴禁執行破壞性指令（rm -rf、git reset --hard 等）
+            - 嚴禁修改 .github/workflows/ 目錄下的任何檔案
+            - 嚴禁修改 secrets、credentials、.env 等敏感檔案
+            - 僅修改 review thread 明確指出的檔案範圍
+
+            遵循 openspec/config.yaml 與 CLAUDE.md 的所有規範（註解、log、commit 一律正體中文）。
+
+      - name: Verify no workflow files modified
+        if: fromJSON(steps.count.outputs.prior) < 10
+        run: |
+          BEFORE="${{ steps.pre-fix.outputs.sha }}"
+          AFTER=$(git rev-parse HEAD)
+          if [ "$BEFORE" != "$AFTER" ]; then
+            if git diff --name-only "$BEFORE" "$AFTER" | grep -q '^\.github/workflows/'; then
+              echo "🔴 Claude 修改了 .github/workflows/ 目錄，建立還原 commit"
+              git checkout "$BEFORE" -- .github/workflows/
+              git add .github/workflows/
+              git commit -m "revert: 還原 Claude 對 .github/workflows/ 的非授權修改"
+              git push
+            fi
+          fi
