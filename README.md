@@ -99,8 +99,8 @@ pnpm dev      # 開發伺服器 http://localhost:5173
 | Backend CI | `apps/backend/**` 變動 | Ruff lint + format 檢查 |
 | Backend CD | Backend CI 成功 | Docker build → ECR push → Lambda 更新 → git tag + Release |
 | Web CI | `apps/web/**` 變動 | TypeScript 檢查 + Vitest 測試 + Vite build + Prettier 格式檢查 |
-| Web CD | Web CI 成功 | Vite build → `docs/web/app/` 部署 → git tag + Release |
-| Deploy Pages | `docs/**` 變動 | 驗證圖片引用 → 部署至 GitHub Pages |
+| Web CD | Web CI 成功 | 建立 git tag + GitHub Release（僅版號管理，不部署） |
+| Deploy Pages | `docs/**` 或 `apps/web/**` 變動 | Build web app + 驗證圖片引用 → 部署至 GitHub Pages |
 
 ## 開發規範與共用準則
 
