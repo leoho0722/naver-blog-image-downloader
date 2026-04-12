@@ -16,9 +16,11 @@ jobs:
       github.event.pull_request.state == 'open' &&
       github.event.pull_request.head.repo.full_name == github.repository && (
         (github.event_name == 'pull_request_review' &&
-          endsWith(github.event.review.user.login, '[bot]')) ||
+          endsWith(github.event.review.user.login, '[bot]') &&
+          github.event.review.user.login != 'claude[bot]') ||
         (github.event_name == 'pull_request_review_comment' &&
-          endsWith(github.event.comment.user.login, '[bot]'))
+          endsWith(github.event.comment.user.login, '[bot]') &&
+          github.event.comment.user.login != 'claude[bot]')
       )
     runs-on: ubuntu-latest
     permissions:
@@ -84,3 +86,13 @@ jobs:
             - 僅修改 review thread 明確指出的檔案範圍
 
             遵循 openspec/config.yaml 與 CLAUDE.md 的所有規範（註解、log、commit 一律正體中文）。
+
+      - name: Verify no workflow files modified
+        if: fromJSON(steps.count.outputs.prior) < 10
+        run: |
+          if git diff --name-only HEAD~1 2>/dev/null | grep -q '^\.github/workflows/'; then
+            echo "🔴 Claude 修改了 .github/workflows/ 目錄，強制還原"
+            git checkout HEAD~1 -- .github/workflows/
+            git commit --amend --no-edit
+            git push --force-with-lease
+          fi
