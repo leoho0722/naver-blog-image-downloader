@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Naver Blog Image Downloader</title>
+  <title>Naver Blog 圖片下載器</title>
   <meta name="description" content="Naver Blog 圖片下載工具 — Flutter App + Python AWS Lambda">
 
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Naver Blog Image Downloader">
+  <meta property="og:title" content="Naver Blog 圖片下載器">
   <meta property="og:description" content="Naver Blog 圖片下載工具 — Flutter App + Python AWS Lambda">
   <meta property="og:image" content="mobile/images/og-image.png">
 
@@ -56,6 +56,85 @@
       padding: 24px;
     }
 
+    /* ===== 語言切換選單 ===== */
+    .lang-switcher {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 100;
+    }
+
+    .lang-toggle-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text);
+      box-shadow: var(--card-shadow);
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+
+    .lang-toggle-btn:hover {
+      background: var(--border);
+    }
+
+    .lang-toggle-btn .material-symbols-outlined {
+      font-size: 18px;
+      color: var(--primary);
+    }
+
+    .lang-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      overflow: hidden;
+      min-width: 140px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .lang-menu {
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      }
+    }
+
+    .lang-switcher.open .lang-menu {
+      display: block;
+    }
+
+    .lang-menu__item {
+      display: block;
+      width: 100%;
+      padding: 10px 16px;
+      text-align: left;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: var(--text);
+      transition: background 0.15s;
+    }
+
+    .lang-menu__item:hover {
+      background: var(--border);
+    }
+
+    .lang-menu__item.active {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* ===== 主要內容 ===== */
     .container {
       max-width: 720px;
       width: 100%;
@@ -167,39 +246,149 @@
       .tagline { font-size: 1rem; margin-bottom: 32px; }
       .cards { grid-template-columns: 1fr; }
       .hero-icon { font-size: 48px; }
+      .lang-switcher { top: 12px; right: 12px; }
     }
   </style>
 </head>
 <body>
 
+  <!-- 語言切換選單（右上角固定位置） -->
+  <div class="lang-switcher" id="langSwitcher">
+    <button class="lang-toggle-btn" id="langToggle" aria-label="切換語言 / Switch Language">
+      <span class="material-symbols-outlined">translate</span>
+      <span id="langLabel">中文</span>
+    </button>
+    <div class="lang-menu" id="langMenu" role="menu">
+      <button class="lang-menu__item active" data-lang="zh-Hant" role="menuitem">正體中文</button>
+      <button class="lang-menu__item" data-lang="en" role="menuitem">English</button>
+    </div>
+  </div>
+
   <div class="container">
     <span class="material-symbols-outlined hero-icon">photo_library</span>
-    <h1>Naver Blog Image Downloader</h1>
+    <h1 data-i18n="title">Naver Blog 圖片下載器</h1>
     <p class="tagline">
-      Naver Blog 圖片下載工具<br>
-      輸入網址，自動擷取並批次下載文章中的所有照片
+      <span data-i18n="tagline.line1">Naver Blog 圖片下載工具</span><br>
+      <span data-i18n="tagline.line2">輸入網址，自動擷取並批次下載文章中的所有照片</span>
     </p>
 
     <div class="cards">
       <a href="mobile/index.html" class="card">
         <span class="material-symbols-outlined card__icon">phone_iphone</span>
-        <div class="card__title">App 版</div>
-        <div class="card__desc">iOS &amp; Android 行動應用程式，支援批次下載與相簿儲存</div>
+        <div class="card__title" data-i18n="card.app.title">App 版</div>
+        <div class="card__desc" data-i18n="card.app.desc">iOS &amp; Android 行動應用程式，支援批次下載與相簿儲存</div>
       </a>
 
       <div class="card card--disabled">
         <span class="material-symbols-outlined card__icon">language</span>
-        <div class="card__title">Web 版</div>
-        <div class="card__desc">瀏覽器線上版，免安裝即可使用</div>
-        <span class="badge">即將推出</span>
+        <div class="card__title" data-i18n="card.web.title">Web 版</div>
+        <div class="card__desc" data-i18n="card.web.desc">瀏覽器線上版，免安裝即可使用</div>
+        <span class="badge" data-i18n="card.web.badge">即將推出</span>
       </div>
     </div>
 
     <div class="footer">
       <a href="https://github.com/leoho0722/naver-blog-image-downloader" target="_blank" rel="noopener noreferrer">GitHub</a>
-      &nbsp;·&nbsp; © 2026 Naver Blog Image Downloader
+      &nbsp;·&nbsp; <span data-i18n="footer.copyright">© 2026 Naver Blog 圖片下載器</span>
     </div>
   </div>
+
+  <script>
+    /* 多語系翻譯內容 */
+    const translations = {
+      'zh-Hant': {
+        'title': 'Naver Blog 圖片下載器',
+        'tagline.line1': 'Naver Blog 圖片下載工具',
+        'tagline.line2': '輸入網址，自動擷取並批次下載文章中的所有照片',
+        'card.app.title': 'App 版',
+        'card.app.desc': 'iOS & Android 行動應用程式，支援批次下載與相簿儲存',
+        'card.web.title': 'Web 版',
+        'card.web.desc': '瀏覽器線上版，免安裝即可使用',
+        'card.web.badge': '即將推出',
+        'footer.copyright': '© 2026 Naver Blog 圖片下載器',
+        'langLabel': '中文',
+      },
+      en: {
+        'title': 'Naver Blog Image Downloader',
+        'tagline.line1': 'Naver Blog Image Download Tool',
+        'tagline.line2': 'Enter a URL to automatically extract and batch download all photos from blog posts',
+        'card.app.title': 'Mobile App',
+        'card.app.desc': 'iOS & Android mobile app with batch download and photo gallery saving',
+        'card.web.title': 'Web Version',
+        'card.web.desc': 'Browser-based online tool, no installation required',
+        'card.web.badge': 'Coming Soon',
+        'footer.copyright': '© 2026 Naver Blog Image Downloader',
+        'langLabel': 'EN',
+      },
+    };
+
+    /* 取得偏好語言：localStorage > 瀏覽器語言 > 預設 zh-Hant */
+    function getPreferredLanguage() {
+      const stored = localStorage.getItem('landing-lang');
+      if (stored && translations[stored]) return stored;
+
+      const browserLang = navigator.language || '';
+      if (browserLang.startsWith('en')) return 'en';
+      return 'zh-Hant';
+    }
+
+    /* 套用翻譯 */
+    function applyTranslations(lang) {
+      const t = translations[lang];
+      if (!t) return;
+
+      /* 更新所有 data-i18n 元素 */
+      document.querySelectorAll('[data-i18n]').forEach((el) => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key] !== undefined) el.textContent = t[key];
+      });
+
+      /* 更新語言按鈕標籤 */
+      document.getElementById('langLabel').textContent = t['langLabel'];
+
+      /* 更新 <html lang> */
+      document.documentElement.lang = lang;
+
+      /* 更新 <title> */
+      document.title = t['title'];
+
+      /* 更新 active 狀態 */
+      document.querySelectorAll('.lang-menu__item').forEach((item) => {
+        item.classList.toggle('active', item.getAttribute('data-lang') === lang);
+      });
+
+      localStorage.setItem('landing-lang', lang);
+    }
+
+    /* 語言選單開關 */
+    const switcher = document.getElementById('langSwitcher');
+    const toggleBtn = document.getElementById('langToggle');
+
+    toggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      switcher.classList.toggle('open');
+    });
+
+    /* 點擊選單外部時關閉 */
+    document.addEventListener('click', () => {
+      switcher.classList.remove('open');
+    });
+
+    /* 點擊語言選項時切換 */
+    document.querySelectorAll('.lang-menu__item').forEach((item) => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const lang = item.getAttribute('data-lang');
+        applyTranslations(lang);
+        switcher.classList.remove('open');
+      });
+    });
+
+    /* 初始化 */
+    document.addEventListener('DOMContentLoaded', () => {
+      applyTranslations(getPreferredLanguage());
+    });
+  </script>
 
 </body>
 </html>
