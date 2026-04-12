@@ -49,13 +49,11 @@ jobs:
           INSTRUCTIONS_EOF
           )
 
-          PROMPT="${INSTRUCTIONS}
-          ${DIFF}"
-
           BODY=$(jq -n \
             --arg model "$OLLAMA_MODEL" \
-            --arg prompt "$PROMPT" \
-            '{model: $model, messages: [{role: "user", content: $prompt}], stream: false}')
+            --arg instructions "$INSTRUCTIONS" \
+            --arg diff "$DIFF" \
+            '{model: $model, messages: [{role: "user", content: ($instructions + "\n" + $diff)}], stream: false}')
 
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "https://ollama.com/api/chat" \
             -H "Authorization: Bearer $OLLAMA_API_KEY" \
