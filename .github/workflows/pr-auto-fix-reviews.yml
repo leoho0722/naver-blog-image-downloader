@@ -13,7 +13,8 @@ concurrency:
 jobs:
   auto-fix:
     if: |
-      github.event.pull_request.state == 'open' && (
+      github.event.pull_request.state == 'open' &&
+      github.event.pull_request.head.repo.full_name == github.repository && (
         (github.event_name == 'pull_request_review' &&
           endsWith(github.event.review.user.login, '[bot]')) ||
         (github.event_name == 'pull_request_review_comment' &&
@@ -75,5 +76,11 @@ jobs:
                  - 結尾務必加一行 trailer：
                      Auto-Fix-Run: ${{ steps.count.outputs.next }}
             5. 若沒有任何可處理的 thread，不要 commit，直接結束
+
+            安全限制：
+            - 嚴禁執行破壞性指令（rm -rf、git reset --hard 等）
+            - 嚴禁修改 .github/workflows/ 目錄下的任何檔案
+            - 嚴禁修改 secrets、credentials、.env 等敏感檔案
+            - 僅修改 review thread 明確指出的檔案範圍
 
             遵循 openspec/config.yaml 與 CLAUDE.md 的所有規範（註解、log、commit 一律正體中文）。
