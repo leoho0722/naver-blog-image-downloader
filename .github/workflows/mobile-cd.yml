@@ -54,76 +54,19 @@ jobs:
           fi
           echo "$COMMITS" > /tmp/commits.txt
 
-      - name: Generate release notes with Ollama Cloud
+      - name: Generate release notes
         if: steps.version.outputs.skip == 'false'
-        id: release_notes
-        env:
-          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
-        run: |
-          COMMITS=$(cat /tmp/commits.txt)
-          TAG="${{ steps.version.outputs.tag }}"
+        uses: ./.github/actions/generate-release-notes
+        with:
+          tag: ${{ steps.version.outputs.tag }}
+          commits_file: /tmp/commits.txt
+          output_file: /tmp/mobile_release_notes.md
+          ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}
 
-          PROMPT=$(cat <<'PROMPT_EOF'
-          你是一位專業的軟體發布管理員。請根據以下 Git commit 記錄，撰寫正體中文的 Release Notes。
-
-          版本號：__TAG__
-
-          Commit 記錄：
-          __COMMITS__
-
-          要求：
-          1. 使用正體中文撰寫
-          2. 按類別分組（如有）：✨ 新功能、🐛 錯誤修正、📈 改進與優化、🔄 重構、🔧 維護
-          3. 每項用 bullet point 列出
-          4. 簡潔專業
-          5. 直接輸出 Markdown 內容，不要加前綴或後綴說明
-          PROMPT_EOF
-          )
-          PROMPT="${PROMPT/__TAG__/$TAG}"
-          PROMPT="${PROMPT/__COMMITS__/$COMMITS}"
-
-          BODY=$(jq -n \
-            --arg model "gemma4:31b-cloud" \
-            --arg prompt "$PROMPT" \
-            '{model: $model, messages: [{role: "user", content: $prompt}], stream: false}')
-
-          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "https://ollama.com/api/chat" \
-            -H "Authorization: Bearer $OLLAMA_API_KEY" \
-            -d "$BODY")
-
-          HTTP_STATUS=$(echo "$RESPONSE" | tail -1 | sed 's/HTTP_STATUS://')
-          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
-
-          echo "API HTTP Status: $HTTP_STATUS"
-
-          echo "$RESPONSE_BODY" | jq -r '.message.content' > /tmp/mobile_release_notes.md
-
-          if [ ! -s /tmp/mobile_release_notes.md ] || grep -q "^null$" /tmp/mobile_release_notes.md; then
-            echo "⚠️ AI 生成失敗 (HTTP $HTTP_STATUS)，使用 commit 記錄作為 Release Notes"
-            echo "API Response: $RESPONSE_BODY"
-            {
-              echo "## 變更記錄"
-              echo ""
-              cat /tmp/commits.txt
-            } > /tmp/mobile_release_notes.md
-          fi
-
-          echo "--- Generated Release Notes ---"
-          cat /tmp/mobile_release_notes.md
-
-      - name: Create git tag
+      - name: Create release
         if: steps.version.outputs.skip == 'false'
-        run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          git tag "$TAG"
-          git push origin "$TAG"
-
-      - name: Create GitHub Release
-        if: steps.version.outputs.skip == 'false'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          gh release create "$TAG" \
-            --title "Mobile v${{ steps.version.outputs.version }}" \
-            --notes-file /tmp/mobile_release_notes.md
+        uses: ./.github/actions/create-release
+        with:
+          tag: ${{ steps.version.outputs.tag }}
+          title: "Mobile v${{ steps.version.outputs.version }}"
+          notes_file: /tmp/mobile_release_notes.md

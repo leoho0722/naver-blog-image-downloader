@@ -1,0 +1,31 @@
+name: Create Release
+description: 建立 Git tag 並發布 GitHub Release
+
+inputs:
+  tag:
+    description: Git tag 名稱（如 web-v1.0.0）
+    required: true
+  title:
+    description: GitHub Release 標題（如 "Web v1.0.0"）
+    required: true
+  notes_file:
+    description: Release Notes 檔案路徑
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Create git tag
+      shell: bash
+      run: |
+        git tag "${{ inputs.tag }}"
+        git push origin "${{ inputs.tag }}"
+
+    - name: Create GitHub Release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh release create "${{ inputs.tag }}" \
+          --title "${{ inputs.title }}" \
+          --notes-file "${{ inputs.notes_file }}"

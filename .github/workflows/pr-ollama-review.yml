@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
-      OLLAMA_MODEL: gemma4:31b-cloud
       PR_NUMBER: ${{ github.event.pull_request.number }}
       REPO: ${{ github.repository }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -25,6 +24,13 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Select random Ollama model
+        id: ollama_model
+        uses: ./.github/actions/select-ollama-model
+
+      - name: Set model env
+        run: echo "OLLAMA_MODEL=${{ steps.ollama_model.outputs.model }}" >> "$GITHUB_ENV"
 
       - name: Fetch PR diff and request Ollama review
         run: |

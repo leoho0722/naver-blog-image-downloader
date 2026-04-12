@@ -1,0 +1,8 @@
+{
+    "models": [
+        "gemma4:31b-cloud",
+        "qwen3-coder-next",
+        "glm-5.1:cloud",
+        "minimax-m2.7:cloud"
+    ]
+}
