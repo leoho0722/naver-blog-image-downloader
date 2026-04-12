@@ -1,0 +1,75 @@
+name: Web CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/web-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - '.github/workflows/web-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-test:
+    name: Build, Test & Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm exec tsc -b
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Format check
+        id: format_check
+        run: pnpm format:check
+        continue-on-error: true
+
+      - name: Auto-fix formatting (PR only)
+        if: github.event_name == 'pull_request' && steps.format_check.outcome == 'failure'
+        run: |
+          pnpm format
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "style(web): 自動修正程式碼格式 (Prettier)"
+          git push
+
+      - name: Fail if unformatted on main
+        if: github.event_name == 'push' && steps.format_check.outcome == 'failure'
+        run: |
+          echo "::error::main 上有未通過 Prettier 格式檢查的程式碼"
+          exit 1

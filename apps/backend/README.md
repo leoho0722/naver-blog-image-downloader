@@ -2,7 +2,7 @@
 
 [繁體中文](docs/README_zh-TW.md) | [English](docs/README_en-US.md)
 
-部署於 AWS Lambda（容器映像模式）的工具 API，透過模組化路由架構支援多個端點：`/api/photos`（Naver Blog 圖片擷取，採非同步 Polling）與 `/api/whatsNew`（依 App 版號與語系回傳新功能介紹）。
+部署於 AWS Lambda（容器映像模式）的工具 API，透過模組化路由架構支援多個端點：`/api/photos`（Naver Blog 圖片擷取 + 圖片打包下載，採非同步 Polling）與 `/api/whatsNew`（依 App 版號與語系回傳新功能介紹）。
 
 > 產品定位、系統架構、非同步 Polling 設計脈絡請參閱 monorepo root [README.md](../../README.md)。
 > 共用規範（正體中文註解、Conventional Commits、版號管理）請參閱 monorepo root [CLAUDE.md](../../CLAUDE.md)。
@@ -18,11 +18,12 @@
 │   │   ├── __init__.py         #     匯入所有路由模組
 │   │   ├── photos.py           #     /api/photos — 圖片擷取
 │   │   └── whats_new.py        #     /api/whatsNew — 新功能介紹
-│   ├── data_models.py          #   JobStatus enum、DownloadResult dataclass
+│   ├── data_models.py          #   JobStatus / PackageStatus / PhotoAction enum、DownloadResult dataclass
 │   ├── job_store/              #   S3 儲存套件（OOP 架構）
 │   │   ├── base.py             #     BaseStore（ABC）
 │   │   ├── job.py              #     JobStore — 任務 CRUD
 │   │   ├── log.py              #     LogStore — debug log
+│   │   ├── package.py          #     PackageStore — 打包任務 CRUD + ZIP 上傳 + 快取索引
 │   │   └── whats_new.py        #     WhatsNewStore — 新功能介紹資料
 │   ├── helper.py               #   輔助函數（時間計算、除錯輸出）
 │   └── response_builder.py     #   HTTP Response Builder
@@ -147,6 +148,64 @@ make deploy
 }
 ```
 
+### `POST /api/photos` — 圖片打包（Web 端下載用）
+
+瀏覽器因 CORS 限制無法直接下載 Naver CDN 圖片，透過此功能在伺服器端打包為 ZIP 並產生 pre-signed 下載連結。支援快取：相同 job_id + indices 的重複請求會直接回傳現有 ZIP 的下載連結。
+
+#### 提交打包請求
+
+```json
+{
+  "action": "package",
+  "job_id": "uuid-string",
+  "indices": [0, 2, 4]
+}
+```
+
+`indices` 為選填，省略時打包全部圖片。
+
+回應（新任務，HTTP 202）：
+
+```json
+{
+  "package_id": "uuid-string",
+  "status": "processing"
+}
+```
+
+回應（快取命中，HTTP 200）：
+
+```json
+{
+  "package_id": "uuid-string",
+  "status": "completed",
+  "download_url": "https://s3...presigned-url",
+  "file_count": 10,
+  "file_size": 52428800
+}
+```
+
+#### 查詢打包狀態
+
+```json
+{
+  "action": "package_status",
+  "package_id": "uuid-string"
+}
+```
+
+回應（完成，HTTP 200）：
+
+```json
+{
+  "package_id": "uuid-string",
+  "status": "completed",
+  "download_url": "https://s3...presigned-url",
+  "file_count": 10,
+  "file_size": 52428800
+}
+```
+
 ### `POST /api/whatsNew` — 新功能介紹
 
 依 App 版號與語系從 S3 取得對應的新功能介紹資料。
@@ -191,10 +250,11 @@ S3 路徑格式：`whatsnew/<version>/whats_new_<locale>.json`
   2. 若該 tag 已存在即 fail（強制發版前先 bump version）
   3. 建構 Docker 映像（context = `apps/backend`，image tag = 純 semver）並推送至 ECR
   4. 更新 AWS Lambda 函數程式碼與設定（memory=2048MB、timeout=120s）
-  5. 更新 IAM Policy（S3 jobs/whatsNew 權限 + Lambda 自我呼叫權限）
-  6. 建立 git tag `backend-v<semver>` 並 push
-  7. 透過 Ollama Cloud API 生成正體中文 Release Notes（fallback: 使用原始 commit log）
-  8. 發布 GitHub Release（title = `Backend v<semver>`）
+  5. 更新 IAM Policy（S3 jobs/whatsNew/packages 權限 + Lambda 自我呼叫權限）
+  6. 取得自上次 tag 以來的 commit 記錄
+  7. 透過 Ollama Cloud API（gemma4:31b-cloud）生成正體中文 Release Notes（fallback: 原始 commit log）
+  8. 建立 git tag `backend-v<semver>` 並 push
+  9. 發布 GitHub Release（title = `Backend v<semver>`）
 
 **GitHub Secrets**（需手動設定於 monorepo）：`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION`、`AWS_ECR_REPOSITORY_URI`、`AWS_LAMBDA_FUNCTION_NAME`、`S3_BUCKET_NAME`、`OLLAMA_API_KEY`
 
@@ -209,7 +269,7 @@ S3 路徑格式：`whatsnew/<version>/whats_new_<locale>.json`
 
 ## 注意事項
 
-1. 此服務僅擷取圖片 URL，不實際下載圖片檔案
+1. 圖片擷取（download/status）僅回傳圖片 URL，不下載圖片；打包服務（package/package_status）會實際下載圖片並打包為 ZIP
 2. 使用 Chromium 瀏覽器進行網頁操作，會消耗較多記憶體
 3. 處理時間取決於文章中的圖片數量
 4. S3 中的任務記錄會在 1 天後自動過期清除

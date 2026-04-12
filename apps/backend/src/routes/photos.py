@@ -1,20 +1,27 @@
-"""圖片擷取路由：處理 /api/photos 的下載請求與狀態查詢"""
+"""圖片擷取路由：處理 /api/photos 的下載請求、狀態查詢與圖片打包"""
 
+import asyncio
+import hashlib
 import json
+import os
 import re
+import tempfile
+import zipfile
+from urllib.parse import unquote
 
 import boto3
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 import helper
-from data_models import DownloadResult, JobStatus
-from job_store import JobStore, LogStore
+from data_models import DownloadResult, JobStatus, PackageStatus, PhotoAction
+from job_store import JobStore, LogStore, PackageStore
 from response_builder import build_response
 from router import route
 
 job_store = JobStore()
 log_store = LogStore()
+package_store = PackageStore()
 
 
 def _dedup_urls(img_urls: list[str]) -> list[str]:
@@ -312,13 +319,249 @@ def handle_photos(body: dict, event: dict, context) -> dict:
     Returns:
         API Gateway 回應 dict
     """
-    action = body.get("action", "download")
-    if action == "download":
-        return _handle_submit(body, context)
-    elif action == "status":
-        return _handle_status(body)
-    else:
-        return build_response(400, {"error": f"未知的 action: {action}"})
+    raw_action = body.get("action", PhotoAction.DOWNLOAD)
+    try:
+        action = PhotoAction(raw_action)
+    except ValueError:
+        return build_response(400, {"error": f"未知的 action: {raw_action}"})
+
+    match action:
+        case PhotoAction.DOWNLOAD:
+            return _handle_submit(body, context)
+        case PhotoAction.STATUS:
+            return _handle_status(body)
+        case PhotoAction.PACKAGE:
+            return _handle_package(body, context)
+        case PhotoAction.PACKAGE_STATUS:
+            return _handle_package_status(body)
+
+
+def _compute_cache_key(job_id: str, indices: list[int] | None) -> str:
+    """計算打包快取鍵
+
+    以 job_id 與排序後的 indices 組成字串，取 SHA-256 前 16 字元。
+    indices 為 None 時使用 "all" 表示全部圖片。
+
+    Args:
+        job_id (str): 原始任務 ID
+        indices (list[int] | None): 圖片索引列表
+
+    Returns:
+        str: 快取鍵（SHA-256 前 16 字元）
+    """
+    indices_part = "all" if indices is None else ",".join(str(i) for i in sorted(indices))
+    raw = f"{job_id}:{indices_part}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def _handle_package(body, context):
+    """處理打包請求：檢查快取 → 建立 S3 任務 → 非同步呼叫 worker → 回傳 package_id
+
+    若相同 job_id + indices 已有未過期的已完成打包，直接回傳快取結果。
+
+    Args:
+        body (dict): 請求內容，需包含 job_id，可選 indices
+        context: Lambda context
+
+    Returns:
+        API Gateway 回應 dict（HTTP 200 快取命中 / HTTP 202 新任務 / 400/404 錯誤）
+    """
+    job_id = body.get("job_id")
+    if not job_id:
+        return build_response(400, {"error": "缺少 job_id 參數"})
+
+    job = job_store.get_job(job_id)
+    if not job:
+        return build_response(404, {"error": "任務不存在"})
+
+    indices = body.get("indices")
+    cache_key = _compute_cache_key(job_id, indices)
+
+    # 檢查快取
+    cached = package_store.find_by_cache_key(cache_key)
+    if cached:
+        pid = cached["package_id"]
+        download_url = package_store.generate_download_url(pid)
+        result = cached.get("result", {})
+        response = build_response(200, {
+            "package_id": pid,
+            "status": PackageStatus.COMPLETED,
+            "download_url": download_url,
+            "file_count": result.get("file_count", 0),
+            "file_size": result.get("file_size", 0),
+        })
+        helper.debug_print(f"打包快取命中: {pid}")
+        return response
+
+    package_id = package_store.create_package(job_id, indices, cache_key)
+    helper.debug_print(f"已建立打包任務: {package_id}，準備非同步呼叫 worker")
+
+    boto3.client("lambda").invoke(
+        FunctionName=context.function_name,
+        InvocationType="Event",
+        Payload=json.dumps({
+            "_async_worker": True,
+            "_worker_type": "package",
+            "package_id": package_id,
+            "job_id": job_id,
+            "indices": indices,
+        }),
+    )
+
+    return build_response(202, {"package_id": package_id, "status": PackageStatus.PROCESSING})
+
+
+def _handle_package_status(body):
+    """查詢打包任務狀態與結果
+
+    Args:
+        body (dict): 請求內容，需包含 package_id
+
+    Returns:
+        API Gateway 回應 dict（HTTP 200/404/500 含打包狀態）
+    """
+    package_id = body.get("package_id")
+    if not package_id:
+        return build_response(400, {"error": "缺少 package_id 參數"})
+
+    package = package_store.get_package(package_id)
+    if not package:
+        return build_response(404, {"error": "打包任務不存在"})
+
+    response_body = {"package_id": package_id, "status": package["status"]}
+
+    if package["status"] == PackageStatus.COMPLETED:
+        download_url = package_store.generate_download_url(package_id)
+        result = package.get("result", {})
+        response_body["download_url"] = download_url
+        response_body["file_count"] = result.get("file_count", 0)
+        response_body["file_size"] = result.get("file_size", 0)
+        return build_response(200, response_body)
+
+    if package["status"] == PackageStatus.FAILED:
+        response_body["error"] = package.get("result", {}).get("error", "打包失敗")
+        return build_response(500, response_body)
+
+    return build_response(200, response_body)
+
+
+async def _download_images_async(image_urls: list[str], tmp_dir: str) -> list[tuple[str, str]]:
+    """以 httpx AsyncClient 併發下載圖片至暫存目錄
+
+    Args:
+        image_urls (list[str]): 圖片 URL 列表
+        tmp_dir (str): 暫存目錄路徑
+
+    Returns:
+        成功下載的 (檔名, 檔案路徑) 列表
+    """
+    import httpx
+
+    downloaded = []
+    max_concurrency = 8
+
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+        for batch_start in range(0, len(image_urls), max_concurrency):
+            batch = image_urls[batch_start : batch_start + max_concurrency]
+            tasks = []
+            for i, url in enumerate(batch):
+                idx = batch_start + i
+                # 從 URL path 提取原始檔名（去掉 query string，解碼 percent-encoding）
+                url_path = url.split("?")[0]
+                original_name = unquote(url_path.rsplit("/", 1)[-1])
+                if not original_name or "." not in original_name:
+                    ext = re.search(r"\.(jpg|jpeg|png|gif)", url, re.IGNORECASE)
+                    original_name = f"{idx + 1}{ext.group(0) if ext else '.jpg'}"
+                filename = original_name
+                filepath = os.path.join(tmp_dir, filename)
+                tasks.append(_download_one(client, url, filepath, filename))
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            for result in results:
+                if isinstance(result, tuple):
+                    downloaded.append(result)
+                else:
+                    helper.debug_print(f"下載失敗: {result}")
+    return downloaded
+
+
+async def _download_one(client, url: str, filepath: str, filename: str) -> tuple[str, str]:
+    """下載單張圖片
+
+    Args:
+        client: httpx.AsyncClient 實例
+        url (str): 圖片 URL
+        filepath (str): 本地儲存路徑
+        filename (str): 檔名
+
+    Returns:
+        (檔名, 檔案路徑) tuple
+
+    Raises:
+        Exception: 下載失敗時拋出
+    """
+    resp = await client.get(url)
+    resp.raise_for_status()
+    with open(filepath, "wb") as f:
+        f.write(resp.content)
+    return filename, filepath
+
+
+def handle_package_worker(event):
+    """背景 worker：下載圖片、打包為 ZIP、上傳至 S3
+
+    由 _handle_package 透過 Lambda 非同步呼叫觸發。
+
+    Args:
+        event (dict): 包含 package_id、job_id、indices 的 worker 事件
+    """
+    package_id = event["package_id"]
+    job_id = event["job_id"]
+    indices = event.get("indices")
+    helper.clear_logs()
+    helper.debug_print(f"打包 Worker 開始: {package_id}，job: {job_id}，indices: {indices}")
+
+    try:
+        job = job_store.get_job(job_id)
+        if not job or not job.get("result"):
+            package_store.update_package(package_id, PackageStatus.FAILED, {"error": "原始任務不存在或無結果"})
+            return
+
+        image_urls = job["result"].get("image_urls", [])
+        if indices is not None:
+            image_urls = [image_urls[i] for i in indices if i < len(image_urls)]
+
+        if not image_urls:
+            package_store.update_package(package_id, PackageStatus.FAILED, {"error": "沒有可打包的圖片"})
+            return
+
+        with tempfile.TemporaryDirectory(prefix="pkg_") as tmp_dir:
+            downloaded = asyncio.run(_download_images_async(image_urls, tmp_dir))
+
+            if not downloaded:
+                package_store.update_package(package_id, PackageStatus.FAILED, {"error": "所有圖片下載失敗"})
+                return
+
+            zip_path = os.path.join(tmp_dir, "images.zip")
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for filename, filepath in downloaded:
+                    zf.write(filepath, filename)
+
+            file_size = os.path.getsize(zip_path)
+            package_store.upload_zip(package_id, zip_path)
+
+        download_url = package_store.generate_download_url(package_id)
+        package_store.update_package(package_id, PackageStatus.COMPLETED, {
+            "file_count": len(downloaded),
+            "file_size": file_size,
+            "download_url": download_url,
+        })
+        helper.debug_print(f"打包完成: {package_id}，{len(downloaded)} 張圖片，{file_size} bytes")
+
+    except Exception as e:
+        helper.debug_print(f"打包失敗: {package_id}，錯誤: {e}")
+        package_store.update_package(package_id, PackageStatus.FAILED, {"error": str(e)})
+    finally:
+        log_store.save_logs(package_id, helper.get_logs())
 
 
 def handle_async_worker(event):

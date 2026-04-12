@@ -1,0 +1,175 @@
+name: Web CD
+
+on:
+  workflow_run:
+    workflows: [Web CI]
+    branches: [main]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: Build & Deploy to GitHub Pages
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Extract version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./apps/web/package.json').version")
+          if [ -z "$VERSION" ]; then
+            echo "::error::無法從 apps/web/package.json 讀取 version 欄位"
+            exit 1
+          fi
+          TAG="web-v${VERSION}"
+          git fetch --tags --force
+          if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
+            echo "::notice::Tag ${TAG} 已存在，跳過部署（版號未更新）"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm
+        if: steps.version.outputs.skip == 'false'
+        uses: pnpm/action-setup@v5
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        if: steps.version.outputs.skip == 'false'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        if: steps.version.outputs.skip == 'false'
+        working-directory: apps/web
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for GitHub Pages
+        if: steps.version.outputs.skip == 'false'
+        working-directory: apps/web
+        env:
+          VITE_BASE_PATH: /naver-blog-image-downloader/web/app/
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_STAGE: ${{ secrets.VITE_API_STAGE }}
+        run: pnpm build
+
+      - name: Deploy to docs/web/app/
+        if: steps.version.outputs.skip == 'false'
+        run: |
+          rm -rf docs/web/app
+          cp -r apps/web/dist docs/web/app
+
+          # SPA fallback：複製 index.html 為 404.html，讓 GitHub Pages 支援 client-side routing
+          cp docs/web/app/index.html docs/web/app/404.html
+
+      - name: Commit and push
+        if: steps.version.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/web/app/
+          git commit -m "cd(web): 部署 Web v${{ steps.version.outputs.version }} 至 GitHub Pages"
+          git push
+
+      - name: Get commits since last web tag
+        if: steps.version.outputs.skip == 'false'
+        id: changelog
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          PREVIOUS_TAG=$(git tag --list "web-v*" --sort=-version:refname | grep -v "^${TAG}$" | head -n 1 || echo "")
+          if [ -z "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %s (%h)" -- apps/web)
+          else
+            COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREVIOUS_TAG}..HEAD" -- apps/web)
+          fi
+          echo "$COMMITS" > /tmp/commits.txt
+
+      - name: Generate release notes with Ollama Cloud
+        if: steps.version.outputs.skip == 'false'
+        id: release_notes
+        env:
+          OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
+        run: |
+          COMMITS=$(cat /tmp/commits.txt)
+          TAG="${{ steps.version.outputs.tag }}"
+
+          PROMPT=$(cat <<'PROMPT_EOF'
+          你是一位專業的軟體發布管理員。請根據以下 Git commit 記錄，撰寫正體中文的 Release Notes。
+
+          版本號：__TAG__
+
+          Commit 記錄：
+          __COMMITS__
+
+          要求：
+          1. 使用正體中文撰寫
+          2. 按類別分組（如有）：✨ 新功能、🐛 錯誤修正、📈 改進與優化、🔄 重構、🔧 維護
+          3. 每項用 bullet point 列出
+          4. 簡潔專業
+          5. 直接輸出 Markdown 內容，不要加前綴或後綴說明
+          PROMPT_EOF
+          )
+          PROMPT="${PROMPT/__TAG__/$TAG}"
+          PROMPT="${PROMPT/__COMMITS__/$COMMITS}"
+
+          BODY=$(jq -n \
+            --arg model "gemma4:31b-cloud" \
+            --arg prompt "$PROMPT" \
+            '{model: $model, messages: [{role: "user", content: $prompt}], stream: false}')
+
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "https://ollama.com/api/chat" \
+            -H "Authorization: Bearer $OLLAMA_API_KEY" \
+            -d "$BODY")
+
+          HTTP_STATUS=$(echo "$RESPONSE" | tail -1 | sed 's/HTTP_STATUS://')
+          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
+
+          echo "API HTTP Status: $HTTP_STATUS"
+
+          echo "$RESPONSE_BODY" | jq -r '.message.content' > /tmp/release_notes.md
+
+          # 若 AI 生成失敗，使用 commit 記錄作為 fallback
+          if [ ! -s /tmp/release_notes.md ] || grep -q "^null$" /tmp/release_notes.md; then
+            echo "⚠️ AI 生成失敗 (HTTP $HTTP_STATUS)，使用 commit 記錄作為 Release Notes"
+            echo "API Response: $RESPONSE_BODY"
+            {
+              echo "## 變更記錄"
+              echo ""
+              cat /tmp/commits.txt
+            } > /tmp/release_notes.md
+          fi
+
+          echo "--- Generated Release Notes ---"
+          cat /tmp/release_notes.md
+
+      - name: Create git tag
+        if: steps.version.outputs.skip == 'false'
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.skip == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          gh release create "$TAG" \
+            --title "Web v${{ steps.version.outputs.version }}" \
+            --notes-file /tmp/release_notes.md

@@ -3,6 +3,13 @@
 import json
 from typing import Any
 
+CORS_HEADERS = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
+
 
 def build_response(status_code: int, body: dict[str, Any]) -> dict[str, Any]:
     """建構 API Gateway 回應格式
@@ -16,9 +23,19 @@ def build_response(status_code: int, body: dict[str, Any]) -> dict[str, Any]:
     """
     return {
         "statusCode": status_code,
-        "headers": {
-            "Content-Type": "application/json",
-            "Access-Control-Allow-Origin": "*",
-        },
+        "headers": CORS_HEADERS,
         "body": json.dumps(body, ensure_ascii=False),
+    }
+
+
+def build_cors_preflight() -> dict[str, Any]:
+    """建構 CORS preflight（OPTIONS）回應
+
+    Returns:
+        HTTP 204 空 body 回應，含完整 CORS headers
+    """
+    return {
+        "statusCode": 204,
+        "headers": CORS_HEADERS,
+        "body": "",
     }

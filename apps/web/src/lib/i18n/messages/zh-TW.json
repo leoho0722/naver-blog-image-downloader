@@ -1,0 +1,53 @@
+{
+  "appTitle": "Naver Blog 照片下載器",
+  "commonCancel": "取消",
+  "commonConfirm": "確認",
+  "commonOk": "確定",
+
+  "settingsTitle": "設定",
+  "settingsThemeSystem": "系統",
+  "settingsThemeLight": "亮色",
+  "settingsThemeDark": "暗色",
+  "settingsLanguage": "語言",
+  "settingsAppearance": "主題",
+
+  "blogInputTitle": "下載 Naver Blog 照片",
+  "blogInputSubtitle": "貼上文章網址，一鍵擷取所有照片",
+  "blogInputUrlHint": "https://blog.naver.com/...",
+  "blogInputPaste": "貼上",
+  "blogInputFetchButton": "擷取圖片",
+  "blogInputFetching": "擷取中...",
+
+  "errorEmptyUrl": "請輸入網址",
+  "errorInvalidUrl": "請輸入有效的 Naver Blog 網址",
+  "errorTimeout": "擷取逾時，請稍後再試",
+  "errorServerUnavailable": "伺服器暫時無法使用，請稍後再試",
+  "errorServerError": "伺服器處理失敗，請稍後再試",
+  "errorNetworkError": "網路連線異常",
+  "errorGeneric": "發生未預期的錯誤，請稍後再試",
+
+  "statusSubmitting": "提交中...",
+  "statusProcessing": "伺服器處理中...",
+  "statusCompleted": "已完成",
+
+  "galleryPhotos": "{{count}} 張照片",
+  "gallerySelected": "已選 {{count}} 張",
+  "gallerySelectMode": "選取",
+  "galleryDeselectMode": "取消選取",
+  "gallerySelectAll": "全選",
+  "galleryEmpty": "沒有照片",
+
+  "downloadAll": "下載全部",
+  "downloadSelected": "下載已選",
+  "downloadSingle": "下載",
+  "packaging": "打包中...",
+  "packagingComplete": "已完成，共 {{count}} 張照片",
+  "packagingFailed": "打包失敗",
+
+  "viewerClose": "關閉",
+  "viewerPrev": "上一張",
+  "viewerNext": "下一張",
+  "viewerCounter": "{{current}} / {{total}}",
+
+  "notFound": "404 — 頁面不存在"
+}

@@ -1,0 +1,53 @@
+{
+  "appTitle": "Naver Blog 写真ダウンローダー",
+  "commonCancel": "キャンセル",
+  "commonConfirm": "確認",
+  "commonOk": "OK",
+
+  "settingsTitle": "設定",
+  "settingsThemeSystem": "システム",
+  "settingsThemeLight": "ライト",
+  "settingsThemeDark": "ダーク",
+  "settingsLanguage": "言語",
+  "settingsAppearance": "テーマ",
+
+  "blogInputTitle": "Naver Blog 写真をダウンロード",
+  "blogInputSubtitle": "記事のURLを貼り付けて、すべての写真を取得",
+  "blogInputUrlHint": "https://blog.naver.com/...",
+  "blogInputPaste": "貼り付け",
+  "blogInputFetchButton": "写真を取得",
+  "blogInputFetching": "取得中...",
+
+  "errorEmptyUrl": "URLを入力してください",
+  "errorInvalidUrl": "有効なNaver BlogのURLを入力してください",
+  "errorTimeout": "タイムアウトしました。しばらくしてからもう一度お試しください。",
+  "errorServerUnavailable": "サーバーが一時的に利用できません。しばらくしてからもう一度お試しください。",
+  "errorServerError": "サーバー処理に失敗しました。しばらくしてからもう一度お試しください。",
+  "errorNetworkError": "ネットワークエラーです。接続を確認してください。",
+  "errorGeneric": "エラーが発生しました。しばらくしてからもう一度お試しください。",
+
+  "statusSubmitting": "送信中...",
+  "statusProcessing": "サーバー処理中...",
+  "statusCompleted": "完了",
+
+  "galleryPhotos": "{{count}} 枚の写真",
+  "gallerySelected": "{{count}} 枚選択中",
+  "gallerySelectMode": "選択",
+  "galleryDeselectMode": "選択解除",
+  "gallerySelectAll": "すべて選択",
+  "galleryEmpty": "写真なし",
+
+  "downloadAll": "すべてダウンロード",
+  "downloadSelected": "選択をダウンロード",
+  "downloadSingle": "ダウンロード",
+  "packaging": "パッケージ中...",
+  "packagingComplete": "完了、{{count}} 枚の写真",
+  "packagingFailed": "パッケージ失敗",
+
+  "viewerClose": "閉じる",
+  "viewerPrev": "前へ",
+  "viewerNext": "次へ",
+  "viewerCounter": "{{current}} / {{total}}",
+
+  "notFound": "404 — ページが見つかりません"
+}
