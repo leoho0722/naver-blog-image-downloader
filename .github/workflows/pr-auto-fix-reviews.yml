@@ -12,9 +12,15 @@ concurrency:
 
 jobs:
   auto-fix:
+    # 安全門檻：僅允許指定 bot 觸發，修改時須同步更新 ALLOWED_BOTS env
     if: |
       github.event.pull_request.state == 'open' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+      github.event.pull_request.head.repo.full_name == github.repository && (
+        (github.event_name == 'pull_request_review' &&
+          contains(fromJSON('["github-actions[bot]","gemini-code-assist[bot]"]'), github.event.review.user.login)) ||
+        (github.event_name == 'pull_request_review_comment' &&
+          contains(fromJSON('["github-actions[bot]","gemini-code-assist[bot]"]'), github.event.comment.user.login))
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -22,33 +28,16 @@ jobs:
       id-token: write
       actions: read
     env:
+      # 須與上方 job if 條件中的 bot 清單保持同步
       ALLOWED_BOTS: "github-actions[bot],gemini-code-assist[bot]"
     steps:
-      - name: Check if triggered by allowed bot
-        id: bot-check
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request_review" ]; then
-            ACTOR="${{ github.event.review.user.login }}"
-          else
-            ACTOR="${{ github.event.comment.user.login }}"
-          fi
-          if echo "$ALLOWED_BOTS" | grep -qF "$ACTOR"; then
-            echo "allowed=true" >> "$GITHUB_OUTPUT"
-            echo "✅ Bot $ACTOR 在允許清單中"
-          else
-            echo "allowed=false" >> "$GITHUB_OUTPUT"
-            echo "⏭️ Bot $ACTOR 不在允許清單中，跳過"
-          fi
-
       - name: Checkout PR branch
-        if: steps.bot-check.outputs.allowed == 'true'
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
       - name: Count prior auto-fix commits
-        if: steps.bot-check.outputs.allowed == 'true'
         id: count
         run: |
           BASE_REF="${{ github.event.pull_request.base.ref }}"
@@ -59,7 +48,7 @@ jobs:
           echo "目前已自動修正 $N 次"
 
       - name: Stop if limit reached
-        if: steps.bot-check.outputs.allowed == 'true' && fromJSON(steps.count.outputs.prior) >= 10
+        if: fromJSON(steps.count.outputs.prior) >= 10
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -67,12 +56,12 @@ jobs:
             --body "⚠️ 已連續自動修正 10 次仍有 unresolved review threads，停止自動修正，請人工介入。"
 
       - name: Save pre-fix SHA
-        if: steps.bot-check.outputs.allowed == 'true' && fromJSON(steps.count.outputs.prior) < 10
+        if: fromJSON(steps.count.outputs.prior) < 10
         id: pre-fix
         run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude auto-fix
-        if: steps.bot-check.outputs.allowed == 'true' && fromJSON(steps.count.outputs.prior) < 10
+        if: fromJSON(steps.count.outputs.prior) < 10
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -107,7 +96,7 @@ jobs:
             遵循 openspec/config.yaml 與 CLAUDE.md 的所有規範（註解、log、commit 一律正體中文）。
 
       - name: Verify no workflow files modified
-        if: steps.bot-check.outputs.allowed == 'true' && fromJSON(steps.count.outputs.prior) < 10
+        if: fromJSON(steps.count.outputs.prior) < 10
         run: |
           BEFORE="${{ steps.pre-fix.outputs.sha }}"
           AFTER=$(git rev-parse HEAD)
