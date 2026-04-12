@@ -12,17 +12,14 @@ concurrency:
 
 jobs:
   auto-fix:
+    # 安全門檻：僅允許指定 bot 觸發，修改時須同步更新 ALLOWED_BOTS env
     if: |
       github.event.pull_request.state == 'open' &&
       github.event.pull_request.head.repo.full_name == github.repository && (
-        (github.event_name == 'pull_request_review' && (
-          github.event.review.user.login == 'github-actions[bot]' ||
-          github.event.review.user.login == 'gemini-code-assist[bot]' ||
-          github.event.review.user.login == 'claude[bot]')) ||
-        (github.event_name == 'pull_request_review_comment' && (
-          github.event.comment.user.login == 'github-actions[bot]' ||
-          github.event.comment.user.login == 'gemini-code-assist[bot]' ||
-          github.event.comment.user.login == 'claude[bot]'))
+        (github.event_name == 'pull_request_review' &&
+          contains(fromJSON('["github-actions[bot]","gemini-code-assist[bot]"]'), github.event.review.user.login)) ||
+        (github.event_name == 'pull_request_review_comment' &&
+          contains(fromJSON('["github-actions[bot]","gemini-code-assist[bot]"]'), github.event.comment.user.login))
       )
     runs-on: ubuntu-latest
     permissions:
@@ -30,6 +27,9 @@ jobs:
       pull-requests: write
       id-token: write
       actions: read
+    env:
+      # 須與上方 job if 條件中的 bot 清單保持同步
+      ALLOWED_BOTS: "github-actions[bot],gemini-code-assist[bot]"
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v6
@@ -65,6 +65,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: ${{ env.ALLOWED_BOTS }}
           additional_permissions: |
             actions: read
           prompt: |
