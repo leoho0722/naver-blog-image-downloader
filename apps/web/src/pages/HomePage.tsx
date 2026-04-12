@@ -9,8 +9,7 @@ import { useBlogInputStore } from "../lib/stores/use-blog-input-store";
 
 export default function HomePage() {
   const { t } = useTranslation();
-  const { fetchPhase, fetchResult, jobId, setUrl, reset } =
-    useBlogInputStore();
+  const { fetchPhase, fetchResult, jobId, setUrl, reset } = useBlogInputStore();
   const navigate = useNavigate();
   const hasResetRef = useRef(false);
 
