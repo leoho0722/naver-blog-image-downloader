@@ -43,20 +43,22 @@ pnpm format:check # 檢查格式是否正確（CI 用）
 ## CI/CD（GitHub Actions）
 
 - **Web CI**（`.github/workflows/web-ci.yml`）：當 `apps/web/**` 有變動時觸發，執行 TypeScript 型別檢查、單元測試、Vite build、Prettier 格式檢查。PR 事件下格式不符會自動 `prettier --write` 並 commit 回 PR branch；`push` 事件下直接 fail。
-- **Web CD**（`.github/workflows/web-cd.yml`）：Web CI 成功後透過 `workflow_run` 觸發，依序執行：
+- **Web CD**（`.github/workflows/web-cd.yml`）：Web CI 成功後透過 `workflow_run` 觸發，僅負責版號管理與發版：
   1. 從 `apps/web/package.json` 讀取 `version`，組成 `web-v<semver>` tag
   2. 若該 tag 已存在即跳過（版號未更新）
-  3. `pnpm build`（設定 `VITE_BASE_PATH` 為 GitHub Pages 路徑）
-  4. 複製 `dist/` → `docs/web/app/` + 建立 `404.html`（SPA routing fallback）
-  5. Commit + push 至 main（觸發 Deploy Pages workflow）
-  6. 取得自上次 tag 以來的 commit 記錄
-  7. 透過 Ollama Cloud API（gemma4:31b-cloud）生成正體中文 Release Notes（fallback: 原始 commit log）
-  8. 建立 git tag `web-v<semver>` 並 push
-  9. 發布 GitHub Release（title = `Web v<semver>`）
+  3. 取得自上次 tag 以來的 commit 記錄
+  4. 透過 Ollama Cloud API（gemma4:31b-cloud）生成正體中文 Release Notes（fallback: 原始 commit log）
+  5. 建立 git tag `web-v<semver>` 並 push
+  6. 發布 GitHub Release（title = `Web v<semver>`）
+- **Deploy Pages**（`.github/workflows/deploy-pages.yml`）：當 `docs/**` 或 `apps/web/**` 有變動時觸發，負責 build + 部署：
+  1. 驗證 docs 圖片引用
+  2. `pnpm install` → `pnpm build`（設定 `VITE_BASE_PATH` 為 GitHub Pages 路徑）
+  3. 複製 `dist/` → `docs/web/app/` + 建立 `404.html`（SPA routing fallback）
+  4. 上傳 artifact 並部署至 GitHub Pages（build artifacts 不進 git）
 
 **GitHub Secrets**（需手動設定於 monorepo）：`VITE_API_BASE_URL`、`VITE_API_STAGE`、`OLLAMA_API_KEY`
 
-**發版流程**：修改 `apps/web/package.json` 的 `version` → 經 PR merge 到 main → Web CI 綠 → Web CD 自動觸發並建立 `web-v<version>` release。
+**發版流程**：修改 `apps/web/package.json` 的 `version` → 經 PR merge 到 main → Web CI 綠 → Web CD 建立 tag + release；同時 Deploy Pages 自動 build + 部署。
 
 ## 開發規範
 
