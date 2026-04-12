@@ -17,12 +17,10 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository && (
         (github.event_name == 'pull_request_review' && (
           github.event.review.user.login == 'github-actions[bot]' ||
-          github.event.review.user.login == 'gemini-code-assist[bot]' ||
-          github.event.review.user.login == 'claude[bot]')) ||
+          github.event.review.user.login == 'gemini-code-assist[bot]')) ||
         (github.event_name == 'pull_request_review_comment' && (
           github.event.comment.user.login == 'github-actions[bot]' ||
-          github.event.comment.user.login == 'gemini-code-assist[bot]' ||
-          github.event.comment.user.login == 'claude[bot]'))
+          github.event.comment.user.login == 'gemini-code-assist[bot]'))
       )
     runs-on: ubuntu-latest
     permissions:
@@ -65,6 +63,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          allowed_bots: "gemini-code-assist[bot],github-actions[bot]"
           additional_permissions: |
             actions: read
           prompt: |
