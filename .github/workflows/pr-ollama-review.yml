@@ -19,18 +19,18 @@ jobs:
       REPO: ${{ github.repository }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - name: Checkout PR
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
       - name: Select random Ollama model
         id: ollama_model
         uses: ./.github/actions/select-ollama-model
 
       - name: Set model env
         run: echo "OLLAMA_MODEL=${{ steps.ollama_model.outputs.model }}" >> "$GITHUB_ENV"
-
-      - name: Checkout PR
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Fetch PR diff and request Ollama review
         run: |
