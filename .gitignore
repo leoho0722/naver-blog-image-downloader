@@ -22,3 +22,4 @@ node_modules/
 
 # Spectra 向量索引 cache
 openspec/.vector-search.db*
+.spectra/
