@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -164,6 +164,12 @@ jobs:
                       }
                   },
                   {
+                      "Sid": "S3PackageStorage",
+                      "Effect": "Allow",
+                      "Action": ["s3:PutObject", "s3:GetObject", "s3:HeadObject"],
+                      "Resource": "arn:aws:s3:::${{ secrets.S3_BUCKET_NAME }}/packages/*"
+                  },
+                  {
                       "Sid": "LambdaSelfInvoke",
                       "Effect": "Allow",
                       "Action": "lambda:InvokeFunction",
@@ -217,17 +223,10 @@ jobs:
             --output table \
             --query 'Configuration.{FunctionName: FunctionName, PackageType: PackageType, CodeSize: CodeSize, LastModified: LastModified, State: State, LastUpdateStatus: LastUpdateStatus}'
 
-      - name: Create git tag
-        run: |
-          TAG="${{ steps.image_tag.outputs.tag }}"
-          git tag "$TAG"
-          git push origin "$TAG"
-
       - name: Get commits since last backend tag
         id: changelog
         run: |
           TAG="${{ steps.image_tag.outputs.tag }}"
-          # 僅看 backend-v* 前綴，避免抓到未來 mobile / web 的 tag
           PREVIOUS_TAG=$(git tag --list "backend-v*" --sort=-version:refname | grep -v "^${TAG}$" | head -n 1 || echo "")
           if [ -z "$PREVIOUS_TAG" ]; then
             COMMITS=$(git log --pretty=format:"- %s (%h)" -- apps/backend)
@@ -235,9 +234,8 @@ jobs:
             COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREVIOUS_TAG}..HEAD" -- apps/backend)
           fi
           echo "$COMMITS" > /tmp/commits.txt
-          cat /tmp/commits.txt
 
-      - name: Generate release notes with Ollama Cloud (qwen3-coder-next)
+      - name: Generate release notes with Ollama Cloud
         id: release_notes
         env:
           OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
@@ -265,7 +263,7 @@ jobs:
           PROMPT="${PROMPT/__COMMITS__/$COMMITS}"
 
           BODY=$(jq -n \
-            --arg model "qwen3-coder-next:cloud" \
+            --arg model "gemma4:31b-cloud" \
             --arg prompt "$PROMPT" \
             '{model: $model, messages: [{role: "user", content: $prompt}], stream: false}')
 
@@ -293,6 +291,12 @@ jobs:
 
           echo "--- Generated Release Notes ---"
           cat /tmp/release_notes.md
+
+      - name: Create git tag
+        run: |
+          TAG="${{ steps.image_tag.outputs.tag }}"
+          git tag "$TAG"
+          git push origin "$TAG"
 
       - name: Create GitHub Release
         env:

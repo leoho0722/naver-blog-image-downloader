@@ -19,6 +19,36 @@ class JobStatus(str, Enum):
     FAILED = "failed"
 
 
+class PhotoAction(str, Enum):
+    """照片 API 的操作類型
+
+    Attributes:
+        DOWNLOAD: 提交圖片擷取任務
+        STATUS: 查詢擷取任務狀態
+        PACKAGE: 提交圖片打包任務
+        PACKAGE_STATUS: 查詢打包任務狀態
+    """
+
+    DOWNLOAD = "download"
+    STATUS = "status"
+    PACKAGE = "package"
+    PACKAGE_STATUS = "package_status"
+
+
+class PackageStatus(str, Enum):
+    """圖片打包任務狀態
+
+    Attributes:
+        PROCESSING: 打包處理中
+        COMPLETED: 打包已完成
+        FAILED: 打包失敗
+    """
+
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 @dataclass
 class DownloadResult:
     """圖片下載結果

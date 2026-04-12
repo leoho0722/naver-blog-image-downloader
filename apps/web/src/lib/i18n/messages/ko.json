@@ -1,0 +1,53 @@
+{
+  "appTitle": "Naver Blog 사진 다운로더",
+  "commonCancel": "취소",
+  "commonConfirm": "확인",
+  "commonOk": "확인",
+
+  "settingsTitle": "설정",
+  "settingsThemeSystem": "시스템",
+  "settingsThemeLight": "라이트",
+  "settingsThemeDark": "다크",
+  "settingsLanguage": "언어",
+  "settingsAppearance": "테마",
+
+  "blogInputTitle": "Naver Blog 사진 다운로드",
+  "blogInputSubtitle": "블로그 글 URL을 붙여넣어 모든 사진을 가져오세요",
+  "blogInputUrlHint": "https://blog.naver.com/...",
+  "blogInputPaste": "붙여넣기",
+  "blogInputFetchButton": "사진 가져오기",
+  "blogInputFetching": "가져오는 중...",
+
+  "errorEmptyUrl": "URL을 입력해주세요",
+  "errorInvalidUrl": "유효한 Naver Blog URL을 입력해주세요",
+  "errorTimeout": "시간이 초과되었습니다. 잠시 후 다시 시도해주세요.",
+  "errorServerUnavailable": "서버를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.",
+  "errorServerError": "서버 처리에 실패했습니다. 잠시 후 다시 시도해주세요.",
+  "errorNetworkError": "네트워크 오류입니다. 연결을 확인해주세요.",
+  "errorGeneric": "오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
+
+  "statusSubmitting": "제출 중...",
+  "statusProcessing": "서버 처리 중...",
+  "statusCompleted": "완료",
+
+  "galleryPhotos": "사진 {{count}}장",
+  "gallerySelected": "{{count}}장 선택됨",
+  "gallerySelectMode": "선택",
+  "galleryDeselectMode": "선택 해제",
+  "gallerySelectAll": "전체 선택",
+  "galleryEmpty": "사진 없음",
+
+  "downloadAll": "전체 다운로드",
+  "downloadSelected": "선택 다운로드",
+  "downloadSingle": "다운로드",
+  "packaging": "패키징 중...",
+  "packagingComplete": "완료, {{count}}장의 사진",
+  "packagingFailed": "패키징 실패",
+
+  "viewerClose": "닫기",
+  "viewerPrev": "이전",
+  "viewerNext": "다음",
+  "viewerCounter": "{{current}} / {{total}}",
+
+  "notFound": "404 — 페이지를 찾을 수 없습니다"
+}

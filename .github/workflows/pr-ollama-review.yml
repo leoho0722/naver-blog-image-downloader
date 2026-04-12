@@ -21,16 +21,16 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout PR
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Fetch PR diff and request Ollama review
         run: |
-          DIFF=$(gh pr diff "$PR_NUMBER" --repo "$REPO")
+          gh pr diff "$PR_NUMBER" --repo "$REPO" > /tmp/pr_diff.txt
 
-          INSTRUCTIONS=$(cat <<'INSTRUCTIONS_EOF'
+          cat <<'INSTRUCTIONS_EOF' > /tmp/instructions.txt
           你是本 monorepo 的資深 code reviewer。請審查下方 PR 的所有變更，涵蓋：
           1. 正確性：邏輯錯誤、邊界條件、race condition、資料一致性
           2. 安全性：OWASP top 10、敏感資料處理、權限邊界
@@ -47,17 +47,18 @@ jobs:
 
           PR Diff：
           INSTRUCTIONS_EOF
-          )
 
-          BODY=$(jq -n \
+          jq -n \
             --arg model "$OLLAMA_MODEL" \
-            --arg instructions "$INSTRUCTIONS" \
-            --arg diff "$DIFF" \
-            '{model: $model, messages: [{role: "user", content: ($instructions + "\n" + $diff)}], stream: false}')
+            --rawfile instructions /tmp/instructions.txt \
+            --rawfile diff /tmp/pr_diff.txt \
+            '{model: $model, messages: [{role: "user", content: ($instructions + "\n" + $diff)}], stream: false}' \
+            > /tmp/ollama_request.json
 
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "https://ollama.com/api/chat" \
             -H "Authorization: Bearer $OLLAMA_API_KEY" \
-            -d "$BODY")
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/ollama_request.json)
 
           HTTP_STATUS=$(echo "$RESPONSE" | tail -1 | sed 's/HTTP_STATUS://')
           RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')

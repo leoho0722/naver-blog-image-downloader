@@ -1,0 +1,53 @@
+{
+  "appTitle": "Naver Blog Photo Downloader",
+  "commonCancel": "Cancel",
+  "commonConfirm": "Confirm",
+  "commonOk": "OK",
+
+  "settingsTitle": "Settings",
+  "settingsThemeSystem": "System",
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsLanguage": "Language",
+  "settingsAppearance": "Appearance",
+
+  "blogInputTitle": "Download Naver Blog Photos",
+  "blogInputSubtitle": "Paste a blog post URL to extract all photos",
+  "blogInputUrlHint": "https://blog.naver.com/...",
+  "blogInputPaste": "Paste",
+  "blogInputFetchButton": "Fetch Photos",
+  "blogInputFetching": "Fetching...",
+
+  "errorEmptyUrl": "Please enter a URL",
+  "errorInvalidUrl": "Please enter a valid Naver Blog URL",
+  "errorTimeout": "Request timed out. Please try again later.",
+  "errorServerUnavailable": "Server temporarily unavailable. Please try again later.",
+  "errorServerError": "Server processing failed. Please try again later.",
+  "errorNetworkError": "Network error. Please check your connection.",
+  "errorGeneric": "An error occurred. Please try again later.",
+
+  "statusSubmitting": "Submitting...",
+  "statusProcessing": "Server processing...",
+  "statusCompleted": "Completed",
+
+  "galleryPhotos": "{{count}} photos",
+  "gallerySelected": "{{count}} selected",
+  "gallerySelectMode": "Select",
+  "galleryDeselectMode": "Cancel Selection",
+  "gallerySelectAll": "Select All",
+  "galleryEmpty": "No Photos",
+
+  "downloadAll": "Download All",
+  "downloadSelected": "Download Selected",
+  "downloadSingle": "Download",
+  "packaging": "Packaging...",
+  "packagingComplete": "Done, {{count}} photos",
+  "packagingFailed": "Packaging failed",
+
+  "viewerClose": "Close",
+  "viewerPrev": "Previous",
+  "viewerNext": "Next",
+  "viewerCounter": "{{current}} / {{total}}",
+
+  "notFound": "404 — Page not found"
+}

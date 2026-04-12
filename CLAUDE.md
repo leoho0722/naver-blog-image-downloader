@@ -32,7 +32,7 @@ Changes can be parked（暫存）— temporarily moved out of `openspec/changes/
 
 - `apps/mobile/` — Flutter iOS/Android app（詳見 [apps/mobile/CLAUDE.md](apps/mobile/CLAUDE.md)）
 - `apps/backend/` — Python AWS Lambda（詳見 [apps/backend/CLAUDE.md](apps/backend/CLAUDE.md)）
-- `apps/web/` — 預留（未來 web 介面）
+- `apps/web/` — Vite + React 19 + TypeScript Web app（詳見 [apps/web/CLAUDE.md](apps/web/CLAUDE.md)）
 
 ## 共用開發規範
 
@@ -48,7 +48,7 @@ Changes can be parked（暫存）— temporarily moved out of `openspec/changes/
 |---------|-------------------------------|----------------------|----------------------|
 | mobile  | `apps/mobile/pubspec.yaml`    | `mobile-v<version>`  | Skip（notice）         |
 | backend | `apps/backend/pyproject.toml` | `backend-v<version>` | Fail                 |
-| web     | 未定（視技術棧）                | `web-v<version>`     | 未定                 |
+| web     | `apps/web/package.json`       | `web-v<version>`     | Skip（notice）         |
 
 `<version>` 只取 semver 三段（mobile 自動去掉 `+buildNumber` 後綴）。CD workflow 會依此產生對應 tag 與 GitHub Release。
 

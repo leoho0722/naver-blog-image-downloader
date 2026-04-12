@@ -4,7 +4,7 @@ import json
 
 import helper
 import routes  # noqa: F401 — 匯入路由模組，觸發 @route 裝飾器註冊
-from response_builder import build_response
+from response_builder import build_cors_preflight, build_response
 from router import dispatch, extract_route_info
 
 
@@ -59,10 +59,19 @@ def lambda_handler(event, context):
             from routes.photos import handle_async_worker
 
             handle_async_worker(event)
+        elif worker_type == "package":
+            from routes.photos import handle_package_worker
+
+            handle_package_worker(event)
         return
 
     # 2. Path-based routing（API Gateway v2）
     path, method = extract_route_info(event)
+
+    # CORS preflight 處理
+    if method == "OPTIONS":
+        return build_cors_preflight()
+
     body = _parse_request_body(event)
 
     result = dispatch(path, method, body, event, context)
