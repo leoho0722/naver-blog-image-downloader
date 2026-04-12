@@ -13,8 +13,17 @@ runs:
       id: select
       shell: bash
       run: |
-        MODELS=$(jq -r '.models[]' "$GITHUB_WORKSPACE/.github/ollama-models.json")
-        MODELS_ARRAY=($MODELS)
-        SELECTED="${MODELS_ARRAY[$((RANDOM % ${#MODELS_ARRAY[@]}))]}"
+        CONFIG="$GITHUB_WORKSPACE/.github/ollama-models.json"
+        if [[ ! -f "$CONFIG" ]]; then
+          echo "::error::ollama-models.json 不存在: $CONFIG"
+          exit 1
+        fi
+
+        SELECTED=$(jq -r '.models[]' "$CONFIG" | shuf -n1)
+        if [[ -z "$SELECTED" ]]; then
+          echo "::error::ollama-models.json 的 models 陣列為空"
+          exit 1
+        fi
+
         echo "model=$SELECTED" >> "$GITHUB_OUTPUT"
         echo "🎲 選中模型: $SELECTED"
