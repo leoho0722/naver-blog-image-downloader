@@ -67,7 +67,7 @@ runs:
 
         CONTENT=$(echo "$RESPONSE_BODY" | jq -r '.message.content // empty')
 
-        if [[ -z "$CONTENT" ]] || [[ "$CONTENT" == "null" ]]; then
+        if [[ "$HTTP_STATUS" != 2* ]] || [[ -z "$CONTENT" ]] || [[ "$CONTENT" == "null" ]]; then
           echo "⚠️ AI 生成失敗 (HTTP $HTTP_STATUS)，使用 commit 記錄作為 Release Notes"
           echo "API Response: $RESPONSE_BODY"
           {
