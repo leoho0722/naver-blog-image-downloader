@@ -29,7 +29,7 @@ jobs:
         run: |
           MISSING=0
 
-          for HTML_FILE in docs/index.html docs/mobile/index.html docs/web/index.html; do
+          for HTML_FILE in $(find docs -name "*.html"); do
             if [ ! -f "$HTML_FILE" ]; then
               echo "::warning::HTML file not found: $HTML_FILE"
               continue
