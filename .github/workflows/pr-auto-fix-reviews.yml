@@ -15,12 +15,14 @@ jobs:
     if: |
       github.event.pull_request.state == 'open' &&
       github.event.pull_request.head.repo.full_name == github.repository && (
-        (github.event_name == 'pull_request_review' &&
-          endsWith(github.event.review.user.login, '[bot]') &&
-          github.event.review.user.login != 'claude[bot]') ||
-        (github.event_name == 'pull_request_review_comment' &&
-          endsWith(github.event.comment.user.login, '[bot]') &&
-          github.event.comment.user.login != 'claude[bot]')
+        (github.event_name == 'pull_request_review' && (
+          github.event.review.user.login == 'github-actions[bot]' ||
+          github.event.review.user.login == 'gemini-code-assist[bot]' ||
+          github.event.review.user.login == 'claude[bot]')) ||
+        (github.event_name == 'pull_request_review_comment' && (
+          github.event.comment.user.login == 'github-actions[bot]' ||
+          github.event.comment.user.login == 'gemini-code-assist[bot]' ||
+          github.event.comment.user.login == 'claude[bot]'))
       )
     runs-on: ubuntu-latest
     permissions:
