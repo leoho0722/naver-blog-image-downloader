@@ -35,7 +35,7 @@ jobs:
       - name: Count prior auto-fix commits
         id: count
         run: |
-          BASE_REF=${{ github.event.pull_request.base.ref }}
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
           git fetch origin "$BASE_REF"
           N=$(git log "origin/${BASE_REF}..HEAD" --grep='^Auto-Fix-Run:' --oneline | wc -l | tr -d ' ')
           echo "prior=$N" >> "$GITHUB_OUTPUT"
@@ -43,7 +43,7 @@ jobs:
           echo "目前已自動修正 $N 次"
 
       - name: Stop if limit reached
-        if: steps.count.outputs.prior >= 10
+        if: fromJSON(steps.count.outputs.prior) >= 10
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -51,7 +51,7 @@ jobs:
             --body "⚠️ 已連續自動修正 10 次仍有 unresolved review threads，停止自動修正，請人工介入。"
 
       - name: Run Claude auto-fix
-        if: steps.count.outputs.prior < 10
+        if: fromJSON(steps.count.outputs.prior) < 10
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
