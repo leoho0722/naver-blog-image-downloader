@@ -48,15 +48,17 @@ jobs:
           PR Diff：
           INSTRUCTIONS_EOF
 
-          BODY=$(jq -n \
+          jq -n \
             --arg model "$OLLAMA_MODEL" \
             --rawfile instructions /tmp/instructions.txt \
             --rawfile diff /tmp/pr_diff.txt \
-            '{model: $model, messages: [{role: "user", content: ($instructions + "\n" + $diff)}], stream: false}')
+            '{model: $model, messages: [{role: "user", content: ($instructions + "\n" + $diff)}], stream: false}' \
+            > /tmp/ollama_request.json
 
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "https://ollama.com/api/chat" \
             -H "Authorization: Bearer $OLLAMA_API_KEY" \
-            -d "$BODY")
+            -H "Content-Type: application/json" \
+            --data-binary @/tmp/ollama_request.json)
 
           HTTP_STATUS=$(echo "$RESPONSE" | tail -1 | sed 's/HTTP_STATUS://')
           RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
