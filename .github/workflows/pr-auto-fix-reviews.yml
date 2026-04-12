@@ -53,6 +53,11 @@ jobs:
           gh pr comment ${{ github.event.pull_request.number }} \
             --body "⚠️ 已連續自動修正 10 次仍有 unresolved review threads，停止自動修正，請人工介入。"
 
+      - name: Save pre-fix SHA
+        if: fromJSON(steps.count.outputs.prior) < 10
+        id: pre-fix
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - name: Run Claude auto-fix
         if: fromJSON(steps.count.outputs.prior) < 10
         uses: anthropics/claude-code-action@v1
@@ -90,10 +95,14 @@ jobs:
       - name: Verify no workflow files modified
         if: fromJSON(steps.count.outputs.prior) < 10
         run: |
-          if git diff --name-only HEAD~1 2>/dev/null | grep -q '^\.github/workflows/'; then
-            echo "🔴 Claude 修改了 .github/workflows/ 目錄，建立還原 commit"
-            git checkout HEAD~1 -- .github/workflows/
-            git add .github/workflows/
-            git commit -m "revert: 還原 Claude 對 .github/workflows/ 的非授權修改"
-            git push
+          BEFORE="${{ steps.pre-fix.outputs.sha }}"
+          AFTER=$(git rev-parse HEAD)
+          if [ "$BEFORE" != "$AFTER" ]; then
+            if git diff --name-only "$BEFORE" "$AFTER" | grep -q '^\.github/workflows/'; then
+              echo "🔴 Claude 修改了 .github/workflows/ 目錄，建立還原 commit"
+              git checkout "$BEFORE" -- .github/workflows/
+              git add .github/workflows/
+              git commit -m "revert: 還原 Claude 對 .github/workflows/ 的非授權修改"
+              git push
+            fi
           fi
