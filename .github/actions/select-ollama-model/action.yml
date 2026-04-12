@@ -1,0 +1,20 @@
+name: Select Random Ollama Model
+description: 從 .github/ollama-models.json 隨機選擇一個 Ollama Cloud 模型
+
+outputs:
+  model:
+    description: 選中的模型名稱
+    value: ${{ steps.select.outputs.model }}
+
+runs:
+  using: composite
+  steps:
+    - name: Select random model
+      id: select
+      shell: bash
+      run: |
+        MODELS=$(jq -r '.models[]' "$GITHUB_WORKSPACE/.github/ollama-models.json")
+        MODELS_ARRAY=($MODELS)
+        SELECTED="${MODELS_ARRAY[$((RANDOM % ${#MODELS_ARRAY[@]}))]}"
+        echo "model=$SELECTED" >> "$GITHUB_OUTPUT"
+        echo "🎲 選中模型: $SELECTED"
