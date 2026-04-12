@@ -15,11 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OLLAMA_API_KEY: ${{ secrets.OLLAMA_API_KEY }}
-      OLLAMA_MODEL: gemma4:31b-cloud
       PR_NUMBER: ${{ github.event.pull_request.number }}
       REPO: ${{ github.repository }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - name: Select random Ollama model
+        id: ollama_model
+        run: |
+          MODELS=("gemma4:31b-cloud" "qwen3-coder-next" "glm-5.1:cloud" "minimax-m2.7:cloud")
+          SELECTED="${MODELS[$((RANDOM % ${#MODELS[@]}))]}"
+          echo "model=$SELECTED" >> "$GITHUB_OUTPUT"
+          echo "OLLAMA_MODEL=$SELECTED" >> "$GITHUB_ENV"
+          echo "🎲 選中模型: $SELECTED"
+
       - name: Checkout PR
         uses: actions/checkout@v6
         with:
