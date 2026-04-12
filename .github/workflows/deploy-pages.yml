@@ -1,11 +1,11 @@
-name: Mobile Deploy Pages
+name: Deploy Pages
 
 on:
   push:
     branches: [main]
     paths:
       - 'docs/**'
-      - '.github/workflows/mobile-deploy-pages.yml'
+      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -27,23 +27,27 @@ jobs:
 
       - name: Check image references in HTML
         run: |
-          cd docs
           MISSING=0
 
-          # 擷取所有 <img src="..."> 引用，排除外部 URL（http/https 開頭）
-          REFS=$(grep -oP '(?<=<img[^>]*src=")[^"]+' index.html 2>/dev/null || true)
-
-          for ref in $REFS; do
-            # 跳過外部 URL
-            if echo "$ref" | grep -qP '^https?://'; then
+          for HTML_FILE in docs/index.html docs/mobile/index.html docs/web/index.html; do
+            if [ ! -f "$HTML_FILE" ]; then
+              echo "::warning::HTML file not found: $HTML_FILE"
               continue
             fi
 
-            # 檢查檔案是否存在
-            if [ ! -f "$ref" ]; then
-              echo "::error::Missing image: docs/$ref"
-              MISSING=$((MISSING + 1))
-            fi
+            DIR=$(dirname "$HTML_FILE")
+            REFS=$(grep -oP '(?<=<img[^>]*src=")[^"]+' "$HTML_FILE" 2>/dev/null || true)
+
+            for ref in $REFS; do
+              if echo "$ref" | grep -qP '^https?://'; then
+                continue
+              fi
+
+              if [ ! -f "$DIR/$ref" ]; then
+                echo "::error::Missing image: $DIR/$ref (referenced in $HTML_FILE)"
+                MISSING=$((MISSING + 1))
+              fi
+            done
           done
 
           if [ "$MISSING" -gt 0 ]; then
