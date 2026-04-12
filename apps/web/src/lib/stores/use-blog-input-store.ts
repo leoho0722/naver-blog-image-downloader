@@ -71,6 +71,7 @@ export const useBlogInputStore = create<BlogInputState>((set, get) => ({
       let attempts = 0;
       while (attempts < MAX_POLL_ATTEMPTS) {
         await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+        if (get().fetchPhase !== "processing" || get().jobId !== jobId) return;
         attempts++;
 
         const status = await checkJobStatus(jobId);

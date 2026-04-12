@@ -18,7 +18,7 @@ interface DownloadState {
 const POLL_INTERVAL = 3000;
 const MAX_POLL_ATTEMPTS = 200;
 
-export const useDownloadStore = create<DownloadState>((set) => ({
+export const useDownloadStore = create<DownloadState>((set, get) => ({
   packageId: null,
   downloadPhase: "idle",
   downloadUrl: null,
@@ -52,6 +52,11 @@ export const useDownloadStore = create<DownloadState>((set) => ({
       let attempts = 0;
       while (attempts < MAX_POLL_ATTEMPTS) {
         await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+        if (
+          get().downloadPhase !== "packaging" ||
+          get().packageId !== response.package_id
+        )
+          return;
         attempts++;
 
         const status = await checkPackageStatus(response.package_id);

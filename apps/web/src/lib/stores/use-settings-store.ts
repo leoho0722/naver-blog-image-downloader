@@ -64,3 +64,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     set({ locale });
   },
 }));
+
+window
+  .matchMedia("(prefers-color-scheme: dark)")
+  .addEventListener("change", (e) => {
+    if (useSettingsStore.getState().theme === "system") {
+      document.documentElement.classList.toggle("dark", e.matches);
+    }
+  });
