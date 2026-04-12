@@ -91,8 +91,9 @@ jobs:
         if: fromJSON(steps.count.outputs.prior) < 10
         run: |
           if git diff --name-only HEAD~1 2>/dev/null | grep -q '^\.github/workflows/'; then
-            echo "🔴 Claude 修改了 .github/workflows/ 目錄，強制還原"
+            echo "🔴 Claude 修改了 .github/workflows/ 目錄，建立還原 commit"
             git checkout HEAD~1 -- .github/workflows/
-            git commit --amend --no-edit
-            git push --force-with-lease
+            git add .github/workflows/
+            git commit -m "revert: 還原 Claude 對 .github/workflows/ 的非授權修改"
+            git push
           fi
