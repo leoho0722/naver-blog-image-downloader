@@ -383,13 +383,16 @@ def _handle_package(body, context):
         pid = cached["package_id"]
         download_url = package_store.generate_download_url(pid)
         result = cached.get("result", {})
-        response = build_response(200, {
-            "package_id": pid,
-            "status": PackageStatus.COMPLETED,
-            "download_url": download_url,
-            "file_count": result.get("file_count", 0),
-            "file_size": result.get("file_size", 0),
-        })
+        response = build_response(
+            200,
+            {
+                "package_id": pid,
+                "status": PackageStatus.COMPLETED,
+                "download_url": download_url,
+                "file_count": result.get("file_count", 0),
+                "file_size": result.get("file_size", 0),
+            },
+        )
         helper.debug_print(f"打包快取命中: {pid}")
         return response
 
@@ -399,13 +402,15 @@ def _handle_package(body, context):
     boto3.client("lambda").invoke(
         FunctionName=context.function_name,
         InvocationType="Event",
-        Payload=json.dumps({
-            "_async_worker": True,
-            "_worker_type": "package",
-            "package_id": package_id,
-            "job_id": job_id,
-            "indices": indices,
-        }),
+        Payload=json.dumps(
+            {
+                "_async_worker": True,
+                "_worker_type": "package",
+                "package_id": package_id,
+                "job_id": job_id,
+                "indices": indices,
+            }
+        ),
     )
 
     return build_response(202, {"package_id": package_id, "status": PackageStatus.PROCESSING})
@@ -550,11 +555,15 @@ def handle_package_worker(event):
             package_store.upload_zip(package_id, zip_path)
 
         download_url = package_store.generate_download_url(package_id)
-        package_store.update_package(package_id, PackageStatus.COMPLETED, {
-            "file_count": len(downloaded),
-            "file_size": file_size,
-            "download_url": download_url,
-        })
+        package_store.update_package(
+            package_id,
+            PackageStatus.COMPLETED,
+            {
+                "file_count": len(downloaded),
+                "file_size": file_size,
+                "download_url": download_url,
+            },
+        )
         helper.debug_print(f"打包完成: {package_id}，{len(downloaded)} 張圖片，{file_size} bytes")
 
     except Exception as e:
