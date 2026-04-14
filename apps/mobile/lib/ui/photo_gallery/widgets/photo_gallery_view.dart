@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../data/models/fetch_result.dart';
+import '../../../screenshot/app_runtime_mode.dart';
 import '../view_model/photo_gallery_view_model.dart';
 import 'photo_card.dart';
 
@@ -45,6 +46,9 @@ class _PhotoGalleryViewState extends ConsumerState<PhotoGalleryView> {
     super.didChangeDependencies();
     if (!_loaded) {
       _loaded = true;
+      if (ref.read(appRuntimeModeProvider) == AppRuntimeMode.screenshot) {
+        return;
+      }
       final fetchResult = GoRouterState.of(context).extra as FetchResult?;
       if (fetchResult != null) {
         WidgetsBinding.instance.addPostFrameCallback((_) {

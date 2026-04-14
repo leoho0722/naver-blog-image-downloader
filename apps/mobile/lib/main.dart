@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:amplify_api/amplify_api.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_launch_arguments/flutter_launch_arguments.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,6 +15,9 @@ import 'app.dart';
 import 'data/services/auth_service.dart';
 import 'data/services/crashlytics_service.dart';
 import 'data/services/local_storage_service.dart';
+import 'screenshot/app_runtime_mode.dart';
+import 'screenshot/screenshot_app.dart';
+import 'screenshot/screenshot_config.dart';
 
 /// 應用程式進入點，負責初始化 Amplify SDK、Firebase 與 Crashlytics 並啟動 [NaverPhotoApp]。
 ///
@@ -26,15 +30,73 @@ import 'data/services/local_storage_service.dart';
 /// 6. 以 [ProviderScope] 建立 Riverpod 依賴注入容器並啟動應用程式
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kDebugMode) {
+    final screenshotConfig = await _tryParseScreenshotArgs();
+    if (screenshotConfig != null) {
+      final prefs = await SharedPreferences.getInstance();
+
+      runApp(
+        _buildRootProviderScope(
+          prefs: prefs,
+          runtimeMode: AppRuntimeMode.screenshot,
+          child: ScreenshotApp(config: screenshotConfig),
+        ),
+      );
+      return;
+    }
+  }
+
   await _configureAmplify();
   await _configureFirebase();
   final prefs = await SharedPreferences.getInstance();
 
   runApp(
-    ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    _buildRootProviderScope(
+      prefs: prefs,
+      runtimeMode: AppRuntimeMode.normal,
       child: const NaverPhotoApp(),
     ),
+  );
+}
+
+/// 建立根 [ProviderScope]，注入共用的 [SharedPreferences] 與執行模式。
+///
+/// - [prefs]：已初始化的 [SharedPreferences] 實例。
+/// - [runtimeMode]：目前的應用程式執行模式。
+/// - [child]：要顯示的根 Widget。
+///
+/// 回傳套用 override 後的 [ProviderScope]。
+Widget _buildRootProviderScope({
+  required SharedPreferences prefs,
+  required AppRuntimeMode runtimeMode,
+  required Widget child,
+}) {
+  return ProviderScope(
+    overrides: [
+      sharedPreferencesProvider.overrideWithValue(prefs),
+      appRuntimeModeProvider.overrideWith((ref) => runtimeMode),
+    ],
+    child: child,
+  );
+}
+
+/// 解析 screenshot mode 的 launch arguments。
+///
+/// 回傳 [ScreenshotConfig]；未要求 screenshot mode 時回傳 `null`。
+Future<ScreenshotConfig?> _tryParseScreenshotArgs() async {
+  final launchArguments = FlutterLaunchArguments();
+  final isScreenshotMode = await launchArguments.getBool('screenshotMode');
+  if (isScreenshotMode != true) return null;
+
+  final scenarioId = await launchArguments.getString('scenario') ?? '';
+  final localeCode = await launchArguments.getString('locale') ?? 'zhTW';
+  final themeCode = await launchArguments.getString('theme') ?? 'light';
+
+  return ScreenshotConfig.fromRaw(
+    scenarioId: scenarioId,
+    localeCode: localeCode,
+    themeCode: themeCode,
   );
 }
 

@@ -336,3 +336,58 @@ code:
   - naver_blog_image_downloader/ios/Runner.xcodeproj/project.pbxproj
   - naver_blog_image_downloader/ios/Podfile.lock
 -->
+
+---
+### Requirement: Screenshot mode runtime dependency declared
+
+The `apps/mobile/pubspec.yaml` file SHALL declare `flutter_launch_arguments` as a runtime dependency so the app can read screenshot launch arguments at runtime.
+
+#### Scenario: Screenshot runtime dependency present
+
+- **WHEN** `apps/mobile/pubspec.yaml` is inspected
+- **THEN** `flutter_launch_arguments` SHALL be declared under `dependencies`
+
+#### Scenario: Screenshot dependency participates in pub resolution
+
+- **WHEN** `flutter pub get` is executed for `apps/mobile`
+- **THEN** dependency resolution SHALL succeed with `flutter_launch_arguments` included
+
+<!-- @trace
+source: mobile-screenshot-automation
+updated: 2026-04-14
+code:
+  - apps/mobile/lib/screenshot/screenshot_app.dart
+  - AGENTS.md
+  - apps/mobile/lib/screenshot/screenshot_mock_data.dart
+  - apps/mobile/pubspec.lock
+  - apps/mobile/pubspec.yaml
+  - apps/mobile/lib/screenshot/screenshot_scenarios.dart
+  - apps/mobile/lib/screenshot/widgets/screenshot_scaffold.dart
+  - apps/mobile/lib/screenshot/app_runtime_mode.dart
+  - apps/mobile/ios/Podfile.lock
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/CapsuleBottomBar.kt
+  - apps/mobile/.maestro/take_screenshot.yaml
+  - apps/mobile/lib/data/repositories/log_repository.dart
+  - apps/mobile/lib/ui/download/widgets/download_view.dart
+  - apps/mobile/lib/ui/blog_input/widgets/blog_input_view.dart
+  - apps/mobile/lib/ui/photo_gallery/widgets/photo_gallery_view.dart
+  - apps/mobile/README.md
+  - apps/mobile/scripts/screenshot_matrix.json
+  - apps/mobile/scripts/sync_scenarios.dart
+  - apps/mobile/scripts/run_ios_screenshot_matrix.sh
+  - apps/mobile/lib/main.dart
+  - apps/mobile/scripts/generate_maestro_matrix.dart
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/PhotoViewerView.swift
+  - apps/mobile/lib/screenshot/screenshot_config.dart
+  - apps/mobile/lib/screenshot/screenshot_scenario_definitions.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/PhotoViewerScreen.kt
+  - apps/mobile/CLAUDE.md
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/CapsuleBottomBar.swift
+  - apps/mobile/lib/config/theme.dart
+  - apps/mobile/.claude/skills/screenshot-workflow/SKILL.md
+  - CLAUDE.md
+  - apps/mobile/.maestro/screenshot_matrix.yaml
+  - apps/mobile/scripts/run_android_screenshot_matrix.sh
+tests:
+  - apps/mobile/test/flutter_test_config.dart
+-->

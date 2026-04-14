@@ -42,14 +42,23 @@ class LogRepository {
        _logService = logService,
        _crashlyticsService = crashlyticsService;
 
+  /// 建立不執行任何外部 I/O 的 no-op [LogRepository]。
+  ///
+  /// screenshot mode 與其他不需要 Firebase 的流程可使用此建構子，
+  /// 避免意外觸發 Auth、Firestore 或 Crashlytics 初始化。
+  LogRepository.noop()
+    : _authService = null,
+      _logService = null,
+      _crashlyticsService = null;
+
   /// 身份驗證服務，用於取得目前使用者的 UID。
-  final AuthService _authService;
+  final AuthService? _authService;
 
   /// Firestore 日誌寫入服務，負責實際的文件寫入。
-  final LogService _logService;
+  final LogService? _logService;
 
   /// Crashlytics 服務，用於 [logError] 時同步回報非致命錯誤。
-  final CrashlyticsService _crashlyticsService;
+  final CrashlyticsService? _crashlyticsService;
 
   /// 裝置資訊快取，首次取得後不再重複查詢。
   Map<String, dynamic>? _deviceInfoCache;
@@ -96,6 +105,7 @@ class LogRepository {
   /// 整段邏輯以 try-catch 包覆，所有例外皆靜默處理，僅輸出 debug 訊息。
   Future<void> _log(String type, Map<String, dynamic> data) async {
     try {
+      if (_authService == null || _logService == null) return;
       final userId = _authService.currentUserId;
       if (userId == null) return;
       final deviceInfo = await _getDeviceInfo();
@@ -250,6 +260,8 @@ class LogRepository {
     required String message,
     required String stackTrace,
   }) {
+    if (_crashlyticsService == null) return;
+
     // 截斷堆疊追蹤至 500 字元以符合 Firestore 文件大小限制
     final truncatedStack = stackTrace.length > 500
         ? stackTrace.substring(0, 500)

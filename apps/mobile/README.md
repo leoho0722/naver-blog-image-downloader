@@ -69,3 +69,31 @@ flutter build apk --dart-define=API_STAGE=prod  # 正式環境
 ```
 
 支援階段：`default`、`ut`、`stg`、`uat`、`prod`
+
+## 截圖自動化
+
+為了穩定產出商店素材與回歸驗證，App 內建 debug-only 的 screenshot mode，透過 launch arguments 切換場景 / 語系 / 主題。
+
+**SSOT**：`scripts/screenshot_matrix.json` 定義全部場景、語系、主題與等待秒數。編輯後執行：
+
+```bash
+dart run scripts/generate_maestro_matrix.dart
+```
+
+會自動同步 `lib/screenshot/screenshot_scenario_definitions.dart` 與 `.maestro/screenshot_matrix.yaml`。
+
+**本機跑 matrix**（需先 build + install App，Android 必須 debug 版）：
+
+```bash
+# iOS（xcrun simctl）
+scripts/run_ios_screenshot_matrix.sh
+
+# Android（adb）
+scripts/run_android_screenshot_matrix.sh
+
+# 只跑特定場景
+SCENARIOS_FILTER=photo_gallery_grid,photo_gallery_select \
+  scripts/run_ios_screenshot_matrix.sh
+```
+
+詳細新增場景流程與常見坑，見 [`.claude/skills/screenshot-workflow/SKILL.md`](.claude/skills/screenshot-workflow/SKILL.md)。

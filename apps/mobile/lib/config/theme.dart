@@ -8,12 +8,26 @@ abstract final class AppTheme {
   /// 種子色彩（藍色系 #1565C0），Material 3 會根據此顏色自動衍生完整配色。
   static const Color _seedColor = Color(0xFF1565C0);
 
+  /// CJK 語系優先使用的字型 fallback，避免 screenshot/golden 顯示成方格。
+  static const List<String> _fontFamilyFallback = [
+    'PingFang TC',
+    'Hiragino Sans GB',
+    'Apple SD Gothic Neo',
+    'Noto Sans CJK TC',
+    'Noto Sans CJK JP',
+    'Noto Sans CJK KR',
+    'Noto Sans JP',
+    'Noto Sans KR',
+    'sans-serif',
+  ];
+
   /// 亮色主題，適用於一般日間使用情境。
   ///
   /// 回傳以 [_seedColor] 為基礎產生的亮色 [ThemeData]。
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      fontFamilyFallback: _fontFamilyFallback,
       colorScheme: ColorScheme.fromSeed(
         seedColor: _seedColor,
         brightness: Brightness.light,
@@ -27,6 +41,7 @@ abstract final class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
       useMaterial3: true,
+      fontFamilyFallback: _fontFamilyFallback,
       colorScheme: ColorScheme.fromSeed(
         seedColor: _seedColor,
         brightness: Brightness.dark,

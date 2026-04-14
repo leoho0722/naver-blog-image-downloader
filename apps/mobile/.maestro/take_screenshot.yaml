@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+    arguments:
+      screenshotMode: true
+      scenario: ${SCENARIO}
+      locale: ${LOCALE}
+      theme: ${THEME}
+- extendedWaitUntil:
+    visible:
+      id: ${WAIT_FOR}
+    timeout: 15000
+- takeScreenshot: ${OUTPUT_PATH}

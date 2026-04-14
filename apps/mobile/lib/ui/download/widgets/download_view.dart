@@ -23,6 +23,55 @@ class DownloadDialog extends ConsumerStatefulWidget {
   ConsumerState<DownloadDialog> createState() => _DownloadDialogState();
 }
 
+/// 下載進度對話框的純顯示內容。
+///
+/// 將畫面顯示與真實下載流程拆開，讓 screenshot mode 可直接重用同一份 UI。
+class DownloadDialogContent extends StatelessWidget {
+  /// 建立 [DownloadDialogContent]。
+  ///
+  /// - [state]：要顯示的下載狀態。
+  const DownloadDialogContent({super.key, required this.state});
+
+  /// 要顯示的下載狀態。
+  final DownloadViewModelState state;
+
+  /// 建構下載進度內容區塊。
+  ///
+  /// [context] 為目前的 [BuildContext]。
+  ///
+  /// 回傳包含進度環、進度文字與狀態文字的 [Column]。
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircularProgressIndicator(value: state.progress),
+        const SizedBox(height: 24),
+        Text(
+          l10n.downloadProgress(state.completed, state.total),
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          state.isDownloading
+              ? l10n.downloadStatusDownloading
+              : l10n.downloadStatusCompleted,
+          style: Theme.of(context).textTheme.bodyLarge,
+        ),
+        if (state.result != null && !state.result!.isAllSuccessful) ...[
+          const SizedBox(height: 12),
+          Text(
+            l10n.downloadFailedCount(state.result!.failedPhotos.length),
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 /// [DownloadDialog] 的狀態管理類，負責啟動批次下載流程並追蹤進度。
 class _DownloadDialogState extends ConsumerState<DownloadDialog> {
   /// 是否已啟動下載流程，用於防止 [didChangeDependencies] 重複觸發。
@@ -71,31 +120,7 @@ class _DownloadDialogState extends ConsumerState<DownloadDialog> {
 
     return AlertDialog(
       title: Text(l10n.downloadDialogTitle),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(value: state.progress),
-          const SizedBox(height: 24),
-          Text(
-            l10n.downloadProgress(state.completed, state.total),
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            state.isDownloading
-                ? l10n.downloadStatusDownloading
-                : l10n.downloadStatusCompleted,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          if (state.result != null && !state.result!.isAllSuccessful) ...[
-            const SizedBox(height: 12),
-            Text(
-              l10n.downloadFailedCount(state.result!.failedPhotos.length),
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ],
-        ],
-      ),
+      content: DownloadDialogContent(state: state),
     );
   }
 }

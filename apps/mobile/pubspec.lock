@@ -462,6 +462,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_launch_arguments:
+    dependency: "direct main"
+    description:
+      name: flutter_launch_arguments
+      sha256: "182ea002c76e8024973cd168d84763de33ed917bf1339b23dba247ef8763e48d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   flutter_lints:
     dependency: "direct dev"
     description:

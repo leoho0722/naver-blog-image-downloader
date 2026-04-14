@@ -38,6 +38,7 @@ struct PhotoViewerView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            .accessibilityIdentifier("photo_viewer_pager")
             .ignoresSafeArea()
             .onChange(of: selectedTab) { _, newValue in
                 viewModel.onPageChanged(newValue)
