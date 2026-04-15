@@ -22,6 +22,8 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 JSON="${SCRIPT_DIR}/screenshot_matrix.json"
+# shellcheck source=./screenshot_common.sh
+source "${SCRIPT_DIR}/screenshot_common.sh"
 
 # 前置檢查：必備檔案與工具
 if [ ! -f "$JSON" ]; then
@@ -34,7 +36,14 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 ADB="${ADB:-$HOME/Library/Android/sdk/platform-tools/adb}"
-DEVICE="${DEVICE:-emulator-5554}"
+# 未指定 DEVICE 時，抓第一台 adb 連線中的裝置；找不到就直接退出
+if [ -z "${DEVICE:-}" ]; then
+  DEVICE=$("$ADB" devices 2>/dev/null | awk 'NR>1 && $2=="device" {print $1; exit}')
+fi
+if [ -z "$DEVICE" ]; then
+  echo "❌ 未偵測到已連線的 Android 裝置，請先啟動模擬器或指定 DEVICE" >&2
+  exit 1
+fi
 PACKAGE="${PACKAGE:-com.leoho.naverBlogImageDownloader.android}"
 ACTIVITY="${ACTIVITY:-.applications.MainActivity}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
@@ -63,29 +72,6 @@ SCENARIO_ENTRIES=()
 while IFS= read -r line; do SCENARIO_ENTRIES+=("$line"); done < <(
   jq -r '.scenarios[] | "\(.id):\(.waitSecsAndroid)"' "$JSON"
 )
-
-# 套用白名單過濾器；留空等於不過濾
-filter_array() {
-  local filter_csv="$1"
-  shift
-  local values=("$@")
-  if [ -z "$filter_csv" ]; then
-    printf '%s\n' "${values[@]}"
-    return
-  fi
-  local -a allow
-  IFS=',' read -ra allow <<< "$filter_csv"
-  for value in "${values[@]}"; do
-    for needle in "${allow[@]}"; do
-      # SCENARIO_ENTRIES 格式為 "id:wait"，過濾時只比對 id 部分
-      local id="${value%%:*}"
-      if [ "$value" = "$needle" ] || [ "$id" = "$needle" ]; then
-        printf '%s\n' "$value"
-        break
-      fi
-    done
-  done
-}
 
 LOCALES_FILTERED=()
 while IFS= read -r line; do LOCALES_FILTERED+=("$line"); done < <(

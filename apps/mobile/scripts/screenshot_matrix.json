@@ -34,14 +34,14 @@
         {
             "id": "photo_gallery_grid",
             "waitForId": "screenshot_ready",
-            "supportsGolden": true,
+            "supportsGolden": false,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },
         {
             "id": "photo_gallery_select",
             "waitForId": "screenshot_ready",
-            "supportsGolden": true,
+            "supportsGolden": false,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },

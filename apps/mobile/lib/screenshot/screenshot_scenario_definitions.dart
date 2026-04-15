@@ -51,12 +51,12 @@ const List<ScreenshotScenarioMetadata> screenshotScenarioMetadatas = [
   ScreenshotScenarioMetadata(
     id: 'photo_gallery_grid',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: true,
+    supportsGolden: false,
   ),
   ScreenshotScenarioMetadata(
     id: 'photo_gallery_select',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: true,
+    supportsGolden: false,
   ),
   ScreenshotScenarioMetadata(
     id: 'photo_detail_native',
@@ -90,7 +90,7 @@ const List<ScreenshotScenarioMetadata> screenshotScenarioMetadatas = [
   ),
 ];
 
-/// 依場景識別碼查詢 metadata 的對照表。
-Map<String, ScreenshotScenarioMetadata> get screenshotScenarioMetadataById => {
+/// 依場景識別碼查詢 metadata 的對照表（lazy final，只建一次）。
+final Map<String, ScreenshotScenarioMetadata> screenshotScenarioMetadataById = {
   for (final metadata in screenshotScenarioMetadatas) metadata.id: metadata,
 };

@@ -81,9 +81,9 @@ void syncScenariosFromJson() {
   buf
     ..writeln('];')
     ..writeln()
-    ..writeln('/// 依場景識別碼查詢 metadata 的對照表。')
+    ..writeln('/// 依場景識別碼查詢 metadata 的對照表（lazy final，只建一次）。')
     ..writeln(
-      'Map<String, ScreenshotScenarioMetadata> get screenshotScenarioMetadataById => {',
+      'final Map<String, ScreenshotScenarioMetadata> screenshotScenarioMetadataById = {',
     )
     ..writeln(
       '  for (final metadata in screenshotScenarioMetadatas) metadata.id: metadata,',

@@ -7,7 +7,6 @@ import '../data/repositories/log_repository.dart';
 import '../ui/core/view_model/app_settings_view_model.dart';
 import 'screenshot_config.dart';
 import 'screenshot_scenarios.dart';
-import 'widgets/screenshot_scaffold.dart';
 
 /// screenshot mode 的根 Widget。
 class ScreenshotApp extends StatelessWidget {
@@ -53,15 +52,31 @@ class ScreenshotApp extends StatelessWidget {
 
   /// 根據 [config.scenarioId] 解析要顯示的畫面。
   ///
-  /// 回傳對應的截圖場景 Widget；未知場景時回傳錯誤畫面。
+  /// 回傳對應的截圖場景 Widget；未知場景時回傳**不帶** `screenshot_ready`
+  /// 識別碼的錯誤畫面，避免 Maestro 把錯誤畫面當成合法素材存檔。
   Widget _buildHome() {
     final builder = screenshotScenarioBuilders[config.scenarioId];
     if (builder != null) {
       return builder();
     }
 
-    return ScreenshotScaffold(
-      child: Scaffold(body: Center(child: Text('未知截圖情境：${config.scenarioId}'))),
+    // 故意不包 ScreenshotScaffold，讓 Maestro 等不到 ready marker 超時失敗，
+    // 以便盡早發現 JSON manifest 與 builder 註冊不一致。
+    debugPrint('❌ 未知截圖情境：${config.scenarioId}');
+    return Scaffold(
+      backgroundColor: Colors.red,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            '未知截圖情境：${config.scenarioId}\n\n'
+            '請檢查 scripts/screenshot_matrix.json 與 '
+            'lib/screenshot/screenshot_scenarios.dart 是否一致。',
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -6,8 +6,8 @@
 #   - Runner.app 已 build 並 install 到該模擬器
 #   - 系統已安裝 jq（用於讀取 screenshot_matrix.json）
 #
-# 可用環境變數（均有預設值）：
-#   SIM_ID           — 目標模擬器 UDID
+# 可用環境變數：
+#   SIM_ID           — 目標模擬器 UDID（未指定時自動抓第一台 Booted 狀態的模擬器）
 #   BUNDLE_ID        — App bundle id
 #   OUT_DIR          — 截圖輸出目錄（預設 /tmp/naver_blog_image_downloader_ios_screenshots_<timestamp>）
 #   SCENARIOS_FILTER — 只跑指定場景（逗號分隔），如 "photo_gallery_grid,photo_gallery_select"
@@ -20,6 +20,8 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 JSON="${SCRIPT_DIR}/screenshot_matrix.json"
+# shellcheck source=./screenshot_common.sh
+source "${SCRIPT_DIR}/screenshot_common.sh"
 
 # 前置檢查：必備檔案與工具
 if [ ! -f "$JSON" ]; then
@@ -31,7 +33,15 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-SIM_ID="${SIM_ID:-F27F9972-F7A7-4985-B212-F3401204E55B}"
+# 未指定 SIM_ID 時，抓第一台 Booted 狀態的模擬器；找不到就直接退出
+if [ -z "${SIM_ID:-}" ]; then
+  SIM_ID=$(xcrun simctl list devices booted -j 2>/dev/null \
+    | jq -r '[.devices[][] | select(.state=="Booted")][0].udid // empty')
+fi
+if [ -z "$SIM_ID" ]; then
+  echo "❌ 未偵測到已 boot 的 iOS 模擬器，請先啟動模擬器或指定 SIM_ID" >&2
+  exit 1
+fi
 BUNDLE_ID="${BUNDLE_ID:-com.leoho.naverBlogImageDownloader.ios}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 OUT_DIR="${OUT_DIR:-/tmp/naver_blog_image_downloader_ios_screenshots_${TIMESTAMP}}"
@@ -60,29 +70,6 @@ SCENARIO_ENTRIES=()
 while IFS= read -r line; do SCENARIO_ENTRIES+=("$line"); done < <(
   jq -r '.scenarios[] | "\(.id):\(.waitSecsIos)"' "$JSON"
 )
-
-# 套用白名單過濾器；留空等於不過濾
-filter_array() {
-  local filter_csv="$1"
-  shift
-  local values=("$@")
-  if [ -z "$filter_csv" ]; then
-    printf '%s\n' "${values[@]}"
-    return
-  fi
-  local -a allow
-  IFS=',' read -ra allow <<< "$filter_csv"
-  for value in "${values[@]}"; do
-    for needle in "${allow[@]}"; do
-      # SCENARIO_ENTRIES 格式為 "id:wait"，過濾時只比對 id 部分
-      local id="${value%%:*}"
-      if [ "$value" = "$needle" ] || [ "$id" = "$needle" ]; then
-        printf '%s\n' "$value"
-        break
-      fi
-    done
-  done
-}
 
 LOCALES_FILTERED=()
 while IFS= read -r line; do LOCALES_FILTERED+=("$line"); done < <(

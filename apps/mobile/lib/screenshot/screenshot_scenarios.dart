@@ -487,8 +487,11 @@ class _NativePhotoViewerScenarioState
 
 /// 準備照片列表截圖所需的暫存圖片檔案。
 ///
+/// 所有照片共用同一個暫存目錄，避免每張圖各自 `createTemp` 產生 9 個孤兒目錄。
+///
 /// 回傳包含所有照片暫存檔案的 [_PreparedGalleryData]。
 Future<_PreparedGalleryData> _prepareGalleryData() async {
+  final directory = await Directory.systemTemp.createTemp('nbid_screenshot_');
   final cachedFiles = <String, File?>{};
 
   for (var index = 0; index < screenshotPhotos.length; index++) {
@@ -499,6 +502,7 @@ Future<_PreparedGalleryData> _prepareGalleryData() async {
     final file = await _writeAssetToTemporaryFile(
       assetPath: assetPath,
       filename: photo.filename,
+      directory: directory,
     );
     cachedFiles[photo.id] = file;
   }
@@ -510,15 +514,18 @@ Future<_PreparedGalleryData> _prepareGalleryData() async {
 ///
 /// - [assetPath]：要複製的 asset 路徑。
 /// - [filename]：寫入暫存目錄時使用的檔名。
+/// - [directory]：可選的暫存目錄，若未提供則自動建立一個新的暫存目錄。
 ///
 /// 回傳寫入完成的 [File]。
 Future<File> _writeAssetToTemporaryFile({
   required String assetPath,
   required String filename,
+  Directory? directory,
 }) async {
   final byteData = await rootBundle.load(assetPath);
-  final directory = await Directory.systemTemp.createTemp('nbid_screenshot_');
-  final file = File('${directory.path}/$filename');
+  final targetDir =
+      directory ?? await Directory.systemTemp.createTemp('nbid_screenshot_');
+  final file = File('${targetDir.path}/$filename');
   await file.writeAsBytes(
     byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes),
   );

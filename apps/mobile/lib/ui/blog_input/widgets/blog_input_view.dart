@@ -52,6 +52,14 @@ class _BlogInputViewState extends ConsumerState<BlogInputView>
       vsync: this,
       platform: defaultTargetPlatform,
     );
+    // 以初始 ViewModel state 同步 controller 內容，避免 build() 內直接賦值。
+    final initialBlogUrl = ref.read(blogInputViewModelProvider).blogUrl;
+    if (_controller.text != initialBlogUrl) {
+      _controller.value = TextEditingValue(
+        text: initialBlogUrl,
+        selection: TextSelection.collapsed(offset: initialBlogUrl.length),
+      );
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_isScreenshotMode) return;
       _checkWhatsNew();
@@ -350,14 +358,17 @@ class _BlogInputViewState extends ConsumerState<BlogInputView>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(blogInputViewModelProvider);
-    if (_controller.text != state.blogUrl) {
-      _controller.value = TextEditingValue(
-        text: state.blogUrl,
-        selection: TextSelection.collapsed(offset: state.blogUrl.length),
-      );
-    }
 
+    // 在 listen 內同步 controller 避免在 build 階段對 TextEditingController 賦值，
+    // 那會在特定時序下觸發 markNeedsBuild during build 錯誤。
     ref.listen(blogInputViewModelProvider, (prev, next) {
+      if (prev?.blogUrl != next.blogUrl && _controller.text != next.blogUrl) {
+        _controller.value = TextEditingValue(
+          text: next.blogUrl,
+          selection: TextSelection.collapsed(offset: next.blogUrl.length),
+        );
+      }
+
       final prevFetch = prev?.fetchResult;
       final nextFetch = next.fetchResult;
       if (nextFetch is AsyncError && prevFetch is! AsyncError) {

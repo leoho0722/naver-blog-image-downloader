@@ -62,6 +62,9 @@ Future<void> main() async {
 
 /// 建立根 [ProviderScope]，注入共用的 [SharedPreferences] 與執行模式。
 ///
+/// 注意：[ScreenshotApp] 內部會再建立第二層 [ProviderScope] 以 override 主題 / 語系
+/// 相關 provider；根層與內層屬繼承關係，內層未 override 的 provider 會沿用根層的值。
+///
 /// - [prefs]：已初始化的 [SharedPreferences] 實例。
 /// - [runtimeMode]：目前的應用程式執行模式。
 /// - [child]：要顯示的根 Widget。

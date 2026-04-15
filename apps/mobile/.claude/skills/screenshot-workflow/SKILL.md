@@ -20,6 +20,21 @@ description: 管理 screenshot 場景的 SSOT 配置與執行 iOS/Android 真機
 
 **絕對不要手改** `screenshot_scenario_definitions.dart` 或 `.maestro/screenshot_matrix.yaml`，它們由產生器覆寫。
 
+### Maestro 需要的環境變數
+
+`.maestro/take_screenshot.yaml` 第一行是 `appId: ${APP_ID}`。在本機或 CI 執行 Maestro flow 時須先設定：
+
+```bash
+# iOS
+export APP_ID=com.leoho.naverBlogImageDownloader.ios
+# Android
+export APP_ID=com.leoho.naverBlogImageDownloader.android
+
+maestro test .maestro/screenshot_matrix.yaml
+```
+
+注意本專案的 iOS / Android package name 不同，跨平台批次拍攝時須分別執行。
+
 ## 新增 scenario
 
 1. 編輯 `apps/mobile/scripts/screenshot_matrix.json`，加入新條目：
