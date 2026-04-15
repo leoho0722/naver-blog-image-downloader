@@ -16,9 +16,7 @@ on:
 jobs:
   flutter-validate:
     name: Flutter — Test, Analyze & Format
-    # golden 測試依賴 PingFang / Apple SD Gothic Neo 等 macOS 系統字型，
-    # 用 Linux runner 會整批 pixel diff 失敗，因此固定 macOS runner。
-    runs-on: macos-26
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/mobile

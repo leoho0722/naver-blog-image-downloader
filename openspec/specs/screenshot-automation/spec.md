@@ -2,7 +2,7 @@
 
 ## Purpose
 
-定義 mobile app 的 screenshot 自動化框架：包含 debug-only screenshot mode、單一來源的 scenario manifest、Maestro 批次截圖矩陣，以及 Flutter golden 回歸測試骨架。此 capability 讓商店素材可以跨語系 / 主題穩定產出，並讓 UI 變更能在本機快速回歸驗證，避免每次人工切換畫面狀態。
+定義 mobile app 的 screenshot 自動化框架：包含 debug-only screenshot mode、單一來源的 scenario manifest，以及跨語系 / 主題的 Maestro 批次截圖矩陣。此 capability 讓商店素材可以跨語系 / 主題穩定產出，並讓 UI 變更能以實機拍攝的方式回歸驗證，避免每次人工切換畫面狀態。
 
 ## Requirements
 
@@ -71,13 +71,13 @@ tests:
 ---
 ### Requirement: Screenshot scenario manifest
 
-The screenshot framework SHALL define a single scenario manifest that is shared by the screenshot app, golden tests, and the Maestro matrix generator.
+The screenshot framework SHALL define a single scenario manifest that is shared by the screenshot app and the Maestro matrix generator.
 
 Each scenario definition SHALL declare:
 
 - a stable scenario identifier
 - a wait target identifier for Maestro
-- whether the scenario supports Flutter golden testing
+- per-platform wait seconds used by the local matrix runner scripts
 - a widget builder that renders the scenario
 
 #### Scenario: Screenshot app resolves scenario from manifest
@@ -254,22 +254,19 @@ tests:
 -->
 
 ---
-### Requirement: Maestro and golden coverage boundaries
+### Requirement: Maestro matrix covers all scenarios
 
-The screenshot automation framework SHALL support both Maestro captures and Flutter golden tests with explicit boundaries.
-
-Maestro SHALL cover all registered screenshot scenarios, including the native photo viewer scenario.
-Flutter golden tests SHALL cover only scenarios marked as golden-compatible and SHALL exclude native viewer scenarios.
-
-#### Scenario: Native viewer is excluded from golden tests
-
-- **WHEN** the golden test suite enumerates screenshot scenarios
-- **THEN** it SHALL skip scenarios whose definitions are not golden-compatible
+The screenshot automation framework SHALL rely on Maestro matrix runs as the single source of visual regression, covering every registered scenario across every supported locale and theme combination—including the native photo viewer scenario.
 
 #### Scenario: Maestro matrix includes all registered scenarios
 
 - **WHEN** the Maestro matrix file is generated
 - **THEN** it SHALL contain every registered scenario for each supported locale and theme combination
+
+#### Scenario: Native photo viewer is included in Maestro matrix
+
+- **WHEN** Maestro iterates the generated matrix
+- **THEN** it SHALL include the native photo viewer scenario and wait for its dedicated marker before capturing
 
 <!-- @trace
 source: mobile-screenshot-automation

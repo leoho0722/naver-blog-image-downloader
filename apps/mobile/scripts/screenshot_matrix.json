@@ -13,77 +13,66 @@
         {
             "id": "blog_input_empty",
             "waitForId": "screenshot_ready",
-            "supportsGolden": true,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },
         {
             "id": "blog_input_with_url",
             "waitForId": "screenshot_ready",
-            "supportsGolden": true,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },
         {
             "id": "blog_input_loading",
             "waitForId": "screenshot_ready",
-            "supportsGolden": true,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },
         {
             "id": "photo_gallery_grid",
             "waitForId": "screenshot_ready",
-            "supportsGolden": false,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },
         {
             "id": "photo_gallery_select",
             "waitForId": "screenshot_ready",
-            "supportsGolden": false,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },
         {
             "id": "photo_detail_native",
             "waitForId": "photo_viewer_pager",
-            "supportsGolden": false,
             "waitSecsIos": 5,
             "waitSecsAndroid": 9
         },
         {
             "id": "settings_default",
             "waitForId": "screenshot_ready",
-            "supportsGolden": true,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },
         {
             "id": "download_in_progress",
             "waitForId": "screenshot_ready",
-            "supportsGolden": true,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },
         {
             "id": "download_completed",
             "waitForId": "screenshot_ready",
-            "supportsGolden": true,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },
         {
             "id": "whats_new_onboarding",
             "waitForId": "screenshot_ready",
-            "supportsGolden": true,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         },
         {
             "id": "whats_new_update",
             "waitForId": "screenshot_ready",
-            "supportsGolden": true,
             "waitSecsIos": 3,
             "waitSecsAndroid": 7
         }

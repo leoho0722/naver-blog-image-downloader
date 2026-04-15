@@ -13,7 +13,7 @@ description: 管理 screenshot 場景的 SSOT 配置與執行 iOS/Android 真機
 
 | 消費者 | 用途 | 更新方式 |
 |--------|------|----------|
-| `lib/screenshot/screenshot_scenario_definitions.dart` | Flutter runtime / golden test 引用 | `dart run scripts/sync_scenarios.dart` 自動產生 |
+| `lib/screenshot/screenshot_scenario_definitions.dart` | Flutter runtime 引用 | `dart run scripts/sync_scenarios.dart` 自動產生 |
 | `.maestro/screenshot_matrix.yaml` | Maestro CI 自動拍攝 | `dart run scripts/generate_maestro_matrix.dart` 自動產生（會先 sync） |
 | `scripts/run_ios_screenshot_matrix.sh` | 本機 iOS 跑 matrix | 執行時用 jq 直接讀 JSON |
 | `scripts/run_android_screenshot_matrix.sh` | 本機 Android 跑 matrix | 執行時用 jq 直接讀 JSON |
@@ -42,13 +42,11 @@ maestro test .maestro/screenshot_matrix.yaml
    {
      "id": "my_new_scenario",
      "waitForId": "screenshot_ready",
-     "supportsGolden": true,
      "waitSecsIos": 3,
      "waitSecsAndroid": 7
    }
    ```
    - `waitForId`：若畫面由 Flutter 渲染用 `screenshot_ready`；原生畫面依情況指定（例如 `photo_viewer_pager`）
-   - `supportsGolden`：Flutter widget 可跑 golden test 設 `true`；原生畫面設 `false`
    - `waitSecsAndroid` 通常比 iOS 大 3-4 秒（Android cold start 較慢）
 
 2. 在 `lib/screenshot/screenshot_scenarios.dart` 新增對應 builder function 並註冊到 `screenshotScenarioBuilders`。
@@ -60,11 +58,6 @@ maestro test .maestro/screenshot_matrix.yaml
    cd apps/mobile
    dart run scripts/generate_maestro_matrix.dart
    flutter analyze
-   ```
-
-5. 若 `supportsGolden: true`，更新 golden：
-   ```bash
-   flutter test --update-goldens test/screenshot/golden_test.dart
    ```
 
 ## 跑 iOS matrix
@@ -144,4 +137,3 @@ SCENARIOS_FILTER=photo_detail_native scripts/run_android_screenshot_matrix.sh
 - Scenario builders：`apps/mobile/lib/screenshot/screenshot_scenarios.dart`
 - Mock 資料：`apps/mobile/lib/screenshot/screenshot_mock_data.dart`
 - 引數解析：`apps/mobile/lib/main.dart`（`_tryParseScreenshotArgs`）
-- Golden test：`apps/mobile/test/screenshot/golden_test.dart`

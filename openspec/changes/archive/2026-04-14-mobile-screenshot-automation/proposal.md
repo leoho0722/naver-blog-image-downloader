@@ -4,7 +4,7 @@
 
 ## What Changes
 
-- 新增 mobile screenshot automation capability，提供 debug-only 的 screenshot mode、scenario manifest、Maestro matrix 與 golden 測試骨架。
+- 新增 mobile screenshot automation capability，提供 debug-only 的 screenshot mode、scenario manifest 與 Maestro matrix。
 - 在 Flutter 端新增 screenshot 專用入口、共用 scaffold、固定假資料與 fake overrides，重用真實 Widget 產生可重複的截圖場景。
 - 在既有畫面補 screenshot-safe 注入點，避免 screenshot mode 期間觸發剪貼簿檢查、What’s New 自動彈窗與真實下載流程。
 - 在 iOS 與 Android 的原生 PhotoViewer 補 accessibility identifier / testTag，讓 Maestro 能穩定等待原生 viewer 畫面。
@@ -17,7 +17,7 @@
 
 ### New Capabilities
 
-- `screenshot-automation`: 定義 mobile app 的 screenshot mode、scenario registry、Maestro 截圖矩陣與 golden 驗證行為。
+- `screenshot-automation`: 定義 mobile app 的 screenshot mode、scenario registry 與 Maestro 截圖矩陣。
 
 ### Modified Capabilities
 
@@ -41,6 +41,5 @@
   - `apps/mobile/scripts/run_ios_screenshot_matrix.sh`
   - `apps/mobile/scripts/run_android_screenshot_matrix.sh`
   - `apps/mobile/.claude/skills/screenshot-workflow/SKILL.md`
-  - `apps/mobile/test/screenshot/**`
   - `apps/mobile/ios/Runner/Features/PhotoViewer/View/*.swift`
   - `apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/*.kt`

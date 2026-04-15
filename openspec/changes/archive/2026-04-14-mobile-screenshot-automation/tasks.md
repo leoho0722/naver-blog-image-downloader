@@ -9,18 +9,17 @@
 - [x] 2.1 實作 Screenshot scenario manifest：建立共享 scenario manifest 與 mock data / fake overrides
 - [x] 2.2 實作 Screenshot mode suppresses interactive side effects：調整 `BlogInputView` 使 screenshot mode 跳過 clipboard 與 What’s New 自動流程
 - [x] 2.3 實作 Screenshot mode suppresses interactive side effects：抽出 `DownloadDialog` 的純顯示內容並建立固定進度 screenshot scenario
-- [x] 2.4 實作 Maestro and golden coverage boundaries：補齊 gallery、settings、what’s new 與 native viewer screenshot scenarios
+- [x] 2.4 實作 Maestro matrix covers all scenarios：補齊 gallery、settings、what’s new 與 native viewer screenshot scenarios
 
 ## 3. 原生 viewer 與自動化產物
 
 - [x] 3.1 實作 PhotoViewer accessibility identifiers：在 iOS 原生 PhotoViewer 補 pager 與底部按鈕 identifier
 - [x] 3.2 實作 PhotoViewer automation test tags：在 Android 原生 PhotoViewer 補 pager 與底部按鈕 testTag
-- [x] 3.3 實作 Screenshot scenario manifest 與 Maestro and golden coverage boundaries：新增 Maestro flow 與 matrix 產生腳本
+- [x] 3.3 實作 Screenshot scenario manifest 與 Maestro matrix covers all scenarios：新增 Maestro flow 與 matrix 產生腳本
 
-## 4. Golden 驗證與收尾
+## 4. 收尾
 
-- [x] 4.1 實作 Maestro and golden coverage boundaries：新增 Flutter screenshot golden test 骨架並排除 native viewer
-- [x] 4.2 驗證 Screenshot rendering is banner-free and waitable 與 Screenshot mode runtime dependency declared：執行格式化、分析與關鍵測試，更新任務狀態
+- [x] 4.1 驗證 Screenshot rendering is banner-free and waitable 與 Screenshot mode runtime dependency declared：執行格式化、分析與關鍵測試，更新任務狀態
 
 ## 5. JSON SSOT 與本機 matrix 執行工具
 

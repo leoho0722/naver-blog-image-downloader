@@ -75,7 +75,7 @@ refactor(settings-view): 設定頁面 Cupertino → Material 3 重構
 
 ### Screenshot / test-only 程式碼界線
 
-- `apps/mobile/lib/screenshot/screenshot_mock_data.dart` 內的假資料（URL、時間戳、Blog ID）**僅供 screenshot mode 與 golden 測試使用**，正式功能程式碼（`lib/data/`、`lib/ui/` 等）**禁止 import**。
+- `apps/mobile/lib/screenshot/screenshot_mock_data.dart` 內的假資料（URL、時間戳、Blog ID）**僅供 screenshot mode 使用**，正式功能程式碼（`lib/data/`、`lib/ui/` 等）**禁止 import**。
 - screenshot mode 只在 `kDebugMode` 才啟用，且以 launch arguments 為權威開關；release build 完全看不到這些 mock。
 
 ### 鐵的紀律：Spectra SDD 工作流

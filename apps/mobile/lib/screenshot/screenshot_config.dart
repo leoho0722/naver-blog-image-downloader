@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../config/app_icon.dart';
-import '../config/app_settings_keys.dart';
 import '../config/supported_locale.dart';
 
 /// screenshot mode 支援的主題列舉。
@@ -73,15 +71,4 @@ class ScreenshotConfig {
 
   /// 要套用的主題。
   final ScreenshotTheme theme;
-
-  /// screenshot mode 專用的 SharedPreferences 初始資料。
-  ///
-  /// 回傳固定主題、語系與 App 圖示偏好的初始值，避免畫面受先前本機資料影響。
-  /// 由 `test/screenshot/golden_test.dart` 透過 `SharedPreferences.setMockInitialValues`
-  /// 注入。
-  Map<String, Object> get sharedPreferencesSeed => {
-    AppSettingsKeys.themeMode: theme.themeMode.name,
-    AppSettingsKeys.locale: locale.name,
-    AppSettingsKeys.appIcon: AppIcon.defaultIcon.nativeKey,
-  };
 }

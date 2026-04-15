@@ -57,11 +57,9 @@ void syncScenariosFromJson() {
     ..writeln('  ///')
     ..writeln('  /// - [id]：場景識別碼。')
     ..writeln('  /// - [waitForId]：Maestro 等待的識別碼。')
-    ..writeln('  /// - [supportsGolden]：是否支援 Flutter golden 測試。')
     ..writeln('  const ScreenshotScenarioMetadata({')
     ..writeln('    required this.id,')
     ..writeln('    required this.waitForId,')
-    ..writeln('    required this.supportsGolden,')
     ..writeln('  });')
     ..writeln()
     ..writeln('  /// 場景識別碼。')
@@ -69,9 +67,6 @@ void syncScenariosFromJson() {
     ..writeln()
     ..writeln('  /// Maestro 等待的識別碼。')
     ..writeln('  final String waitForId;')
-    ..writeln()
-    ..writeln('  /// 是否支援 Flutter golden 測試。')
-    ..writeln('  final bool supportsGolden;')
     ..writeln('}')
     ..writeln()
     ..writeln('/// 所有 screenshot 場景的中繼資料清單。')
@@ -88,7 +83,6 @@ void syncScenariosFromJson() {
       ..writeln('  ScreenshotScenarioMetadata(')
       ..writeln("    id: '${s['id']}',")
       ..writeln('    waitForId: $waitForId,')
-      ..writeln('    supportsGolden: ${s['supportsGolden']},')
       ..writeln('  ),');
   }
   buf

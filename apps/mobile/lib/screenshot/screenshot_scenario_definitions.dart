@@ -14,21 +14,13 @@ class ScreenshotScenarioMetadata {
   ///
   /// - [id]：場景識別碼。
   /// - [waitForId]：Maestro 等待的識別碼。
-  /// - [supportsGolden]：是否支援 Flutter golden 測試。
-  const ScreenshotScenarioMetadata({
-    required this.id,
-    required this.waitForId,
-    required this.supportsGolden,
-  });
+  const ScreenshotScenarioMetadata({required this.id, required this.waitForId});
 
   /// 場景識別碼。
   final String id;
 
   /// Maestro 等待的識別碼。
   final String waitForId;
-
-  /// 是否支援 Flutter golden 測試。
-  final bool supportsGolden;
 }
 
 /// 所有 screenshot 場景的中繼資料清單。
@@ -36,57 +28,46 @@ const List<ScreenshotScenarioMetadata> screenshotScenarioMetadatas = [
   ScreenshotScenarioMetadata(
     id: 'blog_input_empty',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: true,
   ),
   ScreenshotScenarioMetadata(
     id: 'blog_input_with_url',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: true,
   ),
   ScreenshotScenarioMetadata(
     id: 'blog_input_loading',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: true,
   ),
   ScreenshotScenarioMetadata(
     id: 'photo_gallery_grid',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: false,
   ),
   ScreenshotScenarioMetadata(
     id: 'photo_gallery_select',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: false,
   ),
   ScreenshotScenarioMetadata(
     id: 'photo_detail_native',
     waitForId: photoViewerPagerIdentifier,
-    supportsGolden: false,
   ),
   ScreenshotScenarioMetadata(
     id: 'settings_default',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: true,
   ),
   ScreenshotScenarioMetadata(
     id: 'download_in_progress',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: true,
   ),
   ScreenshotScenarioMetadata(
     id: 'download_completed',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: true,
   ),
   ScreenshotScenarioMetadata(
     id: 'whats_new_onboarding',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: true,
   ),
   ScreenshotScenarioMetadata(
     id: 'whats_new_update',
     waitForId: screenshotReadyIdentifier,
-    supportsGolden: true,
   ),
 ];
 
