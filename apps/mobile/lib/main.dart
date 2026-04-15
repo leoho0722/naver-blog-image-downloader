@@ -36,6 +36,9 @@ Future<void> main() async {
     if (screenshotConfig != null) {
       final prefs = await SharedPreferences.getInstance();
 
+      // Screenshot mode 刻意略過 Amplify / Firebase 初始化：
+      // 截圖不需要真實網路請求或 Crashlytics 上報，跳過可避免截圖畫面受
+      // 背景副作用污染（如匿名登入的 state 變化、Crashlytics 擷取錯誤等）。
       runApp(
         _buildRootProviderScope(
           prefs: prefs,

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 's001-project-dependencies'. Update Purpose after archive.
+定義 mobile app 的 runtime 與 dev 相依清單與版本約束，集中於 `pubspec.yaml` 管理。此 capability 作為所有功能 spec 的共同基礎：新功能引入新套件時須在此登記，避免依賴散落各處而導致版本衝突或無法追蹤。
 
 ## Requirements
 

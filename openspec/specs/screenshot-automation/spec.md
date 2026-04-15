@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'mobile-screenshot-automation'. Update Purpose after archive.
+定義 mobile app 的 screenshot 自動化框架：包含 debug-only screenshot mode、單一來源的 scenario manifest、Maestro 批次截圖矩陣，以及 Flutter golden 回歸測試骨架。此 capability 讓商店素材可以跨語系 / 主題穩定產出，並讓 UI 變更能在本機快速回歸驗證，避免每次人工切換畫面狀態。
 
 ## Requirements
 

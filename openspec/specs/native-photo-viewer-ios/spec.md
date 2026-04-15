@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'native-photo-viewer'. Update Purpose after archive.
+定義 iOS 端原生 PhotoViewer 的實作（SwiftUI），透過 MethodChannel 與 Flutter 橋接。涵蓋 viewer 啟動 / 滑動 / 儲存流程、主題 / 多語系傳遞，以及自動化所需的 accessibility identifier；讓照片檢視體驗貼近原生並可被 Maestro 穩定擷取截圖。
 
 ## Requirements
 

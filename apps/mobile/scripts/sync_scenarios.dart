@@ -27,6 +27,19 @@ void syncScenariosFromJson() {
       jsonDecode(jsonFile.readAsStringSync()) as Map<String, dynamic>;
   final scenarios = (config['scenarios'] as List).cast<Map<String, dynamic>>();
 
+  // waitForId 目前只有這兩個預定義常數；若 JSON 寫其他值會 fallback 成字串字面值，
+  // 但那通常是錯字，此處預警並讓 CI / 本機可及早發現。
+  const allowedWaitForIds = {'screenshot_ready', 'photo_viewer_pager'};
+  for (final s in scenarios) {
+    final waitForId = s['waitForId'] as String?;
+    if (waitForId != null && !allowedWaitForIds.contains(waitForId)) {
+      stderr.writeln(
+        '⚠️  場景 ${s['id']} 使用非預定義 waitForId「$waitForId」，'
+        '若這是新的識別碼請同步在 screenshot_scenario_definitions.dart 新增對應常數。',
+      );
+    }
+  }
+
   final buf = StringBuffer()
     ..writeln('// 此檔案由 scripts/sync_scenarios.dart 自動產生，請勿手動修改。')
     ..writeln('// 修改場景請編輯 scripts/screenshot_matrix.json 後執行：')

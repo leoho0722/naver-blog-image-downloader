@@ -48,7 +48,7 @@ void main() {
           PackageInfo.setMockInitialValues(
             appName: 'Naver Blog Image Downloader',
             packageName: 'com.leoho.naverBlogImageDownloader',
-            version: '1.6.0',
+            version: '1.5.1',
             buildNumber: '1',
             buildSignature: '',
           );

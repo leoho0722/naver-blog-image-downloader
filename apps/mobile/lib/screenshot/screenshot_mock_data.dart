@@ -1,3 +1,6 @@
+// ⚠️ 本檔案內容**僅供 screenshot / golden 測試使用**，不可被正式功能程式碼引用。
+// 網址、URL、時間戳等皆為假資料，在真實下載 / 快取 / API 流程中會導致錯誤。
+// 如需新增截圖所需 mock，延伸此檔即可；若要擴充正式邏輯請另起 repository / service。
 import '../data/models/blog_cache_metadata.dart';
 import '../data/models/fetch_result.dart';
 import '../data/models/photo_entity.dart';
