@@ -61,24 +61,51 @@ jobs:
             '{model: $model, messages: [{role: "user", content: ($instructions + "\n" + $diff)}], stream: false}' \
             > /tmp/ollama_request.json
 
-          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "https://ollama.com/api/chat" \
+          RESPONSE=""
+          if RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "https://ollama.com/api/chat" \
             -H "Authorization: Bearer $OLLAMA_API_KEY" \
             -H "Content-Type: application/json" \
-            --data-binary @/tmp/ollama_request.json)
+            --data-binary @/tmp/ollama_request.json); then
+            CURL_EXIT_CODE=0
+          else
+            CURL_EXIT_CODE=$?
+          fi
 
-          HTTP_STATUS=$(echo "$RESPONSE" | tail -1 | sed 's/HTTP_STATUS://')
-          RESPONSE_BODY=$(echo "$RESPONSE" | sed '$d')
+          HTTP_STATUS=$(printf '%s\n' "$RESPONSE" | tail -1 | sed 's/HTTP_STATUS://')
+          RESPONSE_BODY=$(printf '%s\n' "$RESPONSE" | sed '$d')
+          echo "Ollama curl exit code: $CURL_EXIT_CODE"
           echo "Ollama HTTP Status: $HTTP_STATUS"
 
-          REVIEW=$(echo "$RESPONSE_BODY" | jq -r '.message.content // empty')
-
           review_failed=false
-          # HTTP 非 2xx 或回應缺 review content 都視為失敗，避免 workflow 誤報綠燈。
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+          response_parse_failed=false
+          REVIEW=""
+          if ! REVIEW=$(printf '%s' "$RESPONSE_BODY" | jq -r '.message.content // empty' 2>/dev/null); then
+            response_parse_failed=true
             review_failed=true
           fi
+
+          # curl transport failure 與 HTTP 非 2xx 都視為失敗，避免 workflow 誤報綠燈。
+          if [ "$CURL_EXIT_CODE" -ne 0 ]; then
+            review_failed=true
+          fi
+          # HTTP 非 2xx 或回應缺 review content 都視為失敗，避免 workflow 誤報綠燈。
+          # 先檢查 HTTP_STATUS 是否為純數字，防止 curl 完全失敗時 shell 噴出數值比較警告。
+          if ! [[ "$HTTP_STATUS" =~ ^[0-9]+$ ]]; then
+            review_failed=true
+          elif [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            review_failed=true
+          fi
+          if [ "$response_parse_failed" = true ]; then
+            echo "API Response is not valid JSON."
+          fi
           if [ -z "$REVIEW" ] || [ "$REVIEW" = "null" ]; then
-            REVIEW="❌ Ollama review 失敗（HTTP $HTTP_STATUS），請檢查 OLLAMA_API_KEY 與 model 名稱 $OLLAMA_MODEL 是否正確。"
+            if [ "$CURL_EXIT_CODE" -ne 0 ]; then
+              REVIEW="❌ Ollama review 失敗（curl exit $CURL_EXIT_CODE，HTTP $HTTP_STATUS），請檢查網路連線、OLLAMA_API_KEY 與 model 名稱 $OLLAMA_MODEL 是否正確。"
+            elif [ "$response_parse_failed" = true ]; then
+              REVIEW="❌ Ollama review 失敗（HTTP $HTTP_STATUS，回應不是合法 JSON），請檢查 Ollama API 回傳內容與 model 名稱 $OLLAMA_MODEL 是否正確。"
+            else
+              REVIEW="❌ Ollama review 失敗（HTTP $HTTP_STATUS），請檢查 OLLAMA_API_KEY 與 model 名稱 $OLLAMA_MODEL 是否正確。"
+            fi
             echo "API Response: $RESPONSE_BODY"
             review_failed=true
           fi
@@ -87,6 +114,6 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/ollama_review.md
 
           if [ "$review_failed" = true ]; then
-            echo "::error::Ollama review 呼叫失敗（HTTP $HTTP_STATUS，model $OLLAMA_MODEL），workflow 判定為 failed"
+            echo "::error::Ollama review 呼叫失敗（curl exit $CURL_EXIT_CODE，HTTP $HTTP_STATUS，model $OLLAMA_MODEL），workflow 判定為 failed"
             exit 1
           fi
