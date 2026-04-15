@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.leoho.naverBlogImageDownloader.android.features.photoviewer.viewmodel.PhotoViewerViewModel
 
@@ -40,7 +41,10 @@ fun CapsuleBottomBar(viewModel: PhotoViewerViewModel) {
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        IconButton(onClick = { viewModel.showFileInfo = true }) {
+        IconButton(
+            onClick = { viewModel.showFileInfo = true },
+            modifier = Modifier.testTag("photo_viewer_info_button"),
+        ) {
             Icon(
                 Icons.Outlined.Info,
                 contentDescription = "Info",
@@ -57,6 +61,7 @@ fun CapsuleBottomBar(viewModel: PhotoViewerViewModel) {
         IconButton(
             onClick = { viewModel.save() },
             enabled = viewModel.viewState == PhotoViewerViewModel.ViewState.Idle,
+            modifier = Modifier.testTag("photo_viewer_save_button"),
         ) {
             when (viewModel.viewState) {
                 PhotoViewerViewModel.ViewState.Idle -> Icon(

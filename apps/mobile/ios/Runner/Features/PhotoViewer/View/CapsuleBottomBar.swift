@@ -22,6 +22,7 @@ struct CapsuleBottomBar: View {
             .font(.title3)
             .foregroundStyle(.white)
             .frame(width: 56, height: 44)
+            .accessibilityIdentifier("photo_viewer_info_button")
 
             Divider()
                 .frame(height: 24)
@@ -48,6 +49,7 @@ struct CapsuleBottomBar: View {
                 .frame(width: 56, height: 44)
             }
             .disabled(viewModel.viewState != .idle)
+            .accessibilityIdentifier("photo_viewer_save_button")
         }
         .background(
             Capsule()

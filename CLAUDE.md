@@ -44,6 +44,12 @@ Changes can be parked（暫存）— temporarily moved out of `openspec/changes/
 
 新增功能、重大變更或修正 bug 前，須 bump 該元件的 version 檔案，遵循 semver：
 
+- **Minor**（`1.5.0 → 1.6.0`）：對使用者可見的新功能或行為變更。
+- **Patch**（`1.5.0 → 1.5.1`）：Bug 修正、開發者工具、自動化腳本、CI/CD 等不影響正式使用者的改動。
+- **Major**：API 破壞性變更。
+
+例如 screenshot 自動化、Spectra 工具腳本、lint/format 規則調整皆屬 patch；新畫面、新 API、行為調整則屬 minor。
+
 | 元件    | version 檔案                  | Tag 格式             | 未 bump 時的 CD 行為 |
 |---------|-------------------------------|----------------------|----------------------|
 | mobile  | `apps/mobile/pubspec.yaml`    | `mobile-v<version>`  | Skip（notice）         |
@@ -66,6 +72,11 @@ refactor(settings-view): 設定頁面 Cupertino → Material 3 重構
 - 移除所有 Cupertino 元件
 - 統一採用 Material 3 Card.filled + ListTile 呈現
 ```
+
+### Screenshot / test-only 程式碼界線
+
+- `apps/mobile/lib/screenshot/screenshot_mock_data.dart` 內的假資料（URL、時間戳、Blog ID）**僅供 screenshot mode 使用**，正式功能程式碼（`lib/data/`、`lib/ui/` 等）**禁止 import**。
+- screenshot mode 只在 `kDebugMode` 才啟用，且以 launch arguments 為權威開關；release build 完全看不到這些 mock。
 
 ### 鐵的紀律：Spectra SDD 工作流
 

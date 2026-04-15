@@ -1,0 +1,705 @@
+---
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_empty
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/light/blog_input_empty
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_with_url
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/light/blog_input_with_url
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_loading
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/light/blog_input_loading
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_grid
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/light/photo_gallery_grid
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_select
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/light/photo_gallery_select
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_detail_native
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: photo_viewer_pager
+      OUTPUT_PATH: zhTW/light/photo_detail_native
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: settings_default
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/light/settings_default
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_in_progress
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/light/download_in_progress
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_completed
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/light/download_completed
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_onboarding
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/light/whats_new_onboarding
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_update
+      LOCALE: zhTW
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/light/whats_new_update
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_empty
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/dark/blog_input_empty
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_with_url
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/dark/blog_input_with_url
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_loading
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/dark/blog_input_loading
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_grid
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/dark/photo_gallery_grid
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_select
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/dark/photo_gallery_select
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_detail_native
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: photo_viewer_pager
+      OUTPUT_PATH: zhTW/dark/photo_detail_native
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: settings_default
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/dark/settings_default
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_in_progress
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/dark/download_in_progress
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_completed
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/dark/download_completed
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_onboarding
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/dark/whats_new_onboarding
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_update
+      LOCALE: zhTW
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: zhTW/dark/whats_new_update
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_empty
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/light/blog_input_empty
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_with_url
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/light/blog_input_with_url
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_loading
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/light/blog_input_loading
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_grid
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/light/photo_gallery_grid
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_select
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/light/photo_gallery_select
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_detail_native
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: photo_viewer_pager
+      OUTPUT_PATH: en/light/photo_detail_native
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: settings_default
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/light/settings_default
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_in_progress
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/light/download_in_progress
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_completed
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/light/download_completed
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_onboarding
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/light/whats_new_onboarding
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_update
+      LOCALE: en
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/light/whats_new_update
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_empty
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/dark/blog_input_empty
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_with_url
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/dark/blog_input_with_url
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_loading
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/dark/blog_input_loading
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_grid
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/dark/photo_gallery_grid
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_select
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/dark/photo_gallery_select
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_detail_native
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: photo_viewer_pager
+      OUTPUT_PATH: en/dark/photo_detail_native
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: settings_default
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/dark/settings_default
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_in_progress
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/dark/download_in_progress
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_completed
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/dark/download_completed
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_onboarding
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/dark/whats_new_onboarding
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_update
+      LOCALE: en
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: en/dark/whats_new_update
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_empty
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/light/blog_input_empty
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_with_url
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/light/blog_input_with_url
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_loading
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/light/blog_input_loading
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_grid
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/light/photo_gallery_grid
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_select
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/light/photo_gallery_select
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_detail_native
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: photo_viewer_pager
+      OUTPUT_PATH: ja/light/photo_detail_native
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: settings_default
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/light/settings_default
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_in_progress
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/light/download_in_progress
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_completed
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/light/download_completed
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_onboarding
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/light/whats_new_onboarding
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_update
+      LOCALE: ja
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/light/whats_new_update
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_empty
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/dark/blog_input_empty
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_with_url
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/dark/blog_input_with_url
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_loading
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/dark/blog_input_loading
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_grid
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/dark/photo_gallery_grid
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_select
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/dark/photo_gallery_select
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_detail_native
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: photo_viewer_pager
+      OUTPUT_PATH: ja/dark/photo_detail_native
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: settings_default
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/dark/settings_default
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_in_progress
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/dark/download_in_progress
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_completed
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/dark/download_completed
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_onboarding
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/dark/whats_new_onboarding
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_update
+      LOCALE: ja
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ja/dark/whats_new_update
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_empty
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/light/blog_input_empty
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_with_url
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/light/blog_input_with_url
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_loading
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/light/blog_input_loading
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_grid
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/light/photo_gallery_grid
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_select
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/light/photo_gallery_select
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_detail_native
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: photo_viewer_pager
+      OUTPUT_PATH: ko/light/photo_detail_native
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: settings_default
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/light/settings_default
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_in_progress
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/light/download_in_progress
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_completed
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/light/download_completed
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_onboarding
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/light/whats_new_onboarding
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_update
+      LOCALE: ko
+      THEME: light
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/light/whats_new_update
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_empty
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/dark/blog_input_empty
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_with_url
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/dark/blog_input_with_url
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: blog_input_loading
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/dark/blog_input_loading
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_grid
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/dark/photo_gallery_grid
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_gallery_select
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/dark/photo_gallery_select
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: photo_detail_native
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: photo_viewer_pager
+      OUTPUT_PATH: ko/dark/photo_detail_native
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: settings_default
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/dark/settings_default
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_in_progress
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/dark/download_in_progress
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: download_completed
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/dark/download_completed
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_onboarding
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/dark/whats_new_onboarding
+- runFlow:
+    file: take_screenshot.yaml
+    env:
+      SCENARIO: whats_new_update
+      LOCALE: ko
+      THEME: dark
+      WAIT_FOR: screenshot_ready
+      OUTPUT_PATH: ko/dark/whats_new_update

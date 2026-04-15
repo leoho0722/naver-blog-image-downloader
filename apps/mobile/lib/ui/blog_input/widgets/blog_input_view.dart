@@ -15,6 +15,7 @@ import '../../download/widgets/download_view.dart';
 import '../../settings/widgets/settings_view.dart';
 import '../../whats_new/view_model/whats_new_view_model.dart';
 import '../../whats_new/widgets/whats_new_view.dart';
+import '../../../screenshot/app_runtime_mode.dart';
 import '../view_model/blog_input_view_model.dart';
 
 /// Blog 網址輸入頁面，提供文字輸入欄位讓使用者貼上 Naver Blog 網址並取得照片列表。
@@ -51,7 +52,18 @@ class _BlogInputViewState extends ConsumerState<BlogInputView>
       vsync: this,
       platform: defaultTargetPlatform,
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkWhatsNew());
+    // 以初始 ViewModel state 同步 controller 內容，避免 build() 內直接賦值。
+    final initialBlogUrl = ref.read(blogInputViewModelProvider).blogUrl;
+    if (_controller.text != initialBlogUrl) {
+      _controller.value = TextEditingValue(
+        text: initialBlogUrl,
+        selection: TextSelection.collapsed(offset: initialBlogUrl.length),
+      );
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_isScreenshotMode) return;
+      _checkWhatsNew();
+    });
   }
 
   /// 檢查是否需要顯示「新功能介紹」或「首次安裝引導」Dialog。
@@ -88,10 +100,16 @@ class _BlogInputViewState extends ConsumerState<BlogInputView>
   /// [state] 為目前的 App 生命週期狀態。
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.resumed && !_isScreenshotMode) {
       _checkClipboardOnResume();
     }
   }
+
+  /// 是否處於 screenshot mode。
+  ///
+  /// 回傳 `true` 表示目前為截圖專用模式，需跳過互動型副作用。
+  bool get _isScreenshotMode =>
+      ref.read(appRuntimeModeProvider) == AppRuntimeMode.screenshot;
 
   /// 將 [FetchErrorType] 映射為本地化錯誤訊息。
   ///
@@ -341,7 +359,16 @@ class _BlogInputViewState extends ConsumerState<BlogInputView>
   Widget build(BuildContext context) {
     final state = ref.watch(blogInputViewModelProvider);
 
+    // 在 listen 內同步 controller 避免在 build 階段對 TextEditingController 賦值，
+    // 那會在特定時序下觸發 markNeedsBuild during build 錯誤。
     ref.listen(blogInputViewModelProvider, (prev, next) {
+      if (prev?.blogUrl != next.blogUrl && _controller.text != next.blogUrl) {
+        _controller.value = TextEditingValue(
+          text: next.blogUrl,
+          selection: TextSelection.collapsed(offset: next.blogUrl.length),
+        );
+      }
+
       final prevFetch = prev?.fetchResult;
       final nextFetch = next.fetchResult;
       if (nextFetch is AsyncError && prevFetch is! AsyncError) {

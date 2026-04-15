@@ -46,6 +46,15 @@ jobs:
       - name: Analyze
         run: flutter analyze
 
+      - name: Enforce screenshot mock boundary
+        run: |
+          # screenshot_mock_data.dart 的假資料僅供 screenshot mode 使用；
+          # 禁止正式功能程式碼 import，避免把假 URL / Blog ID 帶進真實流程。
+          if rg -n "^[[:space:]]*import[[:space:]]+['\"][^'\"]*screenshot_mock_data\.dart['\"][^;]*;" lib/data lib/ui -g '*.dart'; then
+            echo "::error::lib/data 與 lib/ui 禁止 import screenshot_mock_data.dart（僅供 screenshot mode 使用）"
+            exit 1
+          fi
+
       - name: Format
         id: format
         run: |
