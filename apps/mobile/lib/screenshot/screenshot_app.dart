@@ -28,7 +28,7 @@ class ScreenshotApp extends StatelessWidget {
     return ProviderScope(
       overrides: [
         appSettingsViewModelProvider.overrideWith(
-          () => FixedAppSettingsViewModel(
+          () => MockAppSettingsViewModel(
             AppSettingsState(
               themeMode: config.theme.themeMode,
               locale: config.locale,

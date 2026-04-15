@@ -44,7 +44,7 @@ Widget buildBlogInputEmptyScenario() {
   return ProviderScope(
     overrides: [
       blogInputViewModelProvider.overrideWith(
-        () => FixedBlogInputViewModel(const BlogInputState()),
+        () => MockBlogInputViewModel(const BlogInputState()),
       ),
     ],
     child: const ScreenshotScaffold(child: BlogInputView()),
@@ -56,7 +56,7 @@ Widget buildBlogInputWithUrlScenario() {
   return ProviderScope(
     overrides: [
       blogInputViewModelProvider.overrideWith(
-        () => FixedBlogInputViewModel(
+        () => MockBlogInputViewModel(
           const BlogInputState(blogUrl: screenshotBlogUrl),
         ),
       ),
@@ -70,7 +70,7 @@ Widget buildBlogInputLoadingScenario() {
   return ProviderScope(
     overrides: [
       blogInputViewModelProvider.overrideWith(
-        () => FixedBlogInputViewModel(
+        () => MockBlogInputViewModel(
           const BlogInputState(
             blogUrl: screenshotBlogUrl,
             fetchResult: AsyncLoading(),
@@ -98,7 +98,7 @@ Widget buildSettingsDefaultScenario() {
   return ProviderScope(
     overrides: [
       settingsViewModelProvider.overrideWith(
-        () => FixedSettingsViewModel(
+        () => MockSettingsViewModel(
           SettingsData(
             cacheSizeBytes: 52 * 1024 * 1024,
             cachedBlogs: screenshotCachedBlogs,
@@ -189,11 +189,11 @@ Widget buildWhatsNewUpdateScenario() {
 }
 
 /// 固定回傳指定狀態的 BlogInputViewModel。
-class FixedBlogInputViewModel extends BlogInputViewModel {
-  /// 建立 [FixedBlogInputViewModel]。
+class MockBlogInputViewModel extends BlogInputViewModel {
+  /// 建立 [MockBlogInputViewModel]。
   ///
   /// - [fixedState]：要固定回傳的狀態。
-  FixedBlogInputViewModel(this.fixedState);
+  MockBlogInputViewModel(this.fixedState);
 
   /// 要固定回傳的狀態。
   final BlogInputState fixedState;
@@ -204,11 +204,11 @@ class FixedBlogInputViewModel extends BlogInputViewModel {
 }
 
 /// 固定回傳指定狀態的 PhotoGalleryViewModel。
-class FixedPhotoGalleryViewModel extends PhotoGalleryViewModel {
-  /// 建立 [FixedPhotoGalleryViewModel]。
+class MockPhotoGalleryViewModel extends PhotoGalleryViewModel {
+  /// 建立 [MockPhotoGalleryViewModel]。
   ///
   /// - [fixedState]：要固定回傳的狀態。
-  FixedPhotoGalleryViewModel(this.fixedState);
+  MockPhotoGalleryViewModel(this.fixedState);
 
   /// 要固定回傳的狀態。
   final PhotoGalleryState fixedState;
@@ -219,11 +219,11 @@ class FixedPhotoGalleryViewModel extends PhotoGalleryViewModel {
 }
 
 /// 固定回傳指定狀態的 SettingsViewModel。
-class FixedSettingsViewModel extends SettingsViewModel {
-  /// 建立 [FixedSettingsViewModel]。
+class MockSettingsViewModel extends SettingsViewModel {
+  /// 建立 [MockSettingsViewModel]。
   ///
   /// - [fixedData]：要固定回傳的資料。
-  FixedSettingsViewModel(this.fixedData);
+  MockSettingsViewModel(this.fixedData);
 
   /// 要固定回傳的資料。
   final SettingsData fixedData;
@@ -234,11 +234,11 @@ class FixedSettingsViewModel extends SettingsViewModel {
 }
 
 /// 固定回傳指定狀態的 AppSettingsViewModel。
-class FixedAppSettingsViewModel extends AppSettingsViewModel {
-  /// 建立 [FixedAppSettingsViewModel]。
+class MockAppSettingsViewModel extends AppSettingsViewModel {
+  /// 建立 [MockAppSettingsViewModel]。
   ///
   /// - [fixedState]：要固定回傳的狀態。
-  FixedAppSettingsViewModel(this.fixedState);
+  MockAppSettingsViewModel(this.fixedState);
 
   /// 要固定回傳的狀態。
   final AppSettingsState fixedState;
@@ -344,7 +344,7 @@ class _PhotoGalleryScenarioState extends State<_PhotoGalleryScenario> {
         return ProviderScope(
           overrides: [
             photoGalleryViewModelProvider.overrideWith(
-              () => FixedPhotoGalleryViewModel(state),
+              () => MockPhotoGalleryViewModel(state),
             ),
           ],
           child: const ScreenshotScaffold(

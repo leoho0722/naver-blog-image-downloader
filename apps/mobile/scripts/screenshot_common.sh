@@ -27,6 +27,7 @@ filter_array() {
       local id="${value%%:*}"
       if [ "$value" = "$needle" ] || [ "$id" = "$needle" ]; then
         printf '%s\n' "$value"
+        # 命中後 break 內層，避免同一 value 被重複印（如 filter 中同一 id 寫兩次）。
         break
       fi
     done

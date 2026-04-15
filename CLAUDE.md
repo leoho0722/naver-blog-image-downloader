@@ -73,6 +73,11 @@ refactor(settings-view): 設定頁面 Cupertino → Material 3 重構
 - 統一採用 Material 3 Card.filled + ListTile 呈現
 ```
 
+### Screenshot / test-only 程式碼界線
+
+- `apps/mobile/lib/screenshot/screenshot_mock_data.dart` 內的假資料（URL、時間戳、Blog ID）**僅供 screenshot mode 與 golden 測試使用**，正式功能程式碼（`lib/data/`、`lib/ui/` 等）**禁止 import**。
+- screenshot mode 只在 `kDebugMode` 才啟用，且以 launch arguments 為權威開關；release build 完全看不到這些 mock。
+
 ### 鐵的紀律：Spectra SDD 工作流
 
 所有功能變更皆須走 `propose → apply ⇄ ingest → archive` 流程。建立 change 時，若 `openspec/specs/` 已有相關 spec，須在 proposal 的 Modified Capabilities 中自動關聯，確保 archive 時 delta spec 能同步回主 spec。詳細工具用法請參考頂部 Spectra 區塊。

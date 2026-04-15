@@ -62,6 +62,12 @@ if ! "$ADB" -s "$DEVICE" shell getprop sys.boot_completed 2>/dev/null | grep -q 
   exit 1
 fi
 
+# 確認 APK 已安裝；若未安裝，am start 會回傳成功但 app 實際沒啟動（silent fail）
+if ! "$ADB" -s "$DEVICE" shell pm list packages 2>/dev/null | grep -q "^package:${PACKAGE}$"; then
+  echo "❌ 裝置 $DEVICE 未安裝 $PACKAGE，請先 flutter build apk --debug && adb install" | tee -a "$LOG_FILE"
+  exit 1
+fi
+
 # 從 JSON 讀取 locales / themes / scenarios（含 Android 等待秒數）
 LOCALES=()
 while IFS= read -r line; do LOCALES+=("$line"); done < <(jq -r '.locales[]' "$JSON")
