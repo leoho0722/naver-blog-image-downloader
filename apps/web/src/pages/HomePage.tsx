@@ -32,25 +32,25 @@ export default function HomePage() {
   return (
     <>
       {!hasSeenOnboarding && <OnboardingCard />}
-    <div className="flex min-h-[70vh] flex-col items-center justify-center">
-      <div className="w-full max-w-xl">
-        <h2
-          className="animate-fade-in-up mb-3 text-center text-3xl tracking-tight sm:text-4xl"
-          style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
-        >
-          {t("blogInputTitle")}
-        </h2>
-        <p className="animate-fade-in-up stagger-1 mb-10 text-center text-[15px] leading-relaxed text-[var(--color-on-surface-variant)]">
-          {t("blogInputSubtitle")}
-        </p>
-        <div className="animate-fade-in-up stagger-2">
-          <BlogInputForm />
-        </div>
-        <div className="animate-fade-in-up stagger-3">
-          <FetchProgress phase={fetchPhase} />
+      <div className="flex min-h-[70vh] flex-col items-center justify-center">
+        <div className="w-full max-w-xl">
+          <h2
+            className="animate-fade-in-up mb-3 text-center text-3xl tracking-tight sm:text-4xl"
+            style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
+          >
+            {t("blogInputTitle")}
+          </h2>
+          <p className="animate-fade-in-up stagger-1 mb-10 text-center text-[15px] leading-relaxed text-[var(--color-on-surface-variant)]">
+            {t("blogInputSubtitle")}
+          </p>
+          <div className="animate-fade-in-up stagger-2">
+            <BlogInputForm />
+          </div>
+          <div className="animate-fade-in-up stagger-3">
+            <FetchProgress phase={fetchPhase} />
+          </div>
         </div>
       </div>
-    </div>
     </>
   );
 }

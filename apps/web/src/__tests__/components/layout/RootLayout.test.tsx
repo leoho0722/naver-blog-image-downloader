@@ -7,13 +7,9 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("react-router-dom", () => ({
   Outlet: () => <div data-testid="outlet" />,
-  Link: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    to: string;
-  }) => <a {...props}>{children}</a>,
+  Link: ({ children, ...props }: { children: React.ReactNode; to: string }) => (
+    <a {...props}>{children}</a>
+  ),
 }));
 
 vi.mock("../../../lib/stores/use-settings-store", () => ({
@@ -30,9 +26,8 @@ vi.mock("../../../lib/stores/use-settings-store", () => ({
 
 describe("RootLayout", () => {
   it("displays version string in v<semver> format", async () => {
-    const { default: RootLayout } = await import(
-      "../../../components/layout/RootLayout"
-    );
+    const { default: RootLayout } =
+      await import("../../../components/layout/RootLayout");
     render(<RootLayout />);
 
     const versionText = screen.getByText(/^v\d+\.\d+\.\d+$/);
