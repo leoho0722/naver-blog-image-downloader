@@ -1,4 +1,4 @@
-import { act, render } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import HomePage from "../../pages/HomePage";
@@ -27,6 +27,18 @@ vi.mock("../../components/blog-input/FetchProgress", () => ({
   default: () => <div data-testid="fetch-progress" />,
 }));
 
+vi.mock("../../components/onboarding/OnboardingCard", () => ({
+  default: () => <div data-testid="onboarding-card" />,
+}));
+
+let mockHasSeenOnboarding = true;
+vi.mock("../../lib/stores/use-settings-store", () => ({
+  useSettingsStore: (selector?: (s: Record<string, unknown>) => unknown) => {
+    const state = { hasSeenOnboarding: mockHasSeenOnboarding };
+    return selector ? selector(state) : state;
+  },
+}));
+
 const FETCH_RESULT: FetchResult = {
   photos: [{ id: "0", url: "https://img/0.jpg", filename: "0.jpg" }],
   blogId: "abc123",
@@ -38,6 +50,7 @@ const FETCH_RESULT: FetchResult = {
 describe("HomePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockHasSeenOnboarding = true;
     useBlogInputStore.setState({
       blogUrl: "",
       fetchPhase: "idle",
@@ -93,5 +106,19 @@ describe("HomePage", () => {
     });
 
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("首次造訪時顯示 onboarding card", () => {
+    mockHasSeenOnboarding = false;
+    render(<HomePage />);
+
+    expect(screen.getByTestId("onboarding-card")).toBeInTheDocument();
+  });
+
+  it("已看過教學時不顯示 onboarding card", () => {
+    mockHasSeenOnboarding = true;
+    render(<HomePage />);
+
+    expect(screen.queryByTestId("onboarding-card")).not.toBeInTheDocument();
   });
 });

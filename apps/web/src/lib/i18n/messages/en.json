@@ -49,5 +49,9 @@
   "viewerNext": "Next",
   "viewerCounter": "{{current}} / {{total}}",
 
-  "notFound": "404 — Page not found"
+  "notFound": "404 — Page not found",
+
+  "onboardingTitle": "Welcome",
+  "onboardingDesc": "1. Paste or enter a Naver Blog post URL\n2. Click \"Fetch Photos\" to extract all images\n3. Browse, select and download photos in the gallery",
+  "onboardingStart": "Get Started"
 }

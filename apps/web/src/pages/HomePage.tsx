@@ -4,12 +4,15 @@ import { useNavigate } from "react-router-dom";
 
 import BlogInputForm from "../components/blog-input/BlogInputForm";
 import FetchProgress from "../components/blog-input/FetchProgress";
+import OnboardingCard from "../components/onboarding/OnboardingCard";
 import { useClipboard } from "../lib/hooks/use-clipboard";
 import { useBlogInputStore } from "../lib/stores/use-blog-input-store";
+import { useSettingsStore } from "../lib/stores/use-settings-store";
 
 export default function HomePage() {
   const { t } = useTranslation();
   const { fetchPhase, fetchResult, jobId, setUrl, reset } = useBlogInputStore();
+  const hasSeenOnboarding = useSettingsStore((s) => s.hasSeenOnboarding);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,6 +30,8 @@ export default function HomePage() {
   });
 
   return (
+    <>
+      {!hasSeenOnboarding && <OnboardingCard />}
     <div className="flex min-h-[70vh] flex-col items-center justify-center">
       <div className="w-full max-w-xl">
         <h2
@@ -46,5 +51,6 @@ export default function HomePage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -46,6 +46,9 @@ export default function RootLayout() {
           }}
         >
           {t("appTitle")}
+          <span className="ml-1.5 text-xs text-[var(--color-on-surface-variant)]">
+            v{__APP_VERSION__}
+          </span>
         </Link>
 
         <div className="flex gap-0.5 rounded-full bg-[var(--color-surface-container)] p-0.5">

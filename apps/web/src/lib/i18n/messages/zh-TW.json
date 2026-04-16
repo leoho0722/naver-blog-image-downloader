@@ -49,5 +49,9 @@
   "viewerNext": "下一張",
   "viewerCounter": "{{current}} / {{total}}",
 
-  "notFound": "404 — 頁面不存在"
+  "notFound": "404 — 頁面不存在",
+
+  "onboardingTitle": "歡迎使用",
+  "onboardingDesc": "1. 貼上或輸入 Naver Blog 文章網址\n2. 點擊「擷取圖片」，系統會自動抓取所有照片\n3. 在相簿頁瀏覽、選取並下載照片",
+  "onboardingStart": "開始使用"
 }

@@ -287,3 +287,51 @@ tests:
   - apps/web/src/__tests__/lib/api/client.test.ts
   - apps/web/src/__tests__/setup.ts
 -->
+
+---
+### Requirement: Onboarding seen flag persistence
+
+The settings store SHALL include a `hasSeenOnboarding` boolean state initialized from `localStorage.getItem("hasSeenOnboarding")`. If the key does not exist in `localStorage`, the value SHALL default to `false`. The store SHALL provide a `dismissOnboarding()` action that sets `hasSeenOnboarding` to `true` and writes `"true"` to `localStorage` under the key `hasSeenOnboarding`.
+
+#### Scenario: Load onboarding flag from localStorage
+
+- **WHEN** the settings store initializes and `localStorage` contains `hasSeenOnboarding` set to `"true"`
+- **THEN** `hasSeenOnboarding` in the store is `true`
+
+#### Scenario: Load onboarding flag when not set
+
+- **WHEN** the settings store initializes and `localStorage` does not contain `hasSeenOnboarding`
+- **THEN** `hasSeenOnboarding` in the store is `false`
+
+#### Scenario: Dismiss onboarding persists to localStorage
+
+- **WHEN** `dismissOnboarding()` is called
+- **THEN** `hasSeenOnboarding` becomes `true` in the store and `localStorage.getItem("hasSeenOnboarding")` returns `"true"`
+
+<!-- @trace
+source: web-onboarding-version-display
+updated: 2026-04-16
+code:
+  - apps/web/src/lib/stores/use-settings-store.ts
+-->
+
+<!-- @trace
+source: web-onboarding-version-display
+updated: 2026-04-16
+code:
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/vite-env.d.ts
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/pages/HomePage.tsx
+  - apps/web/vite.config.ts
+  - apps/web/src/components/layout/RootLayout.tsx
+  - apps/web/package.json
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/components/onboarding/OnboardingCard.tsx
+tests:
+  - apps/web/src/__tests__/components/onboarding/OnboardingCard.test.tsx
+  - apps/web/src/__tests__/components/layout/RootLayout.test.tsx
+  - apps/web/src/__tests__/pages/HomePage.test.tsx
+-->

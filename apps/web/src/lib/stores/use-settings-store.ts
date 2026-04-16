@@ -7,9 +7,11 @@ export type AppLocale = "zh-TW" | "en" | "ja" | "ko";
 interface SettingsState {
   theme: ThemeMode;
   locale: AppLocale;
+  hasSeenOnboarding: boolean;
 
   updateTheme: (theme: ThemeMode) => void;
   updateLocale: (locale: AppLocale) => void;
+  dismissOnboarding: () => void;
 }
 
 function loadTheme(): ThemeMode {
@@ -51,6 +53,7 @@ applyTheme(initialTheme);
 export const useSettingsStore = create<SettingsState>((set) => ({
   theme: initialTheme,
   locale: loadLocale(),
+  hasSeenOnboarding: localStorage.getItem("hasSeenOnboarding") === "true",
 
   updateTheme: (theme) => {
     localStorage.setItem("theme", theme);
@@ -62,6 +65,11 @@ export const useSettingsStore = create<SettingsState>((set) => ({
     localStorage.setItem("locale", locale);
     i18n.changeLanguage(locale);
     set({ locale });
+  },
+
+  dismissOnboarding: () => {
+    localStorage.setItem("hasSeenOnboarding", "true");
+    set({ hasSeenOnboarding: true });
   },
 }));
 
