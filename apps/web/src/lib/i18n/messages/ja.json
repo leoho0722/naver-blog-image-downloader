@@ -49,5 +49,9 @@
   "viewerNext": "次へ",
   "viewerCounter": "{{current}} / {{total}}",
 
-  "notFound": "404 — ページが見つかりません"
+  "notFound": "404 — ページが見つかりません",
+
+  "onboardingTitle": "ようこそ",
+  "onboardingDesc": "1. Naver Blogの記事URLを貼り付けまたは入力\n2.「写真を取得」をクリックして、すべての画像を抽出\n3. ギャラリーで写真を閲覧・選択・ダウンロード",
+  "onboardingStart": "はじめる"
 }
