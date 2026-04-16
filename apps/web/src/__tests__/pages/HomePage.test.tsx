@@ -1,6 +1,7 @@
 import { act, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import HomePage from "../../pages/HomePage";
 import type { FetchResult } from "../../lib/api/types";
 import { useBlogInputStore } from "../../lib/stores/use-blog-input-store";
 
@@ -46,8 +47,7 @@ describe("HomePage", () => {
     });
   });
 
-  it("fetchPhase 為 completed 且 fetchResult 存在時，導航到 gallery 並傳入正確 state", async () => {
-    const { default: HomePage } = await import("../../pages/HomePage");
+  it("fetchPhase 為 completed 且 fetchResult 存在時，導航到 gallery 並傳入正確 state", () => {
     render(<HomePage />);
 
     // 模擬 fetch 完成，用 act 確保 React effect 執行
@@ -65,8 +65,7 @@ describe("HomePage", () => {
     });
   });
 
-  it("navigate 後 store 被 reset", async () => {
-    const { default: HomePage } = await import("../../pages/HomePage");
+  it("navigate 後 store 被 reset", () => {
     render(<HomePage />);
 
     act(() => {
@@ -86,8 +85,7 @@ describe("HomePage", () => {
     expect(state.jobId).toBeNull();
   });
 
-  it("fetchPhase 非 completed 時不導航", async () => {
-    const { default: HomePage } = await import("../../pages/HomePage");
+  it("fetchPhase 非 completed 時不導航", () => {
     render(<HomePage />);
 
     act(() => {
