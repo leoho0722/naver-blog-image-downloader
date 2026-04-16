@@ -22,14 +22,10 @@ export default function OnboardingCard() {
   return (
     <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div
-        className="mx-4 w-full max-w-sm rounded-2xl p-8"
-        style={{
-          backgroundColor: "var(--color-surface-container-high)",
-          boxShadow: "var(--shadow-elevated)",
-        }}
+        className="mx-4 w-full max-w-sm rounded-2xl bg-[var(--color-surface-container-high)] p-8 shadow-[var(--shadow-elevated)]"
         role="dialog"
         aria-modal="true"
-        aria-label={t("onboardingTitle")}
+        aria-labelledby="onboarding-title"
       >
         <div className="flex flex-col items-center gap-5">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)]/10">
@@ -48,6 +44,7 @@ export default function OnboardingCard() {
             </svg>
           </div>
           <h3
+            id="onboarding-title"
             className="text-lg font-semibold text-[var(--color-on-surface)]"
             style={{ fontFamily: "var(--font-display)" }}
           >
@@ -58,11 +55,9 @@ export default function OnboardingCard() {
           </p>
           <button
             type="button"
+            autoFocus
             onClick={handleDismiss}
-            className="mt-1 w-full rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-semibold text-[var(--color-on-primary)] transition-all duration-200 hover:brightness-110 active:scale-95"
-            style={{
-              boxShadow: "0 2px 8px rgba(21, 101, 192, 0.3)",
-            }}
+            className="mt-1 w-full rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-semibold text-[var(--color-on-primary)] shadow-[0_2px_8px_rgba(21,101,192,0.3)] transition-all duration-200 hover:brightness-110 active:scale-95"
           >
             {t("onboardingStart")}
           </button>
