@@ -11,9 +11,7 @@ const PHOTOS: PhotoEntity[] = [
 
 describe("ImageViewer", () => {
   it("renders image with referrerPolicy no-referrer", () => {
-    render(
-      <ImageViewer photos={PHOTOS} initialIndex={0} onClose={vi.fn()} />,
-    );
+    render(<ImageViewer photos={PHOTOS} initialIndex={0} onClose={vi.fn()} />);
 
     const img = screen.getByAltText("0.jpg");
     expect(img).toHaveAttribute("referrerPolicy", "no-referrer");
