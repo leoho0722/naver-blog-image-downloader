@@ -57,4 +57,18 @@ describe("PhotoCard", () => {
 
     expect(screen.getByAltText("1.jpg")).toBeInTheDocument();
   });
+
+  it("renders image with referrerPolicy no-referrer", () => {
+    render(
+      <PhotoCard
+        photo={PHOTO}
+        isSelected={false}
+        onToggleSelection={vi.fn()}
+        onView={vi.fn()}
+      />,
+    );
+
+    const img = screen.getByAltText("1.jpg");
+    expect(img).toHaveAttribute("referrerPolicy", "no-referrer");
+  });
 });

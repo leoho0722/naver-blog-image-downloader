@@ -186,6 +186,7 @@ export default function ImageViewer({
         <img
           src={photo.url}
           alt={photo.filename}
+          referrerPolicy="no-referrer"
           className="h-full w-full object-contain transition-transform duration-100"
           style={{
             transform: `scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px)`,
