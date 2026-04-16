@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -11,19 +11,13 @@ export default function HomePage() {
   const { t } = useTranslation();
   const { fetchPhase, fetchResult, jobId, setUrl, reset } = useBlogInputStore();
   const navigate = useNavigate();
-  const hasResetRef = useRef(false);
 
   useEffect(() => {
-    if (!hasResetRef.current && fetchPhase === "completed") {
-      hasResetRef.current = true;
-      reset();
-      return;
-    }
-
     if (fetchPhase === "completed" && fetchResult) {
       navigate(`/gallery/${fetchResult.blogId}`, {
         state: { fetchResult, jobId },
       });
+      reset();
     }
   }, [fetchPhase, fetchResult, jobId, navigate, reset]);
 

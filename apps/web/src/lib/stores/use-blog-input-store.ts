@@ -81,7 +81,14 @@ export const useBlogInputStore = create<BlogInputState>((set, get) => ({
 
           const photos: PhotoEntity[] = result.image_urls.map((url, i) => {
             const match = url.match(/\/([^/?]+)\?/);
-            const filename = match ? `${i + 1}_${match[1]}` : `${i + 1}.jpg`;
+            let decoded: string;
+            try {
+              decoded = match ? decodeURIComponent(match[1]) : `${i + 1}.jpg`;
+            } catch {
+              // 不合法的 % 編碼，退回原始字串
+              decoded = match ? match[1] : `${i + 1}.jpg`;
+            }
+            const filename = match ? `${i + 1}_${decoded}` : decoded;
             return { id: `${i}`, url, filename };
           });
 

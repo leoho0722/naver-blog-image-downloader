@@ -385,12 +385,22 @@ tests:
 ---
 ### Requirement: Fetch photos with three-phase progress
 
-The BlogInputForm SHALL call `submitJob(blogUrl)` to initiate photo extraction and then poll `checkJobStatus(jobId)` every 3 seconds (max 200 attempts). The UI SHALL display three progress phases: submitting, processing, and completed. On success, the app SHALL navigate to `/gallery/:blogId`.
+The BlogInputForm SHALL call `submitJob(blogUrl)` to initiate photo extraction and then poll `checkJobStatus(jobId)` every 3 seconds (max 200 attempts). The UI SHALL display three progress phases: submitting, processing, and completed. On success, the HomePage effect SHALL first call `navigate()` to `/gallery/:blogId` with `fetchResult` and `jobId` as router state, then call `reset()` to clear the blog input store. The store reset MUST NOT occur before navigation is queued. Photo filenames extracted from image URLs SHALL be decoded via `decodeURIComponent()` before storage in the `PhotoEntity.filename` field.
 
 #### Scenario: Successful fetch with navigation
 
 - **WHEN** user submits a valid URL and the job completes with 10 images
-- **THEN** the progress indicator shows submitting → processing → completed, then navigates to `/gallery/<blogId>`
+- **THEN** the progress indicator shows submitting → processing → completed, then navigates to `/gallery/<blogId>` with `fetchResult` and `jobId` in router state
+
+#### Scenario: Store reset after navigation
+
+- **WHEN** the HomePage effect detects `fetchPhase === "completed"` with a non-null `fetchResult`
+- **THEN** `navigate()` is called first, then `reset()` clears `blogUrl`, `fetchPhase`, `fetchResult`, and `jobId`
+
+#### Scenario: Encoded filename decoding
+
+- **WHEN** an image URL path segment contains URL-encoded characters (e.g., `%EC%82%AC%EC%A7%84.jpg`)
+- **THEN** the `PhotoEntity.filename` stores the decoded string (e.g., `1_사진.jpg`)
 
 #### Scenario: Fetch timeout after max attempts
 
@@ -403,78 +413,15 @@ The BlogInputForm SHALL call `submitJob(blogUrl)` to initiate photo extraction a
 - **THEN** an error dialog displays the server error message
 
 <!-- @trace
-source: web-app-with-backend-packaging
-updated: 2026-04-12
+source: web-fix-state-reset-image-display
+updated: 2026-04-16
 code:
-  - apps/web/src/pages/GalleryPage.tsx
-  - apps/web/tsconfig.tsbuildinfo
-  - apps/web/src/lib/i18n/messages/ja.json
-  - CLAUDE.md
-  - apps/web/src/lib/services/url-validator.ts
-  - apps/web/src/lib/services/blog-id.ts
-  - apps/web/CLAUDE.md
-  - apps/web/src/lib/stores/use-blog-input-store.ts
-  - apps/web/index.html
-  - apps/backend/src/data_models.py
-  - apps/web/src/components/blog-input/BlogInputForm.tsx
-  - apps/web/src/lib/i18n/messages/zh-TW.json
-  - apps/backend/src/routes/photos.py
-  - apps/web/package.json
-  - apps/web/src/components/settings/LanguageSwitcher.tsx
-  - apps/web/src/lib/api/photos.ts
-  - apps/web/src/pages/NotFoundPage.tsx
-  - apps/web/public/icons.svg
-  - apps/web/src/components/gallery/ImageViewer.tsx
-  - apps/web/src/components/gallery/SelectionToolbar.tsx
-  - apps/backend/pyproject.toml
-  - apps/backend/src/response_builder.py
-  - apps/web/src/components/blog-input/FetchProgress.tsx
-  - apps/web/src/lib/api/types.ts
-  - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
-  - .github/workflows/web-ci.yml
-  - apps/web/src/lib/hooks/use-clipboard.ts
-  - apps/web/src/lib/api/client.ts
-  - apps/web/src/App.tsx
-  - apps/backend/README.md
-  - apps/web/src/components/settings/SettingsDrawer.tsx
-  - apps/backend/CLAUDE.md
-  - apps/web/src/index.css
-  - apps/web/src/components/settings/ThemeSwitcher.tsx
-  - apps/web/src/routes.tsx
-  - apps/web/src/lib/config/api.ts
-  - apps/web/src/lib/stores/use-settings-store.ts
-  - apps/web/tsconfig.json
-  - apps/backend/requirements.txt
-  - apps/web/.gitkeep
-  - apps/web/public/icons/icon_new.png
-  - README.md
-  - apps/web/src/lib/i18n/messages/en.json
-  - apps/backend/src/job_store/package.py
-  - apps/web/.env.example
-  - apps/web/public/icons/icon_default.png
-  - apps/web/src/main.tsx
-  - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/pages/HomePage.tsx
-  - apps/backend/.envExample
-  - apps/web/public/favicon.svg
-  - apps/web/src/lib/stores/use-gallery-store.ts
-  - apps/web/src/components/gallery/PhotoGrid.tsx
-  - apps/web/src/lib/i18n/config.ts
-  - apps/backend/src/app.py
-  - apps/web/src/lib/stores/use-download-store.ts
-  - apps/web/src/lib/hooks/use-polling.ts
-  - apps/backend/.env.example
-  - apps/backend/src/job_store/__init__.py
-  - apps/web/src/components/download/DownloadProgress.tsx
   - apps/web/src/components/gallery/PhotoCard.tsx
+  - apps/web/src/lib/stores/use-blog-input-store.ts
+  - apps/web/tsconfig.tsbuildinfo
+  - apps/web/package.json
+  - apps/web/src/pages/HomePage.tsx
+  - apps/web/src/components/gallery/ImageViewer.tsx
 tests:
-  - apps/web/src/__tests__/components/gallery/PhotoCard.test.tsx
-  - apps/web/src/__tests__/lib/services/blog-id.test.ts
-  - apps/backend/tests/api.http
-  - apps/web/src/__tests__/lib/hooks/use-polling.test.ts
-  - apps/web/src/__tests__/lib/services/url-validator.test.ts
-  - apps/web/src/__tests__/lib/stores/use-gallery-store.test.ts
-  - apps/web/src/__tests__/lib/api/client.test.ts
-  - apps/web/src/__tests__/setup.ts
+  - apps/web/src/__tests__/pages/HomePage.test.tsx
 -->
