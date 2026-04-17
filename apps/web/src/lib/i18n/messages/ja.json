@@ -10,6 +10,7 @@
   "settingsThemeDark": "ダーク",
   "settingsLanguage": "言語",
   "settingsAppearance": "テーマ",
+  "settingsThemeToggle": "テーマを切り替え（現在：{{theme}}）",
 
   "blogInputTitle": "Naver Blog 写真をダウンロード",
   "blogInputSubtitle": "記事のURLを貼り付けて、すべての写真を取得",
@@ -49,9 +50,143 @@
   "viewerNext": "次へ",
   "viewerCounter": "{{current}} / {{total}}",
 
-  "notFound": "404 — ページが見つかりません",
+  "notFound": {
+    "title": "ページが見つかりません",
+    "desc": "お探しの URL は存在しないか、移動されました。下記から続行先をお選びください。",
+    "ctaHome": "ホームへ戻る",
+    "ctaWebApp": "Web 版を開く",
+    "ctaMobileIntro": "モバイルアプリ紹介を見る"
+  },
 
   "onboardingTitle": "ようこそ",
   "onboardingDesc": "1. Naver Blogの記事URLを貼り付けまたは入力\n2.「写真を取得」をクリックして、すべての画像を抽出\n3. ギャラリーで写真を閲覧・選択・ダウンロード",
-  "onboardingStart": "はじめる"
+  "onboardingStart": "はじめる",
+
+  "intro": {
+    "root": {
+      "title": "Naver Blog 画像ダウンローダー",
+      "taglineLine1": "Naver Blog 画像ダウンロードツール",
+      "taglineLine2": "URL を入力するだけで、ブログ記事内のすべての写真を自動抽出して一括ダウンロード",
+      "cardAppTitle": "モバイルアプリ",
+      "cardAppDesc": "iOS & Android モバイルアプリ、一括ダウンロードとギャラリー保存に対応",
+      "cardWebTitle": "Web 版",
+      "cardWebDesc": "ブラウザベースのオンラインツール、インストール不要",
+      "cardLearnMore": "詳しく見る",
+      "footerCopyright": "© 2026 Naver Blog 画像ダウンローダー"
+    },
+    "mobile": {
+      "docTitle": "モバイルアプリ — Naver Blog 写真ダウンローダー",
+      "nav": {
+        "features": "機能",
+        "howItWorks": "使い方",
+        "screenshots": "スクリーンショット",
+        "download": "ダウンロード"
+      },
+      "hero": {
+        "title": "Naver Blog 写真ダウンローダー",
+        "tagline": "URL を入力するだけで、すべての写真を一度にダウンロード",
+        "cta": "今すぐダウンロード",
+        "learnMore": "詳しく見る"
+      },
+      "features": {
+        "title": "機能",
+        "subtitle": "シンプル、高速、スマートな写真ダウンロード",
+        "batch": {
+          "title": "一括ダウンロード",
+          "desc": "Naver Blog 記事内のすべての写真を自動抽出して一括ダウンロード"
+        },
+        "gallery": {
+          "title": "ギャラリーに保存",
+          "desc": "ダウンロードした写真をデバイスのギャラリーに直接保存、閲覧や共有も簡単"
+        },
+        "cache": {
+          "title": "スマートキャッシュ",
+          "desc": "ダウンロードした写真はローカルにキャッシュされ、次回アクセス時に瞬時に読み込み"
+        },
+        "async": {
+          "title": "非同期処理",
+          "desc": "クラウドベースの非同期抽出により、大量の写真でもタイムアウトなしで処理"
+        }
+      },
+      "howItWorks": {
+        "title": "使い方",
+        "subtitle": "わずか 4 ステップですべての写真をダウンロード",
+        "step1": {
+          "title": "URL を貼り付け",
+          "desc": "Naver Blog 記事の URL をコピーしてアプリに貼り付け"
+        },
+        "step2": {
+          "title": "写真リスト取得",
+          "desc": "ボタンをタップして写真リストを自動抽出"
+        },
+        "step3": {
+          "title": "抽出を待つ",
+          "desc": "クラウドベースの非同期処理、リアルタイムのステータス更新"
+        },
+        "step4": {
+          "title": "ギャラリーに保存",
+          "desc": "写真を選択してワンタップでデバイスのギャラリーに保存"
+        }
+      },
+      "screenshots": {
+        "title": "スクリーンショット",
+        "subtitle": "クリーンで直感的な Material Design インターフェース",
+        "tabIos": "iOS",
+        "tabAndroid": "Android",
+        "input": {
+          "title": "URL 入力",
+          "desc": "ブログ URL を貼り付け"
+        },
+        "gallery": {
+          "title": "写真ギャラリー",
+          "desc": "すべての写真を閲覧"
+        },
+        "detail": {
+          "title": "写真詳細",
+          "desc": "閲覧と保存"
+        },
+        "settings": {
+          "title": "設定",
+          "desc": "環境設定のカスタマイズ"
+        }
+      },
+      "download": {
+        "title": "今すぐダウンロード",
+        "subtitle": "iOS と Android に対応",
+        "comingSoon": "近日公開",
+        "appStore": "App Store",
+        "googlePlay": "Google Play",
+        "reqIos": "iOS 17.0 以降",
+        "reqAndroid": "Android 14.0 以降"
+      }
+    },
+    "web": {
+      "docTitle": "Web 版 — Naver Blog 写真ダウンローダー",
+      "back": "ホームに戻る",
+      "title": "Web 版",
+      "tagline": "インストール不要、ブラウザから Naver Blog の写真を直接抽出してダウンロード",
+      "featureUrl": {
+        "title": "URL を貼るだけで抽出",
+        "desc": "Naver Blog 記事の URL を入力すると、すべての原画質写真を自動抽出"
+      },
+      "featureGrid": {
+        "title": "写真ウォール閲覧",
+        "desc": "レスポンシブな画像グリッド、フルスクリーン表示とズームに対応"
+      },
+      "featureBatch": {
+        "title": "一括ダウンロード",
+        "desc": "写真を選択または一括選択して ZIP にパッケージングし PC にダウンロード"
+      },
+      "featureI18n": {
+        "title": "多言語対応",
+        "desc": "繁體中文 / English / 日本語 / 한국어、ライトとダークのテーマを備える"
+      },
+      "cta": "Web 版を開く",
+      "tech": "技術スタック：Vite · React 19 · TypeScript · React Router v7 · Zustand · Tailwind CSS 4 · react-i18next"
+    },
+    "footer": {
+      "github": "GitHub",
+      "copyright": "© 2026 Naver Blog 画像ダウンローダー"
+    }
+  }
 }

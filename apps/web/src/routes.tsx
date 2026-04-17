@@ -1,22 +1,62 @@
-import { createBrowserRouter } from "react-router-dom";
+import type { RouteObject } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 
-import RootLayout from "./components/layout/RootLayout";
+import AppLayout from "./components/layout/AppLayout";
+import PublicLayout from "./components/layout/PublicLayout";
+import {
+  INTRO_MOBILE_ANCHOR_LINKS,
+  type PublicRouteHandle,
+} from "./lib/config/public-navigation";
 import GalleryPage from "./pages/GalleryPage";
 import HomePage from "./pages/HomePage";
 import NotFoundPage from "./pages/NotFoundPage";
+import IntroMobilePage from "./pages/intro/IntroMobilePage";
+import IntroRootPage from "./pages/intro/IntroRootPage";
+import IntroWebPage from "./pages/intro/IntroWebPage";
 
-const router = createBrowserRouter(
-  [
-    {
-      element: <RootLayout />,
-      children: [
-        { path: "/", element: <HomePage /> },
-        { path: "/gallery/:blogId", element: <GalleryPage /> },
-        { path: "*", element: <NotFoundPage /> },
-      ],
-    },
-  ],
-  { basename: import.meta.env.BASE_URL },
-);
+/**
+ * 兩層 React Router 配置：
+ *  - PublicLayout 承載 landing、intro、NotFoundPage
+ *  - AppLayout 承載 Web SPA（部落格輸入與相簿檢視）
+ *
+ * 舊 URL 相容：
+ *  - /web → /intro/web（可冷啟）
+ *  - /web/app → /app/web（可冷啟）
+ *  - /web/app/gallery/:blogId → /app/web（不帶 blogId，冷啟無法還原 gallery 狀態）
+ */
+type AppRouteObject = RouteObject & {
+  handle?: PublicRouteHandle;
+};
 
-export default router;
+export const appRoutes = [
+  {
+    Component: PublicLayout,
+    children: [
+      { path: "/", Component: IntroRootPage },
+      {
+        path: "/intro/mobile",
+        Component: IntroMobilePage,
+        handle: { anchorLinks: INTRO_MOBILE_ANCHOR_LINKS },
+      },
+      { path: "/intro/web", Component: IntroWebPage },
+      { path: "/web", element: <Navigate to="/intro/web" replace /> },
+      { path: "*", Component: NotFoundPage },
+    ],
+  },
+  {
+    Component: AppLayout,
+    children: [
+      { path: "/app/web", Component: HomePage },
+      { path: "/app/web/gallery/:blogId", Component: GalleryPage },
+    ],
+  },
+  { path: "/web/app", element: <Navigate to="/app/web" replace /> },
+  {
+    path: "/web/app/gallery/:blogId",
+    element: <Navigate to="/app/web" replace />,
+  },
+] satisfies AppRouteObject[];
+
+export function createAppRouter(basename = import.meta.env.BASE_URL) {
+  return createBrowserRouter(appRoutes, { basename });
+}

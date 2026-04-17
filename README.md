@@ -37,8 +37,7 @@ Lambda 執行 Playwright 爬蟲時間常超過 API Gateway 29 秒硬限制，因
 ```text
 apps/mobile/   — Flutter iOS/Android app（詳見 apps/mobile/README.md）
 apps/backend/  — Python AWS Lambda backend（詳見 apps/backend/README.md）
-apps/web/      — Vite + React 19 + TypeScript Web app（詳見 apps/web/README.md）
-docs/          — 專案級別文件與 GitHub Pages 素材
+apps/web/      — Vite + React 19 + TypeScript Web app（含 landing / intro 頁、Web SPA，詳見 apps/web/CLAUDE.md）
 openspec/      — Spectra SDD specs 與 change proposals
 ```
 
@@ -100,7 +99,7 @@ pnpm dev      # 開發伺服器 http://localhost:5173
 | Backend CD | Backend CI 成功 | Docker build → ECR push → Lambda 更新 → git tag + Release |
 | Web CI | `apps/web/**` 變動 | TypeScript 檢查 + Vitest 測試 + Vite build + Prettier 格式檢查 |
 | Web CD | Web CI 成功 | 建立 git tag + GitHub Release（僅版號管理，不部署） |
-| Deploy Pages | `docs/**` 或 `apps/web/**` 變動 | Build web app + 驗證圖片引用 → 部署至 GitHub Pages |
+| Deploy Pages | `apps/web/**` 變動 | Build web app（含 landing / intro / SPA） → 產出 `apps/web/dist/` → 複製為 Pages artifact（附 404.html SPA fallback）→ 部署至 GitHub Pages |
 
 ## 開發規範與共用準則
 

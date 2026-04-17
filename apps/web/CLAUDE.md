@@ -16,17 +16,37 @@
 
 ```text
 src/
-├── pages/          — 頁面元件（HomePage、GalleryPage）
-├── components/     — UI 元件（blog-input、gallery、download、settings、layout、common）
+├── pages/
+│   ├── HomePage / GalleryPage / NotFoundPage
+│   └── intro/              — landing / intro 頁（IntroRootPage、IntroMobilePage、IntroWebPage）
+├── components/
+│   ├── layout/             — PublicLayout（承載 landing/intro）、AppLayout（承載 Web SPA）
+│   ├── intro/              — landing / intro 頁專用元件（IntroNav、FeatureCard、ScreenshotCarousel 等）
+│   ├── blog-input、gallery、download、settings、onboarding、common
 ├── lib/
-│   ├── api/        — API client + 型別定義
-│   ├── stores/     — Zustand stores
-│   ├── services/   — 純函式服務（url-validator、blog-id）
-│   ├── hooks/      — React hooks（use-polling、use-clipboard）
-│   ├── i18n/       — react-i18next 設定 + 語系 JSON
-│   └── config/     — 環境設定（API URL、主題色彩）
-└── __tests__/      — 單元測試（鏡射 src/ 結構）
+│   ├── api/                — API client + 型別定義
+│   ├── stores/             — Zustand stores
+│   ├── services/           — 純函式服務（url-validator、blog-id）
+│   ├── hooks/              — React hooks（use-polling、use-clipboard）
+│   ├── i18n/               — react-i18next 設定 + 四語系 JSON（含 intro.*、notFound.* namespace）
+│   └── config/             — 環境設定（API URL、主題色彩）
+└── __tests__/              — 單元測試（鏡射 src/ 結構）
+public/
+└── intro/mobile/           — App 介紹頁使用的 iOS/Android 截圖（8 張 PNG）
 ```
+
+## 路由（React Router v7）
+
+單一 `createBrowserRouter` tree，`basename` 讀 `import.meta.env.BASE_URL`：
+
+- `/` → `IntroRootPage`（PublicLayout）
+- `/intro/mobile` → `IntroMobilePage`（PublicLayout）
+- `/intro/web` → `IntroWebPage`（PublicLayout）
+- `/app/web` → `HomePage`（AppLayout）
+- `/app/web/gallery/:blogId` → `GalleryPage`（AppLayout）
+- `*` → `NotFoundPage`（PublicLayout）
+
+**舊 URL redirect（`<Navigate replace>`）**：`/web` → `/intro/web`、`/web/app` → `/app/web`、`/web/app/gallery/:blogId` → `/app/web`（不帶 blogId，冷啟無法還原 gallery 狀態）。
 
 ## 常用指令
 
@@ -50,11 +70,10 @@ pnpm format:check # 檢查格式是否正確（CI 用）
   4. 透過 Ollama Cloud API（gemma4:31b-cloud）生成正體中文 Release Notes（fallback: 原始 commit log）
   5. 建立 git tag `web-v<semver>` 並 push
   6. 發布 GitHub Release（title = `Web v<semver>`）
-- **Deploy Pages**（`.github/workflows/deploy-pages.yml`）：當 `docs/**` 或 `apps/web/**` 有變動時觸發，負責 build + 部署：
-  1. 驗證 docs 圖片引用
-  2. `pnpm install` → `pnpm build`（設定 `VITE_BASE_PATH` 為 GitHub Pages 路徑）
-  3. 複製 `dist/` → `docs/web/app/` + 建立 `404.html`（SPA routing fallback）
-  4. 上傳 artifact 並部署至 GitHub Pages（build artifacts 不進 git）
+- **Deploy Pages**（`.github/workflows/deploy-pages.yml`）：當 `apps/web/**` 有變動時觸發，負責 build + 部署：
+  1. `pnpm install` → `pnpm build`（`VITE_BASE_PATH=/naver-blog-image-downloader/`）
+  2. `apps/web/dist/` 整個複製為 `pages-artifact/`，並把 `index.html` 複製為 `404.html` 作為 SPA routing fallback
+  3. 上傳 `pages-artifact/` 並部署至 GitHub Pages（build artifacts 不進 git）
 
 **GitHub Secrets**（需手動設定於 monorepo）：`VITE_API_BASE_URL`、`VITE_API_STAGE`、`OLLAMA_API_KEY`
 

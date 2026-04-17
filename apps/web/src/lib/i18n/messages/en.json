@@ -10,6 +10,7 @@
   "settingsThemeDark": "Dark",
   "settingsLanguage": "Language",
   "settingsAppearance": "Appearance",
+  "settingsThemeToggle": "Switch theme (current: {{theme}})",
 
   "blogInputTitle": "Download Naver Blog Photos",
   "blogInputSubtitle": "Paste a blog post URL to extract all photos",
@@ -49,9 +50,143 @@
   "viewerNext": "Next",
   "viewerCounter": "{{current}} / {{total}}",
 
-  "notFound": "404 — Page not found",
+  "notFound": {
+    "title": "Page not found",
+    "desc": "The URL you requested doesn't exist or has moved. Pick somewhere to continue.",
+    "ctaHome": "Go home",
+    "ctaWebApp": "Open the Web app",
+    "ctaMobileIntro": "See the mobile App"
+  },
 
   "onboardingTitle": "Welcome",
   "onboardingDesc": "1. Paste or enter a Naver Blog post URL\n2. Click \"Fetch Photos\" to extract all images\n3. Browse, select and download photos in the gallery",
-  "onboardingStart": "Get Started"
+  "onboardingStart": "Get Started",
+
+  "intro": {
+    "root": {
+      "title": "Naver Blog Image Downloader",
+      "taglineLine1": "Naver Blog Image Download Tool",
+      "taglineLine2": "Enter a URL to automatically extract and batch download all photos from blog posts",
+      "cardAppTitle": "Mobile App",
+      "cardAppDesc": "iOS & Android mobile app with batch download and photo gallery saving",
+      "cardWebTitle": "Web Version",
+      "cardWebDesc": "Browser-based online tool, no installation required",
+      "cardLearnMore": "Learn more",
+      "footerCopyright": "© 2026 Naver Blog Image Downloader"
+    },
+    "mobile": {
+      "docTitle": "Mobile App — Naver Blog Photo Downloader",
+      "nav": {
+        "features": "Features",
+        "howItWorks": "How It Works",
+        "screenshots": "Screenshots",
+        "download": "Download"
+      },
+      "hero": {
+        "title": "Naver Blog Photo Downloader",
+        "tagline": "Enter a URL, download all photos in one click",
+        "cta": "Download Now",
+        "learnMore": "Learn More"
+      },
+      "features": {
+        "title": "Features",
+        "subtitle": "Simple, fast, and smart photo downloading",
+        "batch": {
+          "title": "Batch Download",
+          "desc": "Automatically extract all photos from Naver Blog posts and download them in batch"
+        },
+        "gallery": {
+          "title": "Save to Gallery",
+          "desc": "Downloaded photos can be saved directly to your device gallery for easy browsing and sharing"
+        },
+        "cache": {
+          "title": "Smart Cache",
+          "desc": "Downloaded photos are cached locally for instant loading on subsequent visits"
+        },
+        "async": {
+          "title": "Async Processing",
+          "desc": "Cloud-based async extraction handles large photo sets without timeouts"
+        }
+      },
+      "howItWorks": {
+        "title": "How It Works",
+        "subtitle": "Download all photos in just four simple steps",
+        "step1": {
+          "title": "Paste URL",
+          "desc": "Copy a Naver Blog post URL and paste it into the app"
+        },
+        "step2": {
+          "title": "Get Photo List",
+          "desc": "Tap the button to automatically extract the photo list"
+        },
+        "step3": {
+          "title": "Wait for Extraction",
+          "desc": "Cloud-based async processing with real-time status updates"
+        },
+        "step4": {
+          "title": "Save to Gallery",
+          "desc": "Select photos and save them to your device gallery in one tap"
+        }
+      },
+      "screenshots": {
+        "title": "Screenshots",
+        "subtitle": "Clean and intuitive Material Design interface",
+        "tabIos": "iOS",
+        "tabAndroid": "Android",
+        "input": {
+          "title": "URL Input",
+          "desc": "Paste blog URL"
+        },
+        "gallery": {
+          "title": "Photo Gallery",
+          "desc": "Browse all photos"
+        },
+        "detail": {
+          "title": "Photo Detail",
+          "desc": "View & save"
+        },
+        "settings": {
+          "title": "Settings",
+          "desc": "Customize preferences"
+        }
+      },
+      "download": {
+        "title": "Download Now",
+        "subtitle": "Available on iOS and Android",
+        "comingSoon": "Coming Soon",
+        "appStore": "App Store",
+        "googlePlay": "Google Play",
+        "reqIos": "iOS 17.0 or later",
+        "reqAndroid": "Android 14.0 or later"
+      }
+    },
+    "web": {
+      "docTitle": "Web Version — Naver Blog Photo Downloader",
+      "back": "Back to home",
+      "title": "Web Version",
+      "tagline": "No installation required — extract and download Naver Blog photos directly in your browser",
+      "featureUrl": {
+        "title": "Paste URL to extract",
+        "desc": "Enter a Naver Blog post URL and all original-resolution photos are extracted automatically"
+      },
+      "featureGrid": {
+        "title": "Photo wall browsing",
+        "desc": "Responsive image grid with full-screen viewing and zoom"
+      },
+      "featureBatch": {
+        "title": "Batch download",
+        "desc": "Select specific photos or pick all in one tap; download as a zipped bundle"
+      },
+      "featureI18n": {
+        "title": "Multi-language support",
+        "desc": "Traditional Chinese / English / 日本語 / 한국어 with light and dark themes"
+      },
+      "cta": "Launch the Web app",
+      "tech": "Tech stack: Vite · React 19 · TypeScript · React Router v7 · Zustand · Tailwind CSS 4 · react-i18next"
+    },
+    "footer": {
+      "github": "GitHub",
+      "copyright": "© 2026 Naver Blog Image Downloader"
+    }
+  }
 }
