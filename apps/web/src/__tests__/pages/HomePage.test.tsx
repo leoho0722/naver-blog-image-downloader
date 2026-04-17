@@ -73,7 +73,7 @@ describe("HomePage", () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledTimes(1);
-    expect(mockNavigate).toHaveBeenCalledWith("/gallery/abc123", {
+    expect(mockNavigate).toHaveBeenCalledWith("/app/web/gallery/abc123", {
       state: { fetchResult: FETCH_RESULT, jobId: "job-001" },
     });
   });

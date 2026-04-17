@@ -34,7 +34,7 @@ export default function GalleryPage() {
       load(fetchResult.photos, fetchResult.blogId, jid ?? "");
       loadedRef.current = true;
     } else if (photos.length === 0) {
-      navigate("/");
+      navigate("/app/web");
     }
   }, [location.state, load, navigate, photos.length]);
 

@@ -50,6 +50,9 @@ function applyTheme(theme: ThemeMode) {
 const initialTheme = loadTheme();
 applyTheme(initialTheme);
 
+// 讓 <html lang> 從載入那一刻就反映實際語系，搭配後續 updateLocale 同步
+document.documentElement.lang = loadLocale();
+
 export const useSettingsStore = create<SettingsState>((set) => ({
   theme: initialTheme,
   locale: loadLocale(),
@@ -64,6 +67,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   updateLocale: (locale) => {
     localStorage.setItem("locale", locale);
     i18n.changeLanguage(locale);
+    document.documentElement.lang = locale;
     set({ locale });
   },
 
