@@ -10,6 +10,7 @@
   "settingsThemeDark": "다크",
   "settingsLanguage": "언어",
   "settingsAppearance": "테마",
+  "settingsThemeToggle": "테마 전환(현재: {{theme}})",
 
   "blogInputTitle": "Naver Blog 사진 다운로드",
   "blogInputSubtitle": "블로그 글 URL을 붙여넣어 모든 사진을 가져오세요",
@@ -185,7 +186,6 @@
     },
     "footer": {
       "github": "GitHub",
-      "builtWith": "Flutter로 제작",
       "copyright": "© 2026 Naver Blog 이미지 다운로더"
     }
   }

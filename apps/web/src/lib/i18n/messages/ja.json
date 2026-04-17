@@ -10,6 +10,7 @@
   "settingsThemeDark": "ダーク",
   "settingsLanguage": "言語",
   "settingsAppearance": "テーマ",
+  "settingsThemeToggle": "テーマを切り替え（現在：{{theme}}）",
 
   "blogInputTitle": "Naver Blog 写真をダウンロード",
   "blogInputSubtitle": "記事のURLを貼り付けて、すべての写真を取得",
@@ -185,7 +186,6 @@
     },
     "footer": {
       "github": "GitHub",
-      "builtWith": "Flutter で構築",
       "copyright": "© 2026 Naver Blog 画像ダウンローダー"
     }
   }

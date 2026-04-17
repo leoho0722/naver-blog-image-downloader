@@ -10,6 +10,7 @@
   "settingsThemeDark": "Dark",
   "settingsLanguage": "Language",
   "settingsAppearance": "Appearance",
+  "settingsThemeToggle": "Switch theme (current: {{theme}})",
 
   "blogInputTitle": "Download Naver Blog Photos",
   "blogInputSubtitle": "Paste a blog post URL to extract all photos",
@@ -185,7 +186,6 @@
     },
     "footer": {
       "github": "GitHub",
-      "builtWith": "Built with Flutter",
       "copyright": "© 2026 Naver Blog Image Downloader"
     }
   }

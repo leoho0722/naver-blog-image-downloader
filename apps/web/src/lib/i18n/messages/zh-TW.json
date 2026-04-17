@@ -10,6 +10,7 @@
   "settingsThemeDark": "暗色",
   "settingsLanguage": "語言",
   "settingsAppearance": "主題",
+  "settingsThemeToggle": "切換主題（目前：{{theme}}）",
 
   "blogInputTitle": "下載 Naver Blog 照片",
   "blogInputSubtitle": "貼上文章網址，一鍵擷取所有照片",
@@ -185,7 +186,6 @@
     },
     "footer": {
       "github": "GitHub",
-      "builtWith": "以 Flutter 建構",
       "copyright": "© 2026 Naver Blog 圖片下載器"
     }
   }

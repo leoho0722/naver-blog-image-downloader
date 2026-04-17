@@ -2,11 +2,26 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      key === "settingsThemeToggle" ? `${key}:${String(options?.theme)}` : key,
+  }),
 }));
 
 vi.mock("react-router-dom", () => ({
   Outlet: () => <div data-testid="outlet">outlet</div>,
+  useMatches: () => [
+    {
+      handle: {
+        anchorLinks: [
+          {
+            href: "#features",
+            labelKey: "intro.mobile.nav.features",
+          },
+        ],
+      },
+    },
+  ],
   Link: ({
     children,
     to,
@@ -42,9 +57,12 @@ describe("PublicLayout", () => {
     // Outlet 顯示子頁面
     expect(screen.getByTestId("outlet")).toBeInTheDocument();
 
-    // IntroNav 會渲染 brand link 連到 "/"
+    // IntroNav 會渲染 brand link 連到 "/" 與頁內 anchor link
     const links = screen.getAllByRole("link");
     expect(links.some((a) => a.getAttribute("href") === "/")).toBe(true);
+    expect(
+      screen.getByRole("link", { name: "intro.mobile.nav.features" }),
+    ).toHaveAttribute("href", "#features");
 
     // IntroFooter 會渲染 GitHub 連結
     expect(

@@ -2,7 +2,10 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      key === "settingsThemeToggle" ? `${key}:${String(options?.theme)}` : key,
+  }),
 }));
 
 vi.mock("react-router-dom", () => ({
@@ -51,5 +54,16 @@ describe("AppLayout", () => {
     const links = screen.getAllByRole("link");
     const brand = links.find((a) => a.getAttribute("href") === "/app/web");
     expect(brand, "brand link 必須指向 /app/web").toBeDefined();
+  });
+
+  it("theme toggle 使用 i18n label 與翻譯後 title", async () => {
+    const { default: AppLayout } =
+      await import("../../../components/layout/AppLayout");
+    render(<AppLayout />);
+
+    const themeButton = screen.getByRole("button", {
+      name: "settingsThemeToggle:settingsThemeSystem",
+    });
+    expect(themeButton).toHaveAttribute("title", "settingsThemeSystem");
   });
 });

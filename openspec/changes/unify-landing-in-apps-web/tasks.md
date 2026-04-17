@@ -74,3 +74,11 @@
 
 - `IntroRootPage` 兩張 card 底下 CTA 顯示與 title 相同的「App 版 / Web 版」——改用新 i18n key `intro.root.cardLearnMore`，四語系同步補齊（繁中「了解更多」／en「Learn more」／ja「詳しく見る」／ko「자세히 보기」）
 - `updateLocale` 沒同步更新 `document.documentElement.lang`——在 `useSettingsStore.updateLocale` 加 `document.documentElement.lang = locale`，並於 store 初始化時寫入一次，供搜尋引擎與無障礙技術正確識別頁面語系
+
+## PR review follow-up（merge 前補強）
+
+- [x] 7.1 抽出 `AppLayout` / `IntroNav` 共用的語言與主題切換控制元件，消除重複常數與按鈕邏輯；theme toggle 的 `aria-label` / `title` 必須改走 i18n，而非硬編碼繁中與 raw enum
+- [x] 7.2 修正 `/intro/mobile` 的頁內錨點導覽接線，改由正式 route config 驅動 `PublicLayout` 傳入 `IntroNav`，避免 `anchorLinks` prop 永遠沒被 router 傳遞
+- [x] 7.3 重構 `DownloadBadge` 互動語意：只有真的可導向下載頁時才渲染為連結；無連結時不可顯示誤導性的 pointer 樣式
+- [x] 7.4 重寫 `routes.test.tsx`，直接引用正式 route objects 驗證 redirect 與 `/intro/mobile` anchor nav，避免手刻第二份 route tree 漂移
+- [x] 7.5 移除 IntroFooter 右下角「以 Flutter 建構」文案，並清理四語系中未再使用的 `intro.footer.builtWith` key
