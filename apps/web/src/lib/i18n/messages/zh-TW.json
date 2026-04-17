@@ -49,9 +49,144 @@
   "viewerNext": "下一張",
   "viewerCounter": "{{current}} / {{total}}",
 
-  "notFound": "404 — 頁面不存在",
+  "notFound": {
+    "title": "找不到這個頁面",
+    "desc": "您造訪的網址不存在或已被移除，請從下方選擇繼續的方向。",
+    "ctaHome": "回首頁",
+    "ctaWebApp": "前往 Web 版",
+    "ctaMobileIntro": "看 App 介紹"
+  },
 
   "onboardingTitle": "歡迎使用",
   "onboardingDesc": "1. 貼上或輸入 Naver Blog 文章網址\n2. 點擊「擷取圖片」，系統會自動抓取所有照片\n3. 在相簿頁瀏覽、選取並下載照片",
-  "onboardingStart": "開始使用"
+  "onboardingStart": "開始使用",
+
+  "intro": {
+    "root": {
+      "title": "Naver Blog 圖片下載器",
+      "taglineLine1": "Naver Blog 圖片下載工具",
+      "taglineLine2": "輸入網址，自動擷取並批次下載文章中的所有照片",
+      "cardAppTitle": "App 版",
+      "cardAppDesc": "iOS & Android 行動應用程式，支援批次下載與相簿儲存",
+      "cardWebTitle": "Web 版",
+      "cardWebDesc": "瀏覽器線上版，免安裝即可使用",
+      "cardLearnMore": "了解更多",
+      "footerCopyright": "© 2026 Naver Blog 圖片下載器"
+    },
+    "mobile": {
+      "docTitle": "App 版 — Naver Blog 照片下載器",
+      "nav": {
+        "features": "功能特色",
+        "howItWorks": "使用方式",
+        "screenshots": "畫面預覽",
+        "download": "下載"
+      },
+      "hero": {
+        "title": "Naver Blog 照片下載器",
+        "tagline": "輸入網址，一鍵下載所有照片",
+        "cta": "立即下載",
+        "learnMore": "了解更多"
+      },
+      "features": {
+        "title": "功能特色",
+        "subtitle": "簡單、快速、智慧的照片下載體驗",
+        "batch": {
+          "title": "批次下載",
+          "desc": "自動擷取 Naver Blog 文章中所有照片，一鍵批次下載至裝置"
+        },
+        "gallery": {
+          "title": "直存相簿",
+          "desc": "下載完成的照片可直接儲存至裝置相簿，隨時瀏覽與分享"
+        },
+        "cache": {
+          "title": "智慧快取",
+          "desc": "已下載的照片自動快取於本機，重複開啟時秒速載入"
+        },
+        "async": {
+          "title": "非同步處理",
+          "desc": "雲端非同步擷取照片，即使大量照片也不會逾時中斷"
+        }
+      },
+      "howItWorks": {
+        "title": "使用方式",
+        "subtitle": "只需四個步驟，輕鬆下載所有照片",
+        "step1": {
+          "title": "貼上網址",
+          "desc": "複製 Naver Blog 文章網址並貼入 App"
+        },
+        "step2": {
+          "title": "取得列表",
+          "desc": "點選按鈕，自動擷取文章中的照片清單"
+        },
+        "step3": {
+          "title": "等待擷取",
+          "desc": "雲端非同步處理，即時顯示進度狀態"
+        },
+        "step4": {
+          "title": "儲存相簿",
+          "desc": "選擇照片並一鍵儲存至裝置相簿"
+        }
+      },
+      "screenshots": {
+        "title": "畫面預覽",
+        "subtitle": "簡潔直覺的 Material Design 介面",
+        "tabIos": "iOS",
+        "tabAndroid": "Android",
+        "input": {
+          "title": "網址輸入",
+          "desc": "貼上 Blog 網址"
+        },
+        "gallery": {
+          "title": "照片列表",
+          "desc": "瀏覽所有照片"
+        },
+        "detail": {
+          "title": "照片詳情",
+          "desc": "檢視與儲存"
+        },
+        "settings": {
+          "title": "設定",
+          "desc": "自訂偏好設定"
+        }
+      },
+      "download": {
+        "title": "立即下載",
+        "subtitle": "支援 iOS 與 Android 雙平台",
+        "comingSoon": "即將上架",
+        "appStore": "App Store",
+        "googlePlay": "Google Play",
+        "reqIos": "iOS 17.0 以上",
+        "reqAndroid": "Android 14.0 以上"
+      }
+    },
+    "web": {
+      "docTitle": "Web 版 — Naver Blog 照片下載器",
+      "back": "返回首頁",
+      "title": "Web 版",
+      "tagline": "免安裝，直接在瀏覽器中擷取與下載 Naver Blog 文章照片",
+      "featureUrl": {
+        "title": "貼上網址即擷取",
+        "desc": "輸入 Naver Blog 文章網址，自動提取所有原始解析度照片"
+      },
+      "featureGrid": {
+        "title": "照片牆瀏覽",
+        "desc": "響應式圖片 Grid，支援全螢幕檢視與縮放"
+      },
+      "featureBatch": {
+        "title": "批次下載",
+        "desc": "選取照片或一鍵全選，打包為 ZIP 下載至電腦"
+      },
+      "featureI18n": {
+        "title": "多語系支援",
+        "desc": "繁體中文 / English / 日本語 / 한국어，附亮色與暗色主題"
+      },
+      "cta": "開始使用 Web 版",
+      "tech": "技術棧：Vite · React 19 · TypeScript · React Router v7 · Zustand · Tailwind CSS 4 · react-i18next"
+    },
+    "footer": {
+      "github": "GitHub",
+      "builtWith": "以 Flutter 建構",
+      "copyright": "© 2026 Naver Blog 圖片下載器"
+    }
+  }
 }

@@ -49,9 +49,144 @@
   "viewerNext": "다음",
   "viewerCounter": "{{current}} / {{total}}",
 
-  "notFound": "404 — 페이지를 찾을 수 없습니다",
+  "notFound": {
+    "title": "페이지를 찾을 수 없습니다",
+    "desc": "요청하신 URL이 존재하지 않거나 이동되었습니다. 아래에서 계속 진행할 곳을 선택하세요.",
+    "ctaHome": "홈으로",
+    "ctaWebApp": "Web 앱 열기",
+    "ctaMobileIntro": "모바일 앱 소개 보기"
+  },
 
   "onboardingTitle": "환영합니다",
   "onboardingDesc": "1. Naver Blog 글 URL을 붙여넣거나 입력하세요\n2. \"사진 가져오기\"를 클릭하여 모든 이미지를 추출합니다\n3. 갤러리에서 사진을 탐색, 선택 및 다운로드하세요",
-  "onboardingStart": "시작하기"
+  "onboardingStart": "시작하기",
+
+  "intro": {
+    "root": {
+      "title": "Naver Blog 이미지 다운로더",
+      "taglineLine1": "Naver Blog 이미지 다운로드 도구",
+      "taglineLine2": "URL을 입력하면 게시글의 모든 사진을 자동 추출하여 일괄 다운로드",
+      "cardAppTitle": "모바일 앱",
+      "cardAppDesc": "iOS & Android 모바일 앱, 일괄 다운로드 및 갤러리 저장 지원",
+      "cardWebTitle": "Web 버전",
+      "cardWebDesc": "브라우저 기반 온라인 도구, 설치 불필요",
+      "cardLearnMore": "자세히 보기",
+      "footerCopyright": "© 2026 Naver Blog 이미지 다운로더"
+    },
+    "mobile": {
+      "docTitle": "모바일 앱 — Naver Blog 사진 다운로더",
+      "nav": {
+        "features": "기능",
+        "howItWorks": "사용 방법",
+        "screenshots": "스크린샷",
+        "download": "다운로드"
+      },
+      "hero": {
+        "title": "Naver Blog 사진 다운로더",
+        "tagline": "URL을 입력하고, 모든 사진을 한 번에 다운로드",
+        "cta": "지금 다운로드",
+        "learnMore": "자세히 보기"
+      },
+      "features": {
+        "title": "기능",
+        "subtitle": "간단하고, 빠르고, 스마트한 사진 다운로드",
+        "batch": {
+          "title": "일괄 다운로드",
+          "desc": "Naver Blog 게시글의 모든 사진을 자동으로 추출하여 일괄 다운로드"
+        },
+        "gallery": {
+          "title": "갤러리 저장",
+          "desc": "다운로드한 사진을 기기 갤러리에 직접 저장하여 쉽게 탐색 및 공유"
+        },
+        "cache": {
+          "title": "스마트 캐시",
+          "desc": "다운로드한 사진이 로컬에 캐시되어 다음 접속 시 즉시 로딩"
+        },
+        "async": {
+          "title": "비동기 처리",
+          "desc": "클라우드 기반 비동기 추출로 대량 사진도 타임아웃 없이 처리"
+        }
+      },
+      "howItWorks": {
+        "title": "사용 방법",
+        "subtitle": "네 단계로 모든 사진을 쉽게 다운로드",
+        "step1": {
+          "title": "URL 붙여넣기",
+          "desc": "Naver Blog 게시글 URL을 복사하여 앱에 붙여넣기"
+        },
+        "step2": {
+          "title": "사진 목록 가져오기",
+          "desc": "버튼을 눌러 사진 목록을 자동으로 추출"
+        },
+        "step3": {
+          "title": "추출 대기",
+          "desc": "클라우드 비동기 처리, 실시간 상태 업데이트"
+        },
+        "step4": {
+          "title": "갤러리 저장",
+          "desc": "사진을 선택하고 한 번의 탭으로 기기 갤러리에 저장"
+        }
+      },
+      "screenshots": {
+        "title": "스크린샷",
+        "subtitle": "깔끔하고 직관적인 Material Design 인터페이스",
+        "tabIos": "iOS",
+        "tabAndroid": "Android",
+        "input": {
+          "title": "URL 입력",
+          "desc": "블로그 URL 붙여넣기"
+        },
+        "gallery": {
+          "title": "사진 갤러리",
+          "desc": "모든 사진 탐색"
+        },
+        "detail": {
+          "title": "사진 상세",
+          "desc": "보기 및 저장"
+        },
+        "settings": {
+          "title": "설정",
+          "desc": "환경설정 사용자 지정"
+        }
+      },
+      "download": {
+        "title": "지금 다운로드",
+        "subtitle": "iOS와 Android 모두 지원",
+        "comingSoon": "출시 예정",
+        "appStore": "App Store",
+        "googlePlay": "Google Play",
+        "reqIos": "iOS 17.0 이상",
+        "reqAndroid": "Android 14.0 이상"
+      }
+    },
+    "web": {
+      "docTitle": "Web 버전 — Naver Blog 사진 다운로더",
+      "back": "홈으로 돌아가기",
+      "title": "Web 버전",
+      "tagline": "설치 불필요 — 브라우저에서 Naver Blog 사진을 바로 추출하고 다운로드",
+      "featureUrl": {
+        "title": "URL 붙여넣어 추출",
+        "desc": "Naver Blog 게시글 URL을 입력하면 모든 원본 해상도 사진을 자동 추출"
+      },
+      "featureGrid": {
+        "title": "사진 월 탐색",
+        "desc": "반응형 이미지 그리드, 전체 화면 보기 및 확대/축소 지원"
+      },
+      "featureBatch": {
+        "title": "일괄 다운로드",
+        "desc": "사진을 선택하거나 전체 선택 후 ZIP으로 묶어 PC에 다운로드"
+      },
+      "featureI18n": {
+        "title": "다국어 지원",
+        "desc": "繁體中文 / English / 日本語 / 한국어, 라이트 및 다크 테마 포함"
+      },
+      "cta": "Web 앱 시작하기",
+      "tech": "기술 스택: Vite · React 19 · TypeScript · React Router v7 · Zustand · Tailwind CSS 4 · react-i18next"
+    },
+    "footer": {
+      "github": "GitHub",
+      "builtWith": "Flutter로 제작",
+      "copyright": "© 2026 Naver Blog 이미지 다운로더"
+    }
+  }
 }
