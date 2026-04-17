@@ -50,7 +50,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -101,99 +100,123 @@ tests:
 ---
 ### Requirement: React Router v7 routing with two routes
 
-The app SHALL use React Router v7 with `createBrowserRouter`. Routes SHALL be defined in `routes.tsx` with a shared `RootLayout` component. The routes SHALL be: `/` for the home page (URL input) and `/gallery/:blogId` for the photo gallery. Unmatched routes SHALL render a not-found page.
+The app SHALL use React Router v7 with `createBrowserRouter`. Routes SHALL be organized under two layout components: `PublicLayout` (for landing and intro pages) and `AppLayout` (for the Web SPA). The router's `basename` SHALL be set to `import.meta.env.BASE_URL` so route paths automatically track the deployment base path.
 
-#### Scenario: Navigate to home page
+The routable paths SHALL be:
+
+- `/` — renders `IntroRootPage` within `PublicLayout`
+- `/intro/mobile` — renders `IntroMobilePage` within `PublicLayout`
+- `/intro/web` — renders `IntroWebPage` within `PublicLayout`
+- `/app/web` — renders `HomePage` within `AppLayout`
+- `/app/web/gallery/:blogId` — renders `GalleryPage` within `AppLayout`
+
+Unmatched routes SHALL render `NotFoundPage` within `PublicLayout` via a `*` catch-all.
+
+Legacy redirect routes SHALL also be defined (see the `web-legacy-redirects` capability for details).
+
+#### Scenario: Navigate to root landing page
 
 - **WHEN** user navigates to `/`
-- **THEN** the `HomePage` component is rendered within `RootLayout`
+- **THEN** the `IntroRootPage` component is rendered within `PublicLayout`
 
-#### Scenario: Navigate to gallery with blogId
+#### Scenario: Navigate to mobile intro page
 
-- **WHEN** user navigates to `/gallery/abc123def456`
-- **THEN** the `GalleryPage` component is rendered with `blogId` param value `abc123def456`
+- **WHEN** user navigates to `/intro/mobile`
+- **THEN** the `IntroMobilePage` component is rendered within `PublicLayout`
+
+#### Scenario: Navigate to web intro page
+
+- **WHEN** user navigates to `/intro/web`
+- **THEN** the `IntroWebPage` component is rendered within `PublicLayout`
+
+#### Scenario: Navigate to web app home
+
+- **WHEN** user navigates to `/app/web`
+- **THEN** the `HomePage` component is rendered within `AppLayout`
+
+#### Scenario: Navigate to gallery with blogId after in-app fetch
+
+- **WHEN** the user has just fetched photos via `HomePage` (so `GalleryStore` holds the photos array for `blogId="abc123def456"`) and `HomePage` calls `navigate("/app/web/gallery/abc123def456", { state: { fetchResult, jobId } })`
+- **THEN** the `GalleryPage` component is rendered within `AppLayout` with `blogId` param value `abc123def456` and displays the photos from store
+
+#### Scenario: Direct deep-link to gallery without state
+
+- **WHEN** the user opens `/app/web/gallery/abc123def456` directly (reload, external link, or cold start) with no photos in `GalleryStore`
+- **THEN** the `GalleryPage` component mounts, detects the empty state, and immediately calls `navigate("/app/web")` as a fallback; the user lands on `HomePage` where they can paste a URL to fetch photos. Cold-start deep linking is NOT supported in this spec; see `web-legacy-redirects` for the matching redirect rule
 
 #### Scenario: Navigate to unknown route
 
-- **WHEN** user navigates to `/unknown`
-- **THEN** the `NotFoundPage` component is rendered
+- **WHEN** user navigates to `/something-that-does-not-exist`
+- **THEN** the `NotFoundPage` component is rendered within `PublicLayout`
+
+#### Scenario: Router basename tracks Vite base path
+
+- **WHEN** `VITE_BASE_PATH` is set to `/naver-blog-image-downloader/` at build time
+- **THEN** `createBrowserRouter` uses `basename: "/naver-blog-image-downloader/"` and all route paths are resolved relative to that base
 
 
 <!-- @trace
-source: web-app-with-backend-packaging
-updated: 2026-04-12
+source: unify-landing-in-apps-web
+updated: 2026-04-18
 code:
-  - apps/web/src/pages/GalleryPage.tsx
-  - apps/web/tsconfig.tsbuildinfo
-  - apps/web/src/lib/i18n/messages/ja.json
-  - CLAUDE.md
-  - apps/web/src/lib/services/url-validator.ts
-  - apps/web/src/lib/services/blog-id.ts
-  - apps/web/CLAUDE.md
-  - apps/web/src/lib/stores/use-blog-input-store.ts
-  - apps/web/index.html
-  - apps/backend/src/data_models.py
-  - apps/web/src/components/blog-input/BlogInputForm.tsx
-  - apps/web/src/lib/i18n/messages/zh-TW.json
-  - apps/backend/src/routes/photos.py
-  - apps/web/package.json
-  - apps/web/src/components/settings/LanguageSwitcher.tsx
-  - apps/web/src/lib/api/photos.ts
-  - apps/web/src/pages/NotFoundPage.tsx
-  - apps/web/public/icons.svg
-  - apps/web/src/components/gallery/ImageViewer.tsx
-  - apps/web/src/components/gallery/SelectionToolbar.tsx
-  - apps/backend/pyproject.toml
-  - apps/backend/src/response_builder.py
-  - apps/web/src/components/blog-input/FetchProgress.tsx
-  - apps/web/src/lib/api/types.ts
-  - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
-  - .github/workflows/web-ci.yml
-  - apps/web/src/lib/hooks/use-clipboard.ts
-  - apps/web/src/lib/api/client.ts
-  - apps/web/src/App.tsx
-  - apps/backend/README.md
-  - apps/web/src/components/settings/SettingsDrawer.tsx
-  - apps/backend/CLAUDE.md
-  - apps/web/src/index.css
-  - apps/web/src/components/settings/ThemeSwitcher.tsx
-  - apps/web/src/routes.tsx
-  - apps/web/src/lib/config/api.ts
-  - apps/web/src/lib/stores/use-settings-store.ts
-  - apps/web/tsconfig.json
-  - apps/backend/requirements.txt
-  - apps/web/.gitkeep
-  - apps/web/public/icons/icon_new.png
-  - README.md
-  - apps/web/src/lib/i18n/messages/en.json
-  - apps/backend/src/job_store/package.py
-  - apps/web/.env.example
-  - apps/web/public/icons/icon_default.png
-  - apps/web/src/main.tsx
   - apps/web/src/lib/i18n/messages/ko.json
   - apps/web/src/pages/HomePage.tsx
-  - apps/backend/.envExample
-  - apps/web/public/favicon.svg
-  - apps/web/src/lib/stores/use-gallery-store.ts
-  - apps/web/src/components/gallery/PhotoGrid.tsx
-  - apps/web/src/lib/i18n/config.ts
-  - apps/backend/src/app.py
-  - apps/web/src/lib/stores/use-download-store.ts
-  - apps/web/src/lib/hooks/use-polling.ts
-  - apps/backend/.env.example
-  - apps/backend/src/job_store/__init__.py
-  - apps/web/src/components/download/DownloadProgress.tsx
-  - apps/web/src/components/gallery/PhotoCard.tsx
+  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
+  - apps/web/src/routes.tsx
+  - docs/mobile/images/setting_view_ios_snapshot.png
+  - apps/web/src/components/intro/ScreenshotCarousel.tsx
+  - docs/web/index.html
+  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
+  - docs/mobile/images/photo_gallery_view_android_snapshot.png
+  - docs/mobile/images/photo_gallery_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
+  - docs/mobile/index.html
+  - apps/web/src/pages/intro/IntroRootPage.tsx
+  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
+  - apps/web/src/components/layout/AppLayout.tsx
+  - docs/mobile/css/style.css
+  - docs/mobile/js/main.js
+  - docs/mobile/images/photo_detail_view_android_snapshot.png
+  - .github/workflows/deploy-pages.yml
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/pages/GalleryPage.tsx
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/components/intro/DownloadBadge.tsx
+  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
+  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
+  - apps/web/src/pages/intro/IntroMobilePage.tsx
+  - apps/web/src/components/intro/FeatureCard.tsx
+  - docs/mobile/images/setting_view_android_snapshot.png
+  - docs/mobile/images/blog_input_view_android_snapshot.png
+  - docs/mobile/images/blog_input_view_ios_snapshot.png
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - README.md
+  - apps/web/CLAUDE.md
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/components/layout/PublicLayout.tsx
+  - docs/mobile/images/photo_detail_view_ios_snapshot.png
+  - apps/web/src/App.tsx
+  - apps/web/package.json
+  - docs/index.html
+  - docs/mobile/mobile-architecture.md
+  - apps/web/src/components/intro/IntroFooter.tsx
+  - apps/web/src/pages/NotFoundPage.tsx
+  - docs/mobile/js/i18n.js
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/components/intro/IntroNav.tsx
+  - apps/web/src/components/intro/StepCard.tsx
+  - apps/web/src/pages/intro/IntroWebPage.tsx
+  - apps/web/public/intro/mobile/photo_gallery_view_ios_snapshot.png
+  - apps/web/src/lib/config/public-navigation.ts
 tests:
-  - apps/web/src/__tests__/components/gallery/PhotoCard.test.tsx
-  - apps/web/src/__tests__/lib/services/blog-id.test.ts
-  - apps/backend/tests/api.http
-  - apps/web/src/__tests__/lib/hooks/use-polling.test.ts
-  - apps/web/src/__tests__/lib/services/url-validator.test.ts
-  - apps/web/src/__tests__/lib/stores/use-gallery-store.test.ts
-  - apps/web/src/__tests__/lib/api/client.test.ts
-  - apps/web/src/__tests__/setup.ts
+  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
+  - apps/web/src/__tests__/pages/HomePage.test.tsx
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
 -->
 
 ---
@@ -251,7 +274,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -339,7 +361,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -432,7 +453,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -520,7 +540,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -617,7 +636,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -668,45 +686,349 @@ tests:
 ---
 ### Requirement: Build-time app version injection
 
-The Vite build configuration SHALL define a global constant `__APP_VERSION__` injected at build time from the `version` field of `apps/web/package.json`. A TypeScript declaration SHALL exist so that `__APP_VERSION__` is typed as `string`. The RootLayout header SHALL display the version as `v<semver>` next to the app title, using subdued styling (`text-xs`, `color-on-surface-variant`) that is visible on all pages.
+The Vite build configuration SHALL define a global constant `__APP_VERSION__` injected at build time from the `version` field of `apps/web/package.json`. A TypeScript declaration SHALL exist so that `__APP_VERSION__` is typed as `string`. The `AppLayout` header SHALL display the version as `v<semver>` next to the app title, using subdued styling (`text-xs`, `color-on-surface-variant`) that is visible on all pages rendered under `AppLayout`.
 
-#### Scenario: Version displayed in header
+#### Scenario: Version displayed in AppLayout header
 
-- **WHEN** the user opens any page of the Web app
-- **THEN** the header displays the current version string in the format `v<semver>` (e.g., `v1.1.0`)
+- **WHEN** the user opens any page rendered under `AppLayout` (such as `/app/web` or `/app/web/gallery/:blogId`)
+- **THEN** the header displays the current version string in the format `v<semver>` (e.g., `v1.2.0`)
 
 #### Scenario: Version matches package.json
 
-- **WHEN** `apps/web/package.json` has `"version": "1.1.0"`
-- **THEN** the header displays `v1.1.0`
+- **WHEN** `apps/web/package.json` has `"version": "1.2.0"`
+- **THEN** the header displays `v1.2.0`
+
 
 <!-- @trace
-source: web-onboarding-version-display
-updated: 2026-04-16
+source: unify-landing-in-apps-web
+updated: 2026-04-18
 code:
-  - apps/web/vite.config.ts
-  - apps/web/src/vite-env.d.ts
-  - apps/web/src/components/layout/RootLayout.tsx
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/pages/HomePage.tsx
+  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
+  - apps/web/src/routes.tsx
+  - docs/mobile/images/setting_view_ios_snapshot.png
+  - apps/web/src/components/intro/ScreenshotCarousel.tsx
+  - docs/web/index.html
+  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
+  - docs/mobile/images/photo_gallery_view_android_snapshot.png
+  - docs/mobile/images/photo_gallery_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
+  - docs/mobile/index.html
+  - apps/web/src/pages/intro/IntroRootPage.tsx
+  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
+  - apps/web/src/components/layout/AppLayout.tsx
+  - docs/mobile/css/style.css
+  - docs/mobile/js/main.js
+  - docs/mobile/images/photo_detail_view_android_snapshot.png
+  - .github/workflows/deploy-pages.yml
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/pages/GalleryPage.tsx
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/components/intro/DownloadBadge.tsx
+  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
+  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
+  - apps/web/src/pages/intro/IntroMobilePage.tsx
+  - apps/web/src/components/intro/FeatureCard.tsx
+  - docs/mobile/images/setting_view_android_snapshot.png
+  - docs/mobile/images/blog_input_view_android_snapshot.png
+  - docs/mobile/images/blog_input_view_ios_snapshot.png
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - README.md
+  - apps/web/CLAUDE.md
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/components/layout/PublicLayout.tsx
+  - docs/mobile/images/photo_detail_view_ios_snapshot.png
+  - apps/web/src/App.tsx
   - apps/web/package.json
+  - docs/index.html
+  - docs/mobile/mobile-architecture.md
+  - apps/web/src/components/intro/IntroFooter.tsx
+  - apps/web/src/pages/NotFoundPage.tsx
+  - docs/mobile/js/i18n.js
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/components/intro/IntroNav.tsx
+  - apps/web/src/components/intro/StepCard.tsx
+  - apps/web/src/pages/intro/IntroWebPage.tsx
+  - apps/web/public/intro/mobile/photo_gallery_view_ios_snapshot.png
+  - apps/web/src/lib/config/public-navigation.ts
+tests:
+  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
+  - apps/web/src/__tests__/pages/HomePage.test.tsx
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
 -->
 
+---
+### Requirement: Two-layer layout separation
+
+The app SHALL define two layout components under `apps/web/src/components/layout/`:
+
+- `PublicLayout` — for landing, intro, and not-found pages. Structure SHALL be `<IntroNav /> <main><Outlet /></main> <IntroFooter />`. The layout SHALL consume `useSettingsStore` for theme and locale, and SHALL NOT manage theme state independently.
+- `AppLayout` — for the Web SPA pages (`/app/web` and `/app/web/gallery/:blogId`). This layout SHALL replace the previous `RootLayout.tsx` component with the same visual structure, except the header brand link SHALL point to `/app/web` instead of `/`.
+
+The previous `RootLayout.tsx` component SHALL be removed after `AppLayout.tsx` replaces it.
+
+#### Scenario: PublicLayout renders child route
+
+- **WHEN** a child route such as `/` or `/intro/mobile` is matched
+- **THEN** `PublicLayout` renders `<IntroNav />`, the matched child component in `<main>`, and `<IntroFooter />`
+
+#### Scenario: AppLayout header brand links to app root
+
+- **WHEN** the user views any page rendered under `AppLayout` and clicks the brand/title link in the header
+- **THEN** the browser navigates to `/app/web`
+
+#### Scenario: Both layouts share theme and locale state
+
+- **WHEN** the user switches theme from light to dark while viewing a `PublicLayout` page
+- **THEN** navigating to an `AppLayout` page shows the same dark theme without re-toggling
+
+
 <!-- @trace
-source: web-onboarding-version-display
-updated: 2026-04-16
+source: unify-landing-in-apps-web
+updated: 2026-04-18
 code:
-  - apps/web/src/lib/i18n/messages/zh-TW.json
-  - apps/web/src/lib/i18n/messages/en.json
-  - apps/web/src/vite-env.d.ts
   - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/lib/i18n/messages/ja.json
   - apps/web/src/pages/HomePage.tsx
-  - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
-  - apps/web/package.json
+  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
+  - apps/web/src/routes.tsx
+  - docs/mobile/images/setting_view_ios_snapshot.png
+  - apps/web/src/components/intro/ScreenshotCarousel.tsx
+  - docs/web/index.html
+  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
+  - docs/mobile/images/photo_gallery_view_android_snapshot.png
+  - docs/mobile/images/photo_gallery_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
+  - docs/mobile/index.html
+  - apps/web/src/pages/intro/IntroRootPage.tsx
+  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
+  - apps/web/src/components/layout/AppLayout.tsx
+  - docs/mobile/css/style.css
+  - docs/mobile/js/main.js
+  - docs/mobile/images/photo_detail_view_android_snapshot.png
+  - .github/workflows/deploy-pages.yml
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/pages/GalleryPage.tsx
+  - apps/web/src/lib/i18n/messages/ja.json
   - apps/web/src/lib/stores/use-settings-store.ts
-  - apps/web/src/components/onboarding/OnboardingCard.tsx
+  - apps/web/src/components/intro/DownloadBadge.tsx
+  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
+  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
+  - apps/web/src/pages/intro/IntroMobilePage.tsx
+  - apps/web/src/components/intro/FeatureCard.tsx
+  - docs/mobile/images/setting_view_android_snapshot.png
+  - docs/mobile/images/blog_input_view_android_snapshot.png
+  - docs/mobile/images/blog_input_view_ios_snapshot.png
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - README.md
+  - apps/web/CLAUDE.md
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/components/layout/PublicLayout.tsx
+  - docs/mobile/images/photo_detail_view_ios_snapshot.png
+  - apps/web/src/App.tsx
+  - apps/web/package.json
+  - docs/index.html
+  - docs/mobile/mobile-architecture.md
+  - apps/web/src/components/intro/IntroFooter.tsx
+  - apps/web/src/pages/NotFoundPage.tsx
+  - docs/mobile/js/i18n.js
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/components/intro/IntroNav.tsx
+  - apps/web/src/components/intro/StepCard.tsx
+  - apps/web/src/pages/intro/IntroWebPage.tsx
+  - apps/web/public/intro/mobile/photo_gallery_view_ios_snapshot.png
+  - apps/web/src/lib/config/public-navigation.ts
 tests:
-  - apps/web/src/__tests__/components/onboarding/OnboardingCard.test.tsx
-  - apps/web/src/__tests__/components/layout/RootLayout.test.tsx
+  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
   - apps/web/src/__tests__/pages/HomePage.test.tsx
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+-->
+
+---
+### Requirement: NotFoundPage as a first-class page
+
+`NotFoundPage` SHALL be rendered under `PublicLayout` and SHALL include:
+
+- A hero area with a large `404` numeral using `var(--font-display)`
+- A lucide icon (such as `MapPinOff` or `SearchX`) paired with the numeral
+- A main heading and subheading sourced from i18n keys `notFound.title` and `notFound.desc`
+- Three calls-to-action as links:
+  - Primary "Go home" → `/` (label from `notFound.ctaHome`)
+  - Secondary "Go to Web app" → `/app/web` (label from `notFound.ctaWebApp`)
+  - Secondary "See App intro" → `/intro/mobile` (label from `notFound.ctaMobileIntro`)
+- Responsive layout: CTAs stacked on mobile, horizontal on desktop
+
+The page SHALL be visually consistent with `IntroRootPage` and SHALL NOT appear as a minimal placeholder.
+
+#### Scenario: NotFoundPage renders under PublicLayout
+
+- **WHEN** user navigates to an unknown path such as `/nonexistent`
+- **THEN** `NotFoundPage` is rendered within `PublicLayout` with the hero 404, icon, heading, subheading, and three CTA links
+
+#### Scenario: NotFoundPage "Go home" CTA navigates to root
+
+- **WHEN** user clicks the primary CTA labeled from `notFound.ctaHome` on `NotFoundPage`
+- **THEN** the browser navigates to `/`
+
+#### Scenario: NotFoundPage "Go to Web app" CTA navigates to SPA
+
+- **WHEN** user clicks the secondary CTA labeled from `notFound.ctaWebApp` on `NotFoundPage`
+- **THEN** the browser navigates to `/app/web`
+
+#### Scenario: NotFoundPage "See App intro" CTA navigates to mobile intro
+
+- **WHEN** user clicks the secondary CTA labeled from `notFound.ctaMobileIntro` on `NotFoundPage`
+- **THEN** the browser navigates to `/intro/mobile`
+
+
+<!-- @trace
+source: unify-landing-in-apps-web
+updated: 2026-04-18
+code:
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/pages/HomePage.tsx
+  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
+  - apps/web/src/routes.tsx
+  - docs/mobile/images/setting_view_ios_snapshot.png
+  - apps/web/src/components/intro/ScreenshotCarousel.tsx
+  - docs/web/index.html
+  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
+  - docs/mobile/images/photo_gallery_view_android_snapshot.png
+  - docs/mobile/images/photo_gallery_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
+  - docs/mobile/index.html
+  - apps/web/src/pages/intro/IntroRootPage.tsx
+  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
+  - apps/web/src/components/layout/AppLayout.tsx
+  - docs/mobile/css/style.css
+  - docs/mobile/js/main.js
+  - docs/mobile/images/photo_detail_view_android_snapshot.png
+  - .github/workflows/deploy-pages.yml
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/pages/GalleryPage.tsx
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/components/intro/DownloadBadge.tsx
+  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
+  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
+  - apps/web/src/pages/intro/IntroMobilePage.tsx
+  - apps/web/src/components/intro/FeatureCard.tsx
+  - docs/mobile/images/setting_view_android_snapshot.png
+  - docs/mobile/images/blog_input_view_android_snapshot.png
+  - docs/mobile/images/blog_input_view_ios_snapshot.png
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - README.md
+  - apps/web/CLAUDE.md
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/components/layout/PublicLayout.tsx
+  - docs/mobile/images/photo_detail_view_ios_snapshot.png
+  - apps/web/src/App.tsx
+  - apps/web/package.json
+  - docs/index.html
+  - docs/mobile/mobile-architecture.md
+  - apps/web/src/components/intro/IntroFooter.tsx
+  - apps/web/src/pages/NotFoundPage.tsx
+  - docs/mobile/js/i18n.js
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/components/intro/IntroNav.tsx
+  - apps/web/src/components/intro/StepCard.tsx
+  - apps/web/src/pages/intro/IntroWebPage.tsx
+  - apps/web/public/intro/mobile/photo_gallery_view_ios_snapshot.png
+  - apps/web/src/lib/config/public-navigation.ts
+tests:
+  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
+  - apps/web/src/__tests__/pages/HomePage.test.tsx
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+-->
+
+---
+### Requirement: Vite base path for GitHub Pages root deployment
+
+The production build SHALL set `VITE_BASE_PATH=/naver-blog-image-downloader/` (no `web/app/` suffix). The Vite `base` option in `vite.config.ts` SHALL read from `process.env.VITE_BASE_PATH` and default to `/` for local development.
+
+#### Scenario: Production build uses root base path
+
+- **WHEN** `pnpm build` is run with `VITE_BASE_PATH=/naver-blog-image-downloader/`
+- **THEN** the resulting `dist/index.html` references assets under `/naver-blog-image-downloader/assets/` and the router basename is `/naver-blog-image-downloader/`
+
+#### Scenario: Local dev build uses root base path
+
+- **WHEN** `pnpm dev` is run without `VITE_BASE_PATH` set
+- **THEN** the dev server serves the app at `/` and the router basename is `/`
+
+<!-- @trace
+source: unify-landing-in-apps-web
+updated: 2026-04-18
+code:
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/pages/HomePage.tsx
+  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
+  - apps/web/src/routes.tsx
+  - docs/mobile/images/setting_view_ios_snapshot.png
+  - apps/web/src/components/intro/ScreenshotCarousel.tsx
+  - docs/web/index.html
+  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
+  - docs/mobile/images/photo_gallery_view_android_snapshot.png
+  - docs/mobile/images/photo_gallery_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
+  - docs/mobile/index.html
+  - apps/web/src/pages/intro/IntroRootPage.tsx
+  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
+  - apps/web/src/components/layout/AppLayout.tsx
+  - docs/mobile/css/style.css
+  - docs/mobile/js/main.js
+  - docs/mobile/images/photo_detail_view_android_snapshot.png
+  - .github/workflows/deploy-pages.yml
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/pages/GalleryPage.tsx
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/components/intro/DownloadBadge.tsx
+  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
+  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
+  - apps/web/src/pages/intro/IntroMobilePage.tsx
+  - apps/web/src/components/intro/FeatureCard.tsx
+  - docs/mobile/images/setting_view_android_snapshot.png
+  - docs/mobile/images/blog_input_view_android_snapshot.png
+  - docs/mobile/images/blog_input_view_ios_snapshot.png
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - README.md
+  - apps/web/CLAUDE.md
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/components/layout/PublicLayout.tsx
+  - docs/mobile/images/photo_detail_view_ios_snapshot.png
+  - apps/web/src/App.tsx
+  - apps/web/package.json
+  - docs/index.html
+  - docs/mobile/mobile-architecture.md
+  - apps/web/src/components/intro/IntroFooter.tsx
+  - apps/web/src/pages/NotFoundPage.tsx
+  - docs/mobile/js/i18n.js
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/components/intro/IntroNav.tsx
+  - apps/web/src/components/intro/StepCard.tsx
+  - apps/web/src/pages/intro/IntroWebPage.tsx
+  - apps/web/public/intro/mobile/photo_gallery_view_ios_snapshot.png
+  - apps/web/src/lib/config/public-navigation.ts
+tests:
+  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
+  - apps/web/src/__tests__/pages/HomePage.test.tsx
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
 -->
