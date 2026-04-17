@@ -134,10 +134,15 @@ Legacy redirect routes SHALL also be defined (see the `web-legacy-redirects` cap
 - **WHEN** user navigates to `/app/web`
 - **THEN** the `HomePage` component is rendered within `AppLayout`
 
-#### Scenario: Navigate to gallery with blogId
+#### Scenario: Navigate to gallery with blogId after in-app fetch
 
-- **WHEN** user navigates to `/app/web/gallery/abc123def456`
-- **THEN** the `GalleryPage` component is rendered within `AppLayout` with `blogId` param value `abc123def456`
+- **WHEN** the user has just fetched photos via `HomePage` (so `GalleryStore` holds the photos array for `blogId="abc123def456"`) and `HomePage` calls `navigate("/app/web/gallery/abc123def456", { state: { fetchResult, jobId } })`
+- **THEN** the `GalleryPage` component is rendered within `AppLayout` with `blogId` param value `abc123def456` and displays the photos from store
+
+#### Scenario: Direct deep-link to gallery without state
+
+- **WHEN** the user opens `/app/web/gallery/abc123def456` directly (reload, external link, or cold start) with no photos in `GalleryStore`
+- **THEN** the `GalleryPage` component mounts, detects the empty state, and immediately calls `navigate("/app/web")` as a fallback; the user lands on `HomePage` where they can paste a URL to fetch photos. Cold-start deep linking is NOT supported in this spec; see `web-legacy-redirects` for the matching redirect rule
 
 #### Scenario: Navigate to unknown route
 
