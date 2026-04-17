@@ -50,7 +50,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -156,7 +155,6 @@ source: unify-landing-in-apps-web
 updated: 2026-04-18
 code:
   - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/components/layout/RootLayout.tsx
   - apps/web/src/pages/HomePage.tsx
   - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
   - apps/web/src/routes.tsx
@@ -214,7 +212,6 @@ tests:
   - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
   - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
   - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
-  - apps/web/src/__tests__/components/layout/RootLayout.test.tsx
 -->
 
 ---
@@ -272,7 +269,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -360,7 +356,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -453,7 +448,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -541,7 +535,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -638,7 +631,6 @@ code:
   - apps/web/src/components/blog-input/FetchProgress.tsx
   - apps/web/src/lib/api/types.ts
   - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
   - .github/workflows/web-ci.yml
   - apps/web/src/lib/hooks/use-clipboard.ts
   - apps/web/src/lib/api/client.ts
@@ -707,7 +699,6 @@ source: unify-landing-in-apps-web
 updated: 2026-04-18
 code:
   - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/components/layout/RootLayout.tsx
   - apps/web/src/pages/HomePage.tsx
   - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
   - apps/web/src/routes.tsx
@@ -765,7 +756,6 @@ tests:
   - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
   - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
   - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
-  - apps/web/src/__tests__/components/layout/RootLayout.test.tsx
 -->
 
 ---
@@ -799,7 +789,6 @@ source: unify-landing-in-apps-web
 updated: 2026-04-18
 code:
   - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/components/layout/RootLayout.tsx
   - apps/web/src/pages/HomePage.tsx
   - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
   - apps/web/src/routes.tsx
@@ -857,7 +846,6 @@ tests:
   - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
   - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
   - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
-  - apps/web/src/__tests__/components/layout/RootLayout.test.tsx
 -->
 
 ---
@@ -902,7 +890,6 @@ source: unify-landing-in-apps-web
 updated: 2026-04-18
 code:
   - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/components/layout/RootLayout.tsx
   - apps/web/src/pages/HomePage.tsx
   - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
   - apps/web/src/routes.tsx
@@ -960,7 +947,6 @@ tests:
   - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
   - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
   - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
-  - apps/web/src/__tests__/components/layout/RootLayout.test.tsx
 -->
 
 ---
@@ -983,7 +969,6 @@ source: unify-landing-in-apps-web
 updated: 2026-04-18
 code:
   - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/components/layout/RootLayout.tsx
   - apps/web/src/pages/HomePage.tsx
   - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
   - apps/web/src/routes.tsx
@@ -1041,5 +1026,4 @@ tests:
   - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
   - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
   - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
-  - apps/web/src/__tests__/components/layout/RootLayout.test.tsx
 -->

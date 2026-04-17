@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'unify-landing-in-apps-web'. Update Purpose after archive.
+Web 根 landing 頁（`/`）—— 專案入口介紹頁，位於 PublicLayout 下，含 hero icon、標題、tagline、兩張導向 `/intro/mobile` 與 `/intro/web` 的卡片、footer，支援 zh-TW/en/ja/ko 四語系與 system/light/dark 三主題，所有色彩透過 M3 CSS 變數。
 
 ## Requirements
 

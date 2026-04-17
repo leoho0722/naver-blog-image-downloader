@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'unify-landing-in-apps-web'. Update Purpose after archive.
+Web 版介紹頁（`/intro/web`）—— 位於 PublicLayout 下，介紹 Web 下載器並取代原 `docs/web/index.html`。含 back link、title、tagline、四張 feature cards（URL 輸入、照片牆、批次下載、多語系）、主 CTA 以 React Router `<Link>` 同站 navigate 到 `/app/web`、技術棧標示，支援四語系。
 
 ## Requirements
 

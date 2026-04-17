@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'unify-landing-in-apps-web'. Update Purpose after archive.
+舊 URL 相容規則 —— Web SPA 從 `/web/app/` 遷移至 `/app/web` 後，對使用者可能書籤或外部引用的舊路徑以 React Router `<Navigate replace>` 做相容；依「冷啟是否可獨立運作」分類：可冷啟入口（`/web` → `/intro/web`、`/web/app` → `/app/web`）直接對應新路徑；依賴 SPA in-memory state 的舊深連結（`/web/app/gallery/:blogId`）redirect 到最近可冷啟父層 `/app/web`，不接 blogId。並定義 GitHub Pages 所需的 `404.html` SPA fallback。
 
 ## Requirements
 

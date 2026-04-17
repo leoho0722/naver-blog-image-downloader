@@ -2,7 +2,7 @@
 
 ## Purpose
 
-TBD - created by archiving change 'unify-landing-in-apps-web'. Update Purpose after archive.
+Web App 介紹頁（`/intro/mobile`）—— 位於 PublicLayout 下，介紹 Flutter iOS/Android 行動應用程式，取代原 `docs/mobile/index.html`。含 hero（含 phone mockup）、features 四格、how-it-works 四步驟、iOS/Android 平台切換的 ScreenshotCarousel（4 張截圖/平台）、download badges placeholder、IntroNav anchor 連結，支援四語系與三主題。
 
 ## Requirements
 
