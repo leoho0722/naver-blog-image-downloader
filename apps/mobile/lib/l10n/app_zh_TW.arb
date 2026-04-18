@@ -20,6 +20,9 @@
   "settingsClearAllDialogTitle": "清除全部快取",
   "settingsClearAllDialogContent": "確定要清除所有已快取的照片嗎？此操作無法復原。",
   "settingsVersionLabel": "版本",
+  "settingsSectionLegal": "法律資訊",
+  "settingsPrivacyPolicyTitle": "隱私政策",
+  "settingsPrivacyPolicyLaunchFailed": "無法開啟隱私政策，請檢查網路連線",
 
   "blogInputAppBarTitle": "照片下載器",
   "blogInputUrlLabel": "Naver Blog 網址",

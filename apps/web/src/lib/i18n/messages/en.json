@@ -188,5 +188,84 @@
       "github": "GitHub",
       "copyright": "© 2026 Naver Blog Image Downloader"
     }
+  },
+
+  "privacy": {
+    "pageTitle": "Privacy Policy",
+    "lastUpdatedLabel": "Last updated",
+    "versionLabel": "Document version",
+    "footerLink": "Privacy Policy",
+    "metaDescription": "Privacy policy for Naver Blog Image Downloader — what data we collect, how it is used, and your rights.",
+    "intro": "\"Naver Blog Image Downloader\" is an open-source personal project that operates under a minimum-data-collection principle. No account is required; we do not sell data and do not serve ads. This page explains what we collect, how it is used, and how you can exercise control.",
+    "sections": [
+      {
+        "id": "dataCollection",
+        "title": "Data we collect",
+        "body": [
+          "Naver Blog URLs you submit: sent from the App or Web to our backend service solely to fetch and package images. Submitted URLs are not retained after processing completes.",
+          "Anonymous user identifier (Mobile App only): on first launch the App creates an anonymous UID via Firebase Authentication to tie crash reports and operation logs to a device. It contains no email address, phone number, name, or social handle. The session is persisted on-device (iOS Keychain / Android EncryptedSharedPreferences).",
+          "Operation logs (Mobile App only): key operations (fetch, download, cache clear, etc.) are written as structured documents to Cloud Firestore at \"users/{anonymousUid}/logs/{auto-id}\". Fields include operation type, timestamp, related metadata, and device info (OS version, model).",
+          "Crash stack traces (Mobile App only): collected automatically by Firebase Crashlytics. Contains stack traces and device info used to fix bugs.",
+          "On-device data (not uploaded): locale, theme preference, downloaded-image list, and thumbnail cache are stored on the device only, and can be removed at any time from the settings page via \"Clear cache\"."
+        ]
+      },
+      {
+        "id": "dataUsage",
+        "title": "How we use data",
+        "body": [
+          "To deliver the core feature — fetching, packaging, and downloading Naver Blog images.",
+          "To diagnose errors and improve reliability via operation logs.",
+          "To locate and fix crashes via crash reports.",
+          "We explicitly do not: profile users, serve ads, sell data, or track across apps."
+        ]
+      },
+      {
+        "id": "thirdParty",
+        "title": "Third-party services",
+        "body": [
+          "AWS Lambda + S3 (Amazon Web Services, Inc.): backend packaging pipeline and transient ZIP storage, operated by the project maintainer.",
+          "Firebase Authentication (Google LLC): anonymous sign-in; sessions are persisted by the Firebase SDK on device.",
+          "Cloud Firestore (Google LLC): stores operation logs keyed by the anonymous UID.",
+          "Firebase Crashlytics (Google LLC): collects crash stack traces for debugging.",
+          "Naver: the URLs you provide point to Naver Blog; image fetches follow Naver's own cookies and terms of service."
+        ]
+      },
+      {
+        "id": "retention",
+        "title": "Retention and deletion",
+        "body": [
+          "Packaged ZIP files in S3: automatically deleted 1 day after creation via a bucket lifecycle rule on the \"jobs/\" prefix.",
+          "Download links (presigned URLs): valid for 1 hour, expiring automatically thereafter.",
+          "Firestore operation logs: not actively purged today; retained per Firebase defaults. To request deletion, contact us via the email below and we will remove all documents under your anonymous UID.",
+          "Crashlytics: retained per Firebase's policies.",
+          "On-device cache: cleared immediately by the user via the in-app \"Clear cache\" action."
+        ]
+      },
+      {
+        "id": "userRights",
+        "title": "Your rights",
+        "body": [
+          "There is no account system and no \"log out\" concept. To stop using the product, uninstall the App or stop using the Web.",
+          "You can request deletion of all Firestore operation logs tied to your anonymous UID via the contact email below.",
+          "You can clear local data at any time from the App settings via \"Clear cache\".",
+          "You can clear this site's Local Storage / Cookies through your browser settings (should any be added in future)."
+        ]
+      },
+      {
+        "id": "children",
+        "title": "Children's privacy",
+        "body": "This product is not designed for children under 13, and we do not knowingly collect data from them. Age ratings follow the listings on the App Store and Google Play."
+      },
+      {
+        "id": "changes",
+        "title": "Policy changes",
+        "body": "The \"Last updated\" date on this page is authoritative. Material changes will be announced through GitHub Release Notes and the in-app \"What's New\" screen."
+      }
+    ],
+    "contact": {
+      "title": "Contact us",
+      "body": "For questions about this privacy policy, or to request deletion of Firestore operation logs associated with your anonymous UID, please reach out at:",
+      "email": "leo160918@gmail.com"
+    }
   }
 }

@@ -20,6 +20,9 @@
   "settingsClearAllDialogTitle": "すべてのキャッシュを削除",
   "settingsClearAllDialogContent": "キャッシュされたすべての写真を削除しますか？この操作は元に戻せません。",
   "settingsVersionLabel": "バージョン",
+  "settingsSectionLegal": "法的情報",
+  "settingsPrivacyPolicyTitle": "プライバシーポリシー",
+  "settingsPrivacyPolicyLaunchFailed": "プライバシーポリシーを開けません。ネットワーク接続をご確認ください。",
 
   "blogInputAppBarTitle": "写真ダウンローダー",
   "blogInputUrlLabel": "NaverブログURL",

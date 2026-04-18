@@ -61,6 +61,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsVersionLabel => 'Version';
 
   @override
+  String get settingsSectionLegal => 'Legal';
+
+  @override
+  String get settingsPrivacyPolicyTitle => 'Privacy Policy';
+
+  @override
+  String get settingsPrivacyPolicyLaunchFailed =>
+      'Unable to open the privacy policy. Please check your network connection.';
+
+  @override
   String get blogInputAppBarTitle => 'Photo Downloader';
 
   @override

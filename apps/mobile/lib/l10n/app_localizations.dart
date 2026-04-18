@@ -205,6 +205,24 @@ abstract class AppLocalizations {
   /// **'版本'**
   String get settingsVersionLabel;
 
+  /// No description provided for @settingsSectionLegal.
+  ///
+  /// In zh_TW, this message translates to:
+  /// **'法律資訊'**
+  String get settingsSectionLegal;
+
+  /// No description provided for @settingsPrivacyPolicyTitle.
+  ///
+  /// In zh_TW, this message translates to:
+  /// **'隱私政策'**
+  String get settingsPrivacyPolicyTitle;
+
+  /// No description provided for @settingsPrivacyPolicyLaunchFailed.
+  ///
+  /// In zh_TW, this message translates to:
+  /// **'無法開啟隱私政策，請檢查網路連線'**
+  String get settingsPrivacyPolicyLaunchFailed;
+
   /// No description provided for @blogInputAppBarTitle.
   ///
   /// In zh_TW, this message translates to:
