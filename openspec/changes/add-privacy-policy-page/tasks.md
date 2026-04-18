@@ -46,4 +46,4 @@
   - `/legal/privacy` 依決策不 redirect、正確落入 NotFoundPage
   - Console 無 error / warning
 - [x] 6.3 `apps/mobile/` 執行 `flutter analyze` No issues found、`flutter test` 140 tests all passed（含新 privacy_policy_url_test 4 項）；iOS 模擬器實機點擊驗證留給使用者（需要實體裝置 / 模擬器才能驗證 `url_launcher` 真實行為）
-- [ ] 6.4 撰寫正體中文 Conventional Commit（feat / scope 視模組），body 以列點摘要 Web / Mobile / i18n 四個面向改動；確認版號 bump 已包含
+- [x] 6.4 已 commit（`9738c0a` — `feat(privacy): 新增共用隱私政策頁面供 App 上架使用`），body 以列點摘要 Web / Mobile / i18n / 揭露範圍四個面向，含兩端 minor bump，38 files changed +1633/-13
