@@ -60,6 +60,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsVersionLabel => '版本';
 
   @override
+  String get settingsSectionLegal => '法律資訊';
+
+  @override
+  String get settingsPrivacyPolicyTitle => '隱私政策';
+
+  @override
+  String get settingsPrivacyPolicyLaunchFailed => '無法開啟隱私政策，請檢查網路連線';
+
+  @override
   String get blogInputAppBarTitle => '照片下載器';
 
   @override
@@ -295,6 +304,15 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get settingsVersionLabel => '版本';
+
+  @override
+  String get settingsSectionLegal => '法律資訊';
+
+  @override
+  String get settingsPrivacyPolicyTitle => '隱私政策';
+
+  @override
+  String get settingsPrivacyPolicyLaunchFailed => '無法開啟隱私政策，請檢查網路連線';
 
   @override
   String get blogInputAppBarTitle => '照片下載器';

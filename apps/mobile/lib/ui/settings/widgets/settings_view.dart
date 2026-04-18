@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:naver_blog_image_downloader/l10n/app_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/app_icon.dart';
 import '../../../config/bottom_sheet_animation.dart';
+import '../../../config/privacy_policy_url.dart';
 import '../../../config/supported_locale.dart';
 import '../../core/view_model/app_settings_view_model.dart';
 import '../view_model/settings_view_model.dart';
@@ -49,6 +51,10 @@ class _SettingsViewState extends ConsumerState<SettingsView>
 
   /// 應用程式版本字串（例如「1.0.0 (1)」），於 [_loadVersion] 中從 [PackageInfo] 取得。
   String _version = '';
+
+  /// 隱私政策的 [Uri]，於編譯期由常數 [privacyPolicyUrl] 解析，
+  /// 避免每次使用者 tap 時重複呼叫 [Uri.parse]。
+  static final Uri _privacyPolicyUri = Uri.parse(privacyPolicyUrl);
 
   /// 初始化語言選擇 Bottom Sheet 的動畫控制器並載入應用程式版本資訊。
   @override
@@ -291,11 +297,61 @@ class _SettingsViewState extends ConsumerState<SettingsView>
                   ),
                 ),
               ),
+              // 法律資訊區段：隱私政策（點擊會以系統預設瀏覽器開啟 Web 版）
+              _buildSectionHeader(
+                l10n.settingsSectionLegal,
+                textTheme,
+                colorScheme,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Card.filled(
+                  child: ListTile(
+                    title: Text(l10n.settingsPrivacyPolicyTitle),
+                    trailing: Icon(
+                      Icons.open_in_new,
+                      size: 20,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                    onTap: () => _openPrivacyPolicy(context, l10n),
+                  ),
+                ),
+              ),
             ],
           );
         },
       ),
     );
+  }
+
+  /// 以系統預設瀏覽器開啟 Web 版隱私政策頁面。
+  ///
+  /// 使用 [LaunchMode.externalApplication] 讓連結在 App 之外開啟；
+  /// 若 `launchUrl` 回傳 `false` 或拋出例外，顯示 [SnackBar] 告知使用者，
+  /// 不讓失敗靜默或導致 App 崩潰。
+  ///
+  /// [context] 為當前的 [BuildContext]，用於顯示 [SnackBar]。
+  /// [l10n] 為本地化資源，用於讀取失敗訊息字串。
+  Future<void> _openPrivacyPolicy(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final failureMessage = l10n.settingsPrivacyPolicyLaunchFailed;
+    try {
+      final launched = await launchUrl(
+        _privacyPolicyUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(failureMessage)));
+      }
+    } catch (e, stack) {
+      debugPrint('Failed to launch privacy policy: $e\n$stack');
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(content: Text(failureMessage)));
+      }
+    }
   }
 
   /// 取得 [AppIcon] 對應的本地化名稱。

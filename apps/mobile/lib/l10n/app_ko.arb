@@ -20,6 +20,9 @@
   "settingsClearAllDialogTitle": "모든 캐시 삭제",
   "settingsClearAllDialogContent": "캐시된 모든 사진을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
   "settingsVersionLabel": "버전",
+  "settingsSectionLegal": "법적 고지",
+  "settingsPrivacyPolicyTitle": "개인정보 처리방침",
+  "settingsPrivacyPolicyLaunchFailed": "개인정보 처리방침을 열 수 없습니다. 네트워크 연결을 확인해 주세요.",
 
   "blogInputAppBarTitle": "사진 다운로더",
   "blogInputUrlLabel": "네이버 블로그 URL",

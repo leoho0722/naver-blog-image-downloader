@@ -61,6 +61,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settingsVersionLabel => 'バージョン';
 
   @override
+  String get settingsSectionLegal => '法的情報';
+
+  @override
+  String get settingsPrivacyPolicyTitle => 'プライバシーポリシー';
+
+  @override
+  String get settingsPrivacyPolicyLaunchFailed =>
+      'プライバシーポリシーを開けません。ネットワーク接続をご確認ください。';
+
+  @override
   String get blogInputAppBarTitle => '写真ダウンローダー';
 
   @override

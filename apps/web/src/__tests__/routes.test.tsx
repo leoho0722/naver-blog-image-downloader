@@ -4,8 +4,28 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) =>
-      key === "settingsThemeToggle" ? `${key}:${String(options?.theme)}` : key,
+    t: (key: string, options?: Record<string, unknown>) => {
+      // 支援 returnObjects（PrivacyPolicyPage 會讀 privacy.sections / privacy.contact）
+      if (options && options.returnObjects === true) {
+        if (key === "privacy.sections") {
+          return [];
+        }
+        if (key === "privacy.contact") {
+          return {
+            title: "privacy.contact.title",
+            body: "privacy.contact.body",
+            issueLinkLabel: "privacy.contact.issueLinkLabel",
+            issueUrl:
+              "https://github.com/leoho0722/naver-blog-image-downloader/issues",
+          };
+        }
+        return {};
+      }
+      if (key === "settingsThemeToggle") {
+        return `${key}:${String(options?.theme)}`;
+      }
+      return key;
+    },
   }),
 }));
 
@@ -103,5 +123,16 @@ describe("routes.tsx 路由與 redirect 行為", () => {
   it("/nonexistent 渲染 NotFoundPage（含 notFound.title）", async () => {
     await renderAt("/nonexistent");
     expect(await screen.findByText("notFound.title")).toBeInTheDocument();
+  });
+
+  it("/privacy 渲染 PrivacyPolicyPage（PublicLayout 底下）", async () => {
+    await renderAt("/privacy");
+    // 頁面會渲染 privacy.pageTitle 作為 h1
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "privacy.pageTitle",
+      }),
+    ).toBeInTheDocument();
   });
 });

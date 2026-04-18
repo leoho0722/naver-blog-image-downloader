@@ -61,6 +61,16 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settingsVersionLabel => '버전';
 
   @override
+  String get settingsSectionLegal => '법적 고지';
+
+  @override
+  String get settingsPrivacyPolicyTitle => '개인정보 처리방침';
+
+  @override
+  String get settingsPrivacyPolicyLaunchFailed =>
+      '개인정보 처리방침을 열 수 없습니다. 네트워크 연결을 확인해 주세요.';
+
+  @override
   String get blogInputAppBarTitle => '사진 다운로더';
 
   @override

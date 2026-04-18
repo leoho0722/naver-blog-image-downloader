@@ -20,6 +20,9 @@
   "settingsClearAllDialogTitle": "Clear All Cache",
   "settingsClearAllDialogContent": "Are you sure you want to clear all cached photos? This action cannot be undone.",
   "settingsVersionLabel": "Version",
+  "settingsSectionLegal": "Legal",
+  "settingsPrivacyPolicyTitle": "Privacy Policy",
+  "settingsPrivacyPolicyLaunchFailed": "Unable to open the privacy policy. Please check your network connection.",
 
   "blogInputAppBarTitle": "Photo Downloader",
   "blogInputUrlLabel": "Naver Blog URL",
