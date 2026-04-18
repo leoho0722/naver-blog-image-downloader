@@ -52,6 +52,10 @@ class _SettingsViewState extends ConsumerState<SettingsView>
   /// 應用程式版本字串（例如「1.0.0 (1)」），於 [_loadVersion] 中從 [PackageInfo] 取得。
   String _version = '';
 
+  /// 隱私政策的 [Uri]，於編譯期由常數 [privacyPolicyUrl] 解析，
+  /// 避免每次使用者 tap 時重複呼叫 [Uri.parse]。
+  static final Uri _privacyPolicyUri = Uri.parse(privacyPolicyUrl);
+
   /// 初始化語言選擇 Bottom Sheet 的動畫控制器並載入應用程式版本資訊。
   @override
   void initState() {
@@ -336,13 +340,14 @@ class _SettingsViewState extends ConsumerState<SettingsView>
     final failureMessage = l10n.settingsPrivacyPolicyLaunchFailed;
     try {
       final launched = await launchUrl(
-        Uri.parse(privacyPolicyUrl),
+        _privacyPolicyUri,
         mode: LaunchMode.externalApplication,
       );
       if (!launched && mounted) {
         messenger.showSnackBar(SnackBar(content: Text(failureMessage)));
       }
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('Failed to launch privacy policy: $e\n$stack');
       if (mounted) {
         messenger.showSnackBar(SnackBar(content: Text(failureMessage)));
       }

@@ -67,14 +67,15 @@ export default function PrivacyPolicyPage() {
       </header>
 
       <div className="space-y-10">
-        {sections?.map((section) => (
-          <PrivacyPolicySection
-            key={section.id}
-            id={section.id}
-            title={section.title}
-            body={section.body}
-          />
-        ))}
+        {Array.isArray(sections) &&
+          sections.map((section) => (
+            <PrivacyPolicySection
+              key={section.id}
+              id={section.id}
+              title={section.title}
+              body={section.body}
+            />
+          ))}
 
         {contact && (
           <section
