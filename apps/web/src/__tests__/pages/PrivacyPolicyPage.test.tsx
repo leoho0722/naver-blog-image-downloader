@@ -58,7 +58,7 @@ describe("PrivacyPolicyPage", () => {
   };
 
   for (const locale of locales) {
-    it(`以 ${locale} 語系渲染標題、最後更新、版本、intro、sections 與 contact`, async () => {
+    it(`以 ${locale} 語系渲染標題、最後更新日期、intro、sections 與 contact`, async () => {
       const instance = await createTestI18n();
       await instance.changeLanguage(locale);
 
@@ -76,10 +76,6 @@ describe("PrivacyPolicyPage", () => {
       // 最後更新日期（來自常數）
       expect(screen.getByText(PRIVACY_POLICY_LAST_UPDATED)).toBeInTheDocument();
 
-      // 版本字串（來自 __APP_VERSION__，由 vite.config.ts 建置時注入；
-      // 在 vitest 環境下也會被 define 設定，並以 package.json 的 version 做值）
-      expect(screen.getByText(`v${__APP_VERSION__}`)).toBeInTheDocument();
-
       // sections：至少每個語系的 zh-TW 參考 id 都該渲染出對應 heading
       const referenceSections = zhTW.privacy.sections;
       for (const section of referenceSections) {
@@ -90,17 +86,33 @@ describe("PrivacyPolicyPage", () => {
         ).not.toBeNull();
       }
 
-      // contact 區塊
+      // contact 區塊：GitHub issue 連結 href 相同但 label 各語系不同
       const contactEl = document.getElementById("privacy-contact");
       expect(contactEl).not.toBeNull();
-      expect(
-        screen.getByRole("link", { name: /leo160918@gmail.com/ }),
-      ).toHaveAttribute("href", "mailto:leo160918@gmail.com");
+      const issueLink = contactEl!.querySelector("a");
+      expect(issueLink).not.toBeNull();
+      expect(issueLink).toHaveAttribute(
+        "href",
+        "https://github.com/leoho0722/naver-blog-image-downloader/issues",
+      );
+      expect(issueLink).toHaveAttribute("target", "_blank");
 
       // document.title 在 mount 後應變成該語系的 pageTitle
       expect(document.title).toBe(expectedTitles[locale]);
     });
   }
+
+  it("不顯示 Web 版號列（刻意不帶版本資訊）", async () => {
+    const instance = await createTestI18n();
+
+    render(
+      <I18nextProvider i18n={instance}>
+        <PrivacyPolicyPage />
+      </I18nextProvider>,
+    );
+
+    expect(screen.queryByText(`v${__APP_VERSION__}`)).toBeNull();
+  });
 
   it("unmount 後 document.title 還原為先前的值", async () => {
     const instance = await createTestI18n();

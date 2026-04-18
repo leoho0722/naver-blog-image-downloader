@@ -1,10 +1,7 @@
 import { useTranslation } from "react-i18next";
 
 import PrivacyPolicySection from "../components/privacy/PrivacyPolicySection";
-import {
-  PRIVACY_POLICY_CONTACT_EMAIL,
-  PRIVACY_POLICY_LAST_UPDATED,
-} from "../lib/config/privacy-policy";
+import { PRIVACY_POLICY_LAST_UPDATED } from "../lib/config/privacy-policy";
 import { usePageMeta } from "../lib/hooks/use-page-meta";
 
 /**
@@ -12,10 +9,13 @@ import { usePageMeta } from "../lib/hooks/use-page-meta";
  *
  * 版面順序（依 spec web-privacy-policy 要求）：
  *   1. 頁面標題
- *   2. 最後更新日期 / 文件版本（metadata row）
+ *   2. 最後更新日期（metadata row）
  *   3. 導言段落
  *   4. 內容 sections（由 i18n `privacy.sections` 陣列驅動）
- *   5. 聯絡方式區塊
+ *   5. 聯絡方式區塊（透過 GitHub Issues 連回本專案）
+ *
+ * 頁面刻意不顯示 Web 版號：使用者進入此頁是為了瀏覽隱私政策，
+ * 與 Web App 版號無直接相關；若需版本資訊可於 App Store / Google Play 查看。
  */
 
 /** 由 i18n 讀出的單一章節結構，對應 `privacy.sections[]` */
@@ -29,7 +29,8 @@ interface PrivacySection {
 interface PrivacyContact {
   title: string;
   body: string;
-  email: string;
+  issueLinkLabel: string;
+  issueUrl: string;
 }
 
 export default function PrivacyPolicyPage() {
@@ -47,8 +48,6 @@ export default function PrivacyPolicyPage() {
     | PrivacyContact
     | undefined;
 
-  const version = `v${__APP_VERSION__}`;
-
   return (
     <article className="mx-auto max-w-3xl px-5 py-12 sm:py-16">
       <header className="mb-10">
@@ -61,8 +60,6 @@ export default function PrivacyPolicyPage() {
         <dl className="mb-6 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm text-[var(--color-on-surface-variant)]">
           <dt className="font-medium">{t("privacy.lastUpdatedLabel")}</dt>
           <dd>{PRIVACY_POLICY_LAST_UPDATED}</dd>
-          <dt className="font-medium">{t("privacy.versionLabel")}</dt>
-          <dd>{version}</dd>
         </dl>
         <p className="text-sm leading-relaxed text-[var(--color-on-surface-variant)] sm:text-base">
           {t("privacy.intro")}
@@ -91,14 +88,17 @@ export default function PrivacyPolicyPage() {
             >
               {contact.title}
             </h2>
-            <p className="mb-3 text-sm leading-relaxed text-[var(--color-on-surface-variant)] sm:text-base">
+            <p className="mb-4 text-sm leading-relaxed text-[var(--color-on-surface-variant)] sm:text-base">
               {contact.body}
             </p>
             <a
-              href={`mailto:${PRIVACY_POLICY_CONTACT_EMAIL}`}
-              className="inline-flex items-center font-medium text-[var(--color-primary)] underline-offset-4 hover:underline"
+              href={contact.issueUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-medium text-[var(--color-primary)] underline-offset-4 hover:underline"
             >
-              {PRIVACY_POLICY_CONTACT_EMAIL}
+              {contact.issueLinkLabel}
+              <span aria-hidden>↗</span>
             </a>
           </section>
         )}

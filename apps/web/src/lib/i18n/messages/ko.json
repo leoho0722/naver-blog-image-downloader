@@ -3,7 +3,6 @@
   "commonCancel": "취소",
   "commonConfirm": "확인",
   "commonOk": "확인",
-
   "settingsTitle": "설정",
   "settingsThemeSystem": "시스템",
   "settingsThemeLight": "라이트",
@@ -11,14 +10,12 @@
   "settingsLanguage": "언어",
   "settingsAppearance": "테마",
   "settingsThemeToggle": "테마 전환(현재: {{theme}})",
-
   "blogInputTitle": "Naver Blog 사진 다운로드",
   "blogInputSubtitle": "블로그 글 URL을 붙여넣어 모든 사진을 가져오세요",
   "blogInputUrlHint": "https://blog.naver.com/...",
   "blogInputPaste": "붙여넣기",
   "blogInputFetchButton": "사진 가져오기",
   "blogInputFetching": "가져오는 중...",
-
   "errorEmptyUrl": "URL을 입력해주세요",
   "errorInvalidUrl": "유효한 Naver Blog URL을 입력해주세요",
   "errorTimeout": "시간이 초과되었습니다. 잠시 후 다시 시도해주세요.",
@@ -26,30 +23,25 @@
   "errorServerError": "서버 처리에 실패했습니다. 잠시 후 다시 시도해주세요.",
   "errorNetworkError": "네트워크 오류입니다. 연결을 확인해주세요.",
   "errorGeneric": "오류가 발생했습니다. 잠시 후 다시 시도해주세요.",
-
   "statusSubmitting": "제출 중...",
   "statusProcessing": "서버 처리 중...",
   "statusCompleted": "완료",
-
   "galleryPhotos": "사진 {{count}}장",
   "gallerySelected": "{{count}}장 선택됨",
   "gallerySelectMode": "선택",
   "galleryDeselectMode": "선택 해제",
   "gallerySelectAll": "전체 선택",
   "galleryEmpty": "사진 없음",
-
   "downloadAll": "전체 다운로드",
   "downloadSelected": "선택 다운로드",
   "downloadSingle": "다운로드",
   "packaging": "패키징 중...",
   "packagingComplete": "완료, {{count}}장의 사진",
   "packagingFailed": "패키징 실패",
-
   "viewerClose": "닫기",
   "viewerPrev": "이전",
   "viewerNext": "다음",
   "viewerCounter": "{{current}} / {{total}}",
-
   "notFound": {
     "title": "페이지를 찾을 수 없습니다",
     "desc": "요청하신 URL이 존재하지 않거나 이동되었습니다. 아래에서 계속 진행할 곳을 선택하세요.",
@@ -57,11 +49,9 @@
     "ctaWebApp": "Web 앱 열기",
     "ctaMobileIntro": "모바일 앱 소개 보기"
   },
-
   "onboardingTitle": "환영합니다",
   "onboardingDesc": "1. Naver Blog 글 URL을 붙여넣거나 입력하세요\n2. \"사진 가져오기\"를 클릭하여 모든 이미지를 추출합니다\n3. 갤러리에서 사진을 탐색, 선택 및 다운로드하세요",
   "onboardingStart": "시작하기",
-
   "intro": {
     "root": {
       "title": "Naver Blog 이미지 다운로더",
@@ -189,24 +179,22 @@
       "copyright": "© 2026 Naver Blog 이미지 다운로더"
     }
   },
-
   "privacy": {
     "pageTitle": "개인정보 처리방침",
     "lastUpdatedLabel": "최종 업데이트",
-    "versionLabel": "문서 버전",
     "footerLink": "개인정보 처리방침",
-    "metaDescription": "Naver Blog 이미지 다운로더 개인정보 처리방침 — 수집하는 데이터, 사용 방식, 사용자 권리에 대한 안내.",
-    "intro": "본 제품 \"Naver Blog 이미지 다운로더\"는 오픈소스 개인 프로젝트이며, 최소 데이터 수집 원칙으로 운영됩니다. 계정 등록이 필요 없으며, 데이터를 판매하거나 광고를 게재하지 않습니다. 이 페이지에서는 수집 항목, 이용 목적, 사용자가 통제할 수 있는 방법을 설명합니다.",
+    "metaDescription": "Naver Blog 이미지 다운로더 개인정보 처리방침 — 본 프로젝트가 수집하는 데이터, 사용 방식, 사용자 권리에 대한 안내.",
+    "intro": "본 제품 \"Naver Blog 이미지 다운로더\"는 오픈소스 개인 프로젝트이며, 최소 데이터 수집 원칙으로 운영됩니다. 계정 등록이 필요 없고, 본 프로젝트는 데이터를 판매하거나 광고를 게재하지 않습니다. 이 페이지에서는 수집 항목, 이용 목적, 사용자가 통제할 수 있는 방법을 설명합니다.",
     "sections": [
       {
         "id": "dataCollection",
-        "title": "수집하는 데이터",
+        "title": "본 프로젝트가 수집하는 데이터",
         "body": [
-          "사용자가 입력한 Naver Blog URL: App 또는 Web에서 백엔드 서비스로 전송되며, 이미지 수집과 패키징 목적으로만 사용됩니다. 처리 완료 후 URL 문자열은 보존되지 않습니다.",
-          "익명 사용자 식별자(Mobile App 한정): App 최초 실행 시 Firebase Authentication이 익명 UID를 자동 생성하여 크래시 보고서 및 작업 로그와 연결합니다. 이메일, 전화번호, 이름, SNS 계정 등 개인정보는 포함되지 않으며, 세션은 기기(iOS Keychain / Android EncryptedSharedPreferences)에 저장됩니다.",
-          "작업 로그(Mobile App 한정): 주요 작업(수집, 다운로드, 캐시 삭제 등)이 Cloud Firestore의 \"users/{익명 UID}/logs/{auto-id}\" 경로에 구조화된 문서로 기록됩니다. 필드에는 작업 유형, 타임스탬프, 관련 메타데이터, 기기 정보(OS 버전, 모델)가 포함됩니다.",
-          "크래시 스택(Mobile App 한정): Firebase Crashlytics가 자동으로 수집하며, 내용은 스택 추적과 기기 정보로 버그 수정에 사용됩니다.",
-          "기기 로컬 데이터(업로드되지 않음): 언어, 테마 설정, 다운로드 이미지 목록, 썸네일 캐시는 기기에만 저장되며 설정 화면의 \"캐시 지우기\"로 언제든 삭제할 수 있습니다."
+          "사용자가 입력한 Naver Blog URL: App 또는 Web에서 본 프로젝트의 백엔드 서비스로 전송되며, 이미지 수집 및 패키징 목적으로만 사용되고 처리 완료 후에는 더 이상 사용되지 않습니다. 본 프로젝트는 URL을 장기 저장소에 능동적으로 기록하지 않으며, 클라우드 인프라(AWS)의 시스템 로그에는 관련 기술 기록이 단기간 남을 수 있고 AWS 기본 로테이션에 따라 자동 삭제됩니다.",
+          "익명 기기 식별자(Mobile App 한정): App 최초 실행 시 익명 식별자를 자동 생성하여, 크래시 리포트와 작업 로그를 동일 기기에 연결하는 용도로만 사용합니다. 이메일, 전화번호, 이름, SNS 계정 등 개인정보는 포함되지 않습니다. 본 프로젝트는 이 식별자를 실제 신원과 연결하지 않습니다. 식별자는 제3자 인증 서비스(Firebase Authentication, 자세한 내용은 \"제3자 서비스\" 참조)가 생성하여 기기에 저장합니다.",
+          "작업 로그(Mobile App 한정): 오류 진단 및 안정성 개선을 위해 주요 작업(수집, 다운로드, 캐시 삭제 등)을 제3자 클라우드 데이터베이스 서비스(Cloud Firestore, 자세한 내용은 \"제3자 서비스\" 참조)에 익명 식별자와 연결해 기록합니다. 필드에는 작업 유형, 타임스탬프, 관련 설정, 기기 기본 정보(OS 버전, 모델)가 포함됩니다.",
+          "크래시 리포트(Mobile App 한정): Firebase Crashlytics가 자동으로 수집하며, 내용은 스택 추적과 기기 정보로 버그 수정에 사용됩니다.",
+          "기기 로컬 데이터(업로드되지 않음): 언어, 테마 설정, 다운로드 이미지 목록, 썸네일 캐시는 기기에만 저장되며 App 설정 화면에서 언제든 삭제할 수 있습니다."
         ]
       },
       {
@@ -215,8 +203,9 @@
         "body": [
           "\"Naver Blog 이미지 수집 / 패키징 / 다운로드\" 핵심 기능 제공.",
           "작업 로그를 통한 오류 진단 및 안정성 개선.",
-          "크래시 보고서를 통한 오류 원인 파악 및 수정.",
-          "다음 사항은 명시적으로 수행하지 않습니다: 사용자 프로파일링, 광고 노출, 데이터 판매, 앱 간 추적."
+          "Firebase Crashlytics 리포트를 통한 오류 원인 파악 및 수정.",
+          "본 프로젝트가 명시적으로 수행하지 않는 사항: 사용자 프로파일링, 광고 노출, 데이터 판매, 제3자 앱 및 웹사이트 간 사용자 추적.",
+          "본 프로젝트는 수집한 어떠한 데이터도 AI 모델 학습에 사용하지 않습니다. 제3자 서비스(Firebase 등) 측의 데이터 처리는 각 서비스의 개인정보 처리방침을 참조하시기 바랍니다."
         ]
       },
       {
@@ -224,10 +213,18 @@
         "title": "제3자 서비스",
         "body": [
           "AWS Lambda + S3(Amazon Web Services, Inc.): 백엔드 패키징 파이프라인과 ZIP 파일 임시 보관. 프로젝트 운영자가 관리합니다.",
-          "Firebase Authentication(Google LLC): 익명 로그인. 세션은 Firebase SDK가 기기에 저장합니다.",
-          "Cloud Firestore(Google LLC): 익명 UID와 연결된 작업 로그 저장.",
-          "Firebase Crashlytics(Google LLC): 디버깅용 크래시 스택 수집.",
-          "Naver: 사용자가 입력한 URL은 Naver Blog를 가리키며, 이미지 수집은 Naver의 쿠키 및 이용약관을 따릅니다."
+          "Firebase Authentication(Google LLC): 익명 로그인. 식별자는 Firebase SDK가 기기에 저장합니다.",
+          "Cloud Firestore(Google LLC): 익명 식별자를 키로 한 작업 로그 저장.",
+          "Firebase Crashlytics(Google LLC): 디버깅용 크래시 리포트 수집.",
+          "Naver: 사용자가 입력한 URL은 Naver Blog를 가리킵니다. 해당 이용이 Naver의 이용약관에 부합하는지는 사용자 본인이 확인해야 합니다. 본 프로젝트는 기술적 도구만을 제공할 뿐, 특정 이용을 권장하지 않으며 Naver와 어떠한 상업적 또는 라이선스 관계도 없습니다."
+        ]
+      },
+      {
+        "id": "dataTransfer",
+        "title": "개인정보의 국외 이전",
+        "body": [
+          "서비스 제공을 위해 사용자의 작업 로그와 크래시 리포트는 미국(Google LLC가 운영하는 Google Cloud Platform)에 저장될 수 있습니다. 백엔드 패키징 파이프라인은 프로젝트 운영자가 선택한 AWS 리전에서 실행됩니다.",
+          "EU 또는 EEA 거주 사용자의 경우, 이러한 국외 이전은 Google Cloud 및 Amazon Web Services가 공표한 Standard Contractual Clauses(SCC)를 GDPR 제46조에 따른 적절한 보호조치로 삼습니다. 그 외 사용자는 본 제품을 지속적으로 이용함으로써 위 이전을 인지한 것으로 간주됩니다."
         ]
       },
       {
@@ -236,9 +233,18 @@
         "body": [
           "S3의 패키징 ZIP 파일: 버킷 lifecycle 규칙에 따라 \"jobs/\" 접두어 객체를 생성 후 1일이 지나면 자동 삭제합니다.",
           "다운로드 링크(presigned URL): 발급 후 1시간 동안 유효하며, 이후 자동으로 만료됩니다.",
-          "Firestore 작업 로그: 현재 능동적으로 삭제하지 않고 Firebase 기본 설정에 따라 보관됩니다. 삭제를 원하는 경우 아래 연락처로 요청하시면 해당 익명 UID 하위 모든 문서를 삭제합니다.",
-          "Crashlytics: Firebase 정책에 따라 보관됩니다.",
-          "기기 로컬 캐시: App 설정 화면의 \"캐시 지우기\"로 즉시 삭제할 수 있습니다."
+          "클라우드 작업 로그: 현재 능동적으로 삭제하지 않고 제3자 클라우드 데이터베이스 서비스의 기본 설정에 따라 보관됩니다. 기록은 익명 식별자를 키로 저장되며 개인정보와 연결되지 않으므로, 본 프로젝트는 특정 사용자의 기록을 개별적으로 식별·삭제할 방법이 없습니다. 새 기록의 생성을 중단하려면 App을 제거하시면 됩니다.",
+          "Firebase Crashlytics: Firebase 정책에 따라 보관됩니다.",
+          "기기 로컬 캐시: App 설정 화면에서 언제든 삭제할 수 있습니다.",
+          "본 프로젝트가 서비스를 종료할 경우, 서비스 종료 처리의 일환으로 모든 클라우드 작업 로그를 삭제할 것을 약속합니다."
+        ]
+      },
+      {
+        "id": "security",
+        "title": "정보 보안",
+        "body": [
+          "App, Web 및 백엔드 서비스 간의 모든 통신은 HTTPS/TLS로 암호화됩니다. 클라우드 저장소(AWS S3, Google Cloud Firestore)의 저장 데이터는 각 플랫폼의 기본 설정에 따라 암호화됩니다. 본 프로젝트는 본 방침에 공개되지 않은 제3자에게 데이터를 내보내지 않습니다.",
+          "개인정보와 관련된 보안 사고가 발생할 경우, 본 프로젝트는 합리적인 기간 내에 GitHub Release Notes를 통해 공지하며, 적용 법령이 정한 기한 내(예: GDPR 제33조는 72시간 이내, 한국 PIPA 제34조는 24시간 이내)에 관할 감독기관 및 본 프로젝트가 식별 가능한 영향받는 사용자에게 통지합니다."
         ]
       },
       {
@@ -246,26 +252,39 @@
         "title": "사용자 권리",
         "body": [
           "본 제품은 계정 시스템이 없으며 \"로그아웃\" 개념도 없습니다. 이용을 중단하려면 App을 제거하거나 Web 사용을 중지하세요.",
-          "아래 연락처를 통해 익명 UID와 연결된 Firestore 작업 로그 전체의 삭제를 요청할 수 있습니다.",
-          "App 설정 화면의 \"캐시 지우기\"로 기기 로컬 데이터를 언제든 제거할 수 있습니다.",
-          "본 사이트가 향후 Local Storage / Cookie를 사용할 경우 브라우저 설정에서 삭제할 수 있습니다."
+          "App 설정 화면에서 기기 로컬 데이터를 언제든 제거할 수 있습니다.",
+          "본 사이트가 향후 Local Storage / Cookie를 사용할 경우 브라우저 설정에서 삭제할 수 있습니다.",
+          "본 프로젝트는 개별 사용자를 식별할 수 있는 데이터를 수집하지 않기 때문에, GDPR 제15–20조에 규정된 접근권·정정권·이동권·반대권·개별 삭제권을 사용자별로 이행할 수 없습니다. EU/EEA에 거주하시면서 특별한 요구 사항이 있으시다면 아래 연락 경로로 문의해 주세요. 본 프로젝트는 접수 후 합리적인 기간 내(GDPR 기준 30일 이내)에 답변드리며, 기술적 한계로 이행할 수 없는 경우에는 그 사유를 설명드립니다."
         ]
       },
       {
         "id": "children",
         "title": "아동의 개인정보",
-        "body": "본 제품은 만 13세 미만 아동을 대상으로 하지 않으며, 아동의 정보를 고의로 수집하지 않습니다. 연령 등급은 App Store 및 Google Play의 스토어 등재 기준을 따릅니다."
+        "body": [
+          "본 제품은 아동을 대상으로 설계되지 않았으며, 아동의 정보를 의도적으로 수집하지 않습니다. 관할 법역에 따라 \"아동\"의 정의가 다릅니다(미국 COPPA: 13세, 한국 PIPA: 14세, EU GDPR: 16세이며 회원국이 13세까지 낮출 수 있음). 본 프로젝트는 위 어느 범주에 해당하는 아동의 정보도 고의로 수집하지 않습니다. 연령 등급은 App Store 및 Google Play의 스토어 등재 기준을 따릅니다.",
+          "본 프로젝트는 개별 사용자를 식별할 수 있는 데이터를 수집하지 않기 때문에, 특정 아동의 기록을 개별적으로 식별·삭제할 수 없습니다. 특정 수집 방식이 아동의 정보를 의도치 않게 수집할 위험이 발견된 경우, 본 프로젝트는 즉시 해당 수집 방식을 중단합니다. 클라우드의 모든 기록은 「데이터 보관 및 삭제」장의 서비스 종료 시 삭제 약속을 계속 따릅니다."
+        ]
+      },
+      {
+        "id": "legalBasis",
+        "title": "법적 근거 및 적용 범위",
+        "body": [
+          "본 방침은 전 세계 사용자에게 적용됩니다. EU 또는 EEA에 거주하시는 경우, 본 프로젝트는 GDPR 제6조를 개인정보 처리의 법적 근거로 합니다: 제1항 (b)(사용자와 본 프로젝트 간 서비스 계약 이행, 제출된 Blog URL 처리에 적용) 및 제1항 (f)(서비스 안정성 유지라는 정당한 이익, 익명 식별자·작업 로그·크래시 리포트 처리에 적용).",
+          "미국 캘리포니아 주 거주자의 경우, CCPA(California Consumer Privacy Act)에 따라 알 권리(right to know), 삭제 권리(right to delete), 차별받지 않을 권리(right to non-discrimination) 등을 가집니다. 본 프로젝트는 개인정보를 판매하거나 공유하지 않으므로 \"Do Not Sell or Share My Personal Information\" 버튼을 제공하지 않습니다. 위 권리는 아래 연락 경로를 통해 행사하실 수 있습니다.",
+          "한국 PIPA나 미국 각 주의 기타 법률 등 다른 법역에서 강제 규정이 있는 경우, 본 프로젝트는 해당 범위 내에서 이를 준수합니다."
+        ]
       },
       {
         "id": "changes",
         "title": "정책 변경",
-        "body": "본 개인정보 처리방침의 유효 기준은 이 페이지의 \"최종 업데이트\" 일자입니다. 중대한 변경은 GitHub Release Notes 및 App 내 \"새로운 소식\"을 통해 공지합니다."
+        "body": "본 개인정보 처리방침의 유효 기준은 이 페이지의 \"최종 업데이트\" 일자입니다. 중대한 변경은 GitHub Release Notes 및 App 내 \"새로운 소식\"을 통해 사전에 공지합니다. 공지 후 본 제품을 계속 이용하시면 업데이트된 방침에 동의한 것으로 간주됩니다."
       }
     ],
     "contact": {
-      "title": "문의하기",
-      "body": "본 개인정보 처리방침에 대한 문의 또는 익명 UID와 연결된 Firestore 작업 로그 삭제를 원하시면 아래 이메일로 연락해 주세요:",
-      "email": "leo160918@gmail.com"
+      "title": "본 프로젝트에 문의하기",
+      "body": "본 프로젝트의 데이터 관리자(Data Controller)는 Leo Ho(GitHub: leoho0722)입니다. 본 개인정보 처리방침에 대한 문의나 의견은 본 프로젝트의 GitHub 저장소에 issue를 올려 주세요.",
+      "issueLinkLabel": "GitHub에서 issue 열기",
+      "issueUrl": "https://github.com/leoho0722/naver-blog-image-downloader/issues"
     }
   }
 }

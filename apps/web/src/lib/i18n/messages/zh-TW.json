@@ -3,7 +3,6 @@
   "commonCancel": "取消",
   "commonConfirm": "確認",
   "commonOk": "確定",
-
   "settingsTitle": "設定",
   "settingsThemeSystem": "系統",
   "settingsThemeLight": "亮色",
@@ -11,14 +10,12 @@
   "settingsLanguage": "語言",
   "settingsAppearance": "主題",
   "settingsThemeToggle": "切換主題（目前：{{theme}}）",
-
   "blogInputTitle": "下載 Naver Blog 照片",
   "blogInputSubtitle": "貼上文章網址，一鍵擷取所有照片",
   "blogInputUrlHint": "https://blog.naver.com/...",
   "blogInputPaste": "貼上",
   "blogInputFetchButton": "擷取圖片",
   "blogInputFetching": "擷取中...",
-
   "errorEmptyUrl": "請輸入網址",
   "errorInvalidUrl": "請輸入有效的 Naver Blog 網址",
   "errorTimeout": "擷取逾時，請稍後再試",
@@ -26,30 +23,25 @@
   "errorServerError": "伺服器處理失敗，請稍後再試",
   "errorNetworkError": "網路連線異常",
   "errorGeneric": "發生未預期的錯誤，請稍後再試",
-
   "statusSubmitting": "提交中...",
   "statusProcessing": "伺服器處理中...",
   "statusCompleted": "已完成",
-
   "galleryPhotos": "{{count}} 張照片",
   "gallerySelected": "已選 {{count}} 張",
   "gallerySelectMode": "選取",
   "galleryDeselectMode": "取消選取",
   "gallerySelectAll": "全選",
   "galleryEmpty": "沒有照片",
-
   "downloadAll": "下載全部",
   "downloadSelected": "下載已選",
   "downloadSingle": "下載",
   "packaging": "打包中...",
   "packagingComplete": "已完成，共 {{count}} 張照片",
   "packagingFailed": "打包失敗",
-
   "viewerClose": "關閉",
   "viewerPrev": "上一張",
   "viewerNext": "下一張",
   "viewerCounter": "{{current}} / {{total}}",
-
   "notFound": {
     "title": "找不到這個頁面",
     "desc": "您造訪的網址不存在或已被移除，請從下方選擇繼續的方向。",
@@ -57,11 +49,9 @@
     "ctaWebApp": "前往 Web 版",
     "ctaMobileIntro": "看 App 介紹"
   },
-
   "onboardingTitle": "歡迎使用",
   "onboardingDesc": "1. 貼上或輸入 Naver Blog 文章網址\n2. 點擊「擷取圖片」，系統會自動抓取所有照片\n3. 在相簿頁瀏覽、選取並下載照片",
   "onboardingStart": "開始使用",
-
   "intro": {
     "root": {
       "title": "Naver Blog 圖片下載器",
@@ -189,24 +179,22 @@
       "copyright": "© 2026 Naver Blog 圖片下載器"
     }
   },
-
   "privacy": {
     "pageTitle": "隱私政策",
     "lastUpdatedLabel": "最後更新",
-    "versionLabel": "文件版本",
     "footerLink": "隱私政策",
-    "metaDescription": "Naver Blog 圖片下載器的隱私政策：我們蒐集哪些資料、如何使用以及如何行使權利。",
-    "intro": "本產品「Naver Blog 圖片下載器」為開源個人專案，以最低資料蒐集原則運作。使用者無需註冊帳號，本產品不販售資料、不投放廣告。本頁說明我們蒐集哪些資料、如何使用，以及使用者可如何控制。",
+    "metaDescription": "Naver Blog 圖片下載器的隱私政策：本專案蒐集哪些資料、如何使用，以及使用者如何行使權利。",
+    "intro": "本產品「Naver Blog 圖片下載器」為開源個人專案，以最低資料蒐集原則運作。使用者無需註冊帳號，本專案不販售資料、不投放廣告。本頁說明本專案蒐集哪些資料、如何使用，以及使用者可如何控制。",
     "sections": [
       {
         "id": "dataCollection",
-        "title": "我們蒐集哪些資料",
+        "title": "本專案蒐集哪些資料",
         "body": [
-          "使用者輸入的 Naver Blog 網址：由 App 或 Web 傳送至後端服務，僅用於抓取圖片並打包，處理完成後不再保留網址字串。",
-          "匿名使用者識別碼（僅 Mobile App）：App 首次啟動時透過 Firebase Authentication 自動建立匿名 UID，用於綁定當機回報與操作紀錄；不含 email、手機號碼、姓名、社群帳號等個人資料，且 UID 由裝置端保管（iOS Keychain / Android EncryptedSharedPreferences）。",
-          "操作紀錄（僅 Mobile App）：重要操作（抓取、下載、清除快取等）會以結構化文件寫入 Cloud Firestore 路徑「users/{匿名 UID}/logs/{auto-id}」，欄位包含操作類型、時間戳、相關 metadata 以及裝置資訊（作業系統版本、機型）。",
-          "當機堆疊（僅 Mobile App）：透過 Firebase Crashlytics 自動回報崩潰資訊；內容為堆疊追蹤與裝置資訊，用於修復錯誤。",
-          "本機資料（不上傳）：語系、主題偏好、已下載圖片清單與縮圖快取僅儲存於裝置，可透過設定頁「清除快取」隨時移除。"
+          "使用者輸入的 Naver Blog 網址：由 App 或 Web 傳送至本專案後端服務，僅用於抓取圖片並打包，處理完成後即不再使用。本專案不會將網址主動寫入長期儲存；雲端基礎設施（AWS）的系統 log 可能短暫保留相關技術記錄，並依 AWS 預設 rotation 自動清除。",
+          "匿名裝置識別碼（僅 Mobile App）：App 首次啟動時自動建立一組匿名識別碼，僅用於將當機紀錄與操作紀錄對應到同一台裝置，不含 email、手機、姓名、社群帳號等個人資料。本專案不會將此識別碼與任何真實身份連結。識別碼由第三方驗證服務（Firebase Authentication，詳見「第三方服務」章節）產生並保存於裝置端。",
+          "操作紀錄（僅 Mobile App）：為了診斷錯誤與改善穩定性，重要操作（抓取、下載、清除快取等）會以匿名識別碼為鍵，透過第三方雲端資料庫服務（Cloud Firestore，詳見「第三方服務」章節）記錄操作類型、時間戳、相關設定參數，以及基本裝置資訊（作業系統版本、機型）。",
+          "當機紀錄（僅 Mobile App）：透過 Firebase Crashlytics 自動回報崩潰資訊；內容為堆疊追蹤與裝置資訊，用於修復錯誤。",
+          "本機資料（不上傳）：語系、主題偏好、已下載圖片清單與縮圖快取僅儲存於裝置，可透過 App 設定頁隨時清除本機快取。"
         ]
       },
       {
@@ -215,19 +203,28 @@
         "body": [
           "完成「抓取 / 打包 / 下載 Naver Blog 圖片」的核心功能。",
           "以操作紀錄診斷錯誤、改善穩定性。",
-          "以當機回報定位並修復錯誤。",
-          "明確不做：行為剖析（profiling）、廣告投放、資料販售、跨應用程式追蹤。"
+          "以 Firebase Crashlytics 回報定位並修復錯誤。",
+          "本專案明確不做：行為剖析（profiling）、廣告投放、資料販售、跨 App 追蹤。",
+          "本專案不將任何蒐集資料用於 AI 模型訓練；第三方服務（如 Firebase）自身的資料處理另請參閱其隱私政策。"
         ]
       },
       {
         "id": "thirdParty",
         "title": "第三方服務",
         "body": [
-          "AWS Lambda + S3（Amazon Web Services, Inc.）：後端打包流程與圖片 ZIP 的暫存，由專案維運者管理。",
-          "Firebase Authentication（Google LLC）：匿名登入，session 由 Firebase SDK 持久化於裝置。",
-          "Cloud Firestore（Google LLC）：儲存匿名 UID 對應的操作紀錄。",
-          "Firebase Crashlytics（Google LLC）：收集當機堆疊以供除錯。",
-          "Naver：使用者所提供的網址指向 Naver Blog，圖片抓取過程遵循 Naver 自身的 Cookie 與服務條款。"
+          "AWS Lambda + S3（Amazon Web Services, Inc.）：後端打包流程與圖片 ZIP 的暫存，由本專案維運者管理。",
+          "Firebase Authentication（Google LLC）：匿名登入；識別碼由 Firebase SDK 保存於裝置端。",
+          "Cloud Firestore（Google LLC）：儲存以匿名識別碼為鍵的操作紀錄。",
+          "Firebase Crashlytics（Google LLC）：收集當機紀錄以供除錯。",
+          "Naver：使用者所提供的網址指向 Naver Blog。使用者有責任確認其使用情境符合 Naver 服務條款。本專案僅提供技術工具，不對抓取行為背書，亦未與 Naver 建立商業或授權關係。"
+        ]
+      },
+      {
+        "id": "dataTransfer",
+        "title": "跨境資料傳輸",
+        "body": [
+          "為提供服務，使用者的操作紀錄與當機紀錄可能儲存於美國（Google LLC 運營的 Google Cloud Platform 伺服器）；本專案後端打包流程則在本專案維運者選定的 AWS 區域中執行。",
+          "對於 EU/EEA 使用者，此類跨境傳輸主要依循 Google Cloud 與 Amazon Web Services 公布之 Standard Contractual Clauses（SCC）作為 GDPR 第 46 條下的適當保障措施；對一般使用者而言，繼續使用本產品即表示知悉前述傳輸。"
         ]
       },
       {
@@ -236,9 +233,18 @@
         "body": [
           "S3 上的打包 ZIP 檔案：透過 bucket lifecycle 規則，於「jobs/」前綴物件 1 天後自動刪除。",
           "下載連結（presigned URL）：建立後 1 小時內有效，逾時自動失效。",
-          "Firestore 操作紀錄：目前不主動清除，依 Firebase 預設保留；如需刪除可透過下方聯絡信箱提出請求，我們將移除該匿名 UID 下所有文件。",
-          "Crashlytics：依 Firebase 政策保留。",
-          "本機快取：由使用者透過 App 設定頁「清除快取」即時清除。"
+          "雲端操作紀錄：目前不主動清除，依第三方雲端資料庫服務預設保留。由於紀錄以匿名識別碼為鍵、不與任何個資連結，本專案沒有管道把特定紀錄對應回某位使用者；若希望停止產生新紀錄，解除安裝 App 即可。",
+          "Firebase Crashlytics：依 Firebase 政策保留。",
+          "本機快取：由使用者透過 App 設定頁隨時清除。",
+          "本專案若終止服務，將於終止時一併刪除所有雲端操作紀錄。"
+        ]
+      },
+      {
+        "id": "security",
+        "title": "資訊安全",
+        "body": [
+          "App、Web 與後端服務之間的傳輸皆使用 HTTPS/TLS 加密。雲端儲存（AWS S3、Google Cloud Firestore）的靜態資料依平台預設加密。本專案不會將資料匯出至未於本政策揭露的第三方。",
+          "若發生涉及個人資料的安全事件，本專案將於合理時間內於 GitHub Release Notes 公告，並依適用法令所定時限通知主管機關與本專案可辨識之受影響使用者（例如 GDPR 第 33 條為 72 小時內；韓國 PIPA 第 34 條為 24 小時內）。"
         ]
       },
       {
@@ -246,26 +252,39 @@
         "title": "使用者權利",
         "body": [
           "本產品無帳號系統、無「登出」概念；要停止使用可直接解除安裝 App 或不再使用 Web 版。",
-          "可透過本頁聯絡信箱請求刪除 Firestore 中關聯該匿名 UID 的所有操作紀錄。",
-          "可於 App 設定頁「清除快取」移除本機資料。",
-          "可於瀏覽器設定清除本站的 Local Storage / Cookie（若日後有寫入）。"
+          "可於 App 設定頁隨時清除本機快取以移除本機資料。",
+          "可於瀏覽器設定清除本站的 Local Storage / Cookie（若日後本專案有寫入）。",
+          "由於本專案不蒐集足以識別個別使用者身份的資料，GDPR 第 15–20 條所定之存取（access）、更正（rectification）、可攜（portability）、異議（objection）、個別刪除等權利，本專案亦無從以個別方式履行。若您位於 EU/EEA 並有特殊需求，請透過下方聯絡管道提出；本專案將於收到請求後合理時間內回覆（依 GDPR 標準為 30 日內），若因技術限制無法執行，會向您說明原因。"
         ]
       },
       {
         "id": "children",
         "title": "兒童隱私",
-        "body": "本產品不針對 13 歲以下兒童設計，也不主動蒐集兒童資料。使用者年齡分級以 App Store 與 Google Play 上架分級為準。"
+        "body": [
+          "本產品不針對兒童設計，也不主動蒐集兒童資料。不同法域對「兒童」定義不同（美國 COPPA 為 13 歲、韓國 PIPA 為 14 歲、歐盟 GDPR 為 16 歲且部分會員國可下調至 13 歲），本專案不會故意蒐集屬於上述任一分類之兒童資料。年齡分級另以 App Store 與 Google Play 上架分級為準。",
+          "由於本專案不蒐集足以識別個別使用者身份的資料，無法於個別層次識別並刪除特定兒童的紀錄；若發現某種蒐集機制可能誤收兒童資料，本專案會立即停止該蒐集方式。所有雲端紀錄於服務終止時仍會依「資料保存與刪除」章節一併刪除。"
+        ]
+      },
+      {
+        "id": "legalBasis",
+        "title": "法律依據與適用範圍",
+        "body": [
+          "本政策適用於全球使用者。若您位於歐盟或 EEA，本專案依 GDPR 第 6 條作為處理個人資料的法律依據：第 1 項 (b)（履行您與本專案之間的服務合約，用以處理您提交的 Blog 網址），以及第 1 項 (f)（維持服務穩定性之正當利益，用以處理匿名識別碼、操作紀錄與當機紀錄）。",
+          "若您為美國加州居民，您依 CCPA（California Consumer Privacy Act）享有知悉（right to know）、刪除（right to delete）、不歧視（right to non-discrimination）等權利。本專案不販售或分享個人資料，故不設置「Do Not Sell or Share My Personal Information」按鈕；上述權利可透過下方聯絡管道行使。",
+          "其他法域若另有強制規範（例如韓國 PIPA、美國各州其他法律等），本專案將於適用範圍內遵守。"
+        ]
       },
       {
         "id": "changes",
         "title": "政策變更",
-        "body": "本隱私政策以頁面「最後更新」日期為準。重大變更將透過 GitHub Release Notes 與 App 內「最新消息」公告。"
+        "body": "本隱私政策以頁面「最後更新」日期為準。重大變更將提前透過 GitHub Release Notes 與 App 內「最新消息」公告；於公告後繼續使用本產品，即視為同意更新後版本。"
       }
     ],
     "contact": {
-      "title": "聯絡我們",
-      "body": "如對本隱私政策有任何疑問，或需要刪除 Firestore 中關聯您匿名 UID 的操作紀錄，請透過以下信箱聯繫：",
-      "email": "leo160918@gmail.com"
+      "title": "聯絡本專案",
+      "body": "本專案之資料控制者（Data Controller）為 Leo Ho（GitHub：leoho0722）。如對本隱私政策有任何疑問或建議，請於本專案 GitHub Repo 開立 issue 反映。",
+      "issueLinkLabel": "前往 GitHub Issues",
+      "issueUrl": "https://github.com/leoho0722/naver-blog-image-downloader/issues"
     }
   }
 }

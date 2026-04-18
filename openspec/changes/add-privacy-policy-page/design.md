@@ -39,14 +39,14 @@
 
 **理由**：i18n JSON 與現有機制一致（已有 `intro.*`、`notFound.*` namespace），可透過既有 i18n parity 測試確保 4 語系 key 對齊，不引入新依賴。章節用結構化 key 陣列便於加 / 移 / 重排，並可在測試中驗證所有語系含相同 section id。
 
-### Version / Last-updated source: 常數檔 + 建置時 `__APP_VERSION__`
+### Version / Last-updated source: 僅常數檔的「最後更新」日期；不顯示 Web 版號
 
 **選擇**：
 
-- **Last updated 日期**：新增 `apps/web/src/lib/config/privacy-policy.ts` 匯出 `PRIVACY_POLICY_LAST_UPDATED = '2026-04-18'` 常數（ISO 8601 日期字串），由開發者每次修訂內容時同步更新（與版號 bump 一起送 PR）
-- **文件版號**：直接復用 `__APP_VERSION__`（Web 版），顯示為 `v<semver>`；使用者看到的是「Web 版 v1.x.y，最後更新 2026-04-18」
+- **Last updated 日期**：新增 `apps/web/src/lib/config/privacy-policy.ts` 匯出 `PRIVACY_POLICY_LAST_UPDATED = '2026-04-18'` 常數（ISO 8601 日期字串），由開發者每次修訂內容時同步更新
+- **文件版號**：**不顯示**。原初設計想復用 `__APP_VERSION__`，但經法務檢視後取消——使用者進入此頁是要讀隱私政策，Web App 版號在此上下文沒有決策意義，反而容易讓讀者誤以為「政策和 App 版號綁定」；版號資訊留在 AppLayout header 內即可
 
-**替代方案**：獨立 `PRIVACY_POLICY_VERSION`，每次隱私內容變動獨立 bump。否決原因：增加兩個版號並存的心智負擔；Web 版號變動本就伴隨 PR，最後更新日期足以判別。
+**替代方案**：獨立 `PRIVACY_POLICY_VERSION`，每次隱私內容變動獨立 bump。否決原因：增加兩個版號並存的心智負擔；以 `PRIVACY_POLICY_LAST_UPDATED` 日期 + Git 歷史追蹤已足。
 
 ### Route layout: `PublicLayout` 下的獨立路由
 
@@ -73,16 +73,21 @@
 ```text
 privacy.pageTitle            // 頁面標題，例：「隱私政策」
 privacy.lastUpdatedLabel     // 「最後更新」
-privacy.versionLabel         // 「文件版本」
+privacy.footerLink           // IntroFooter 連結文字
+privacy.metaDescription      // SEO meta description（與 intro 不同以保持簡潔）
 privacy.intro                // 首段導言
 privacy.sections[].id        // 以結構化陣列驅動渲染
 privacy.sections[].title
 privacy.sections[].body      // 支援字串或字串陣列（多段落）
-privacy.contact.title
-privacy.contact.email        // 聯絡信箱（以 CLAUDE.md 的 leo160918@gmail.com 或專案 issue 連結為準，apply 時再由使用者確認）
+privacy.contact.title        // 聯絡區塊標題
+privacy.contact.body         // 聯絡說明段落（含 Data Controller 揭露）
+privacy.contact.issueLinkLabel  // 前往 GitHub Issues 連結文字
+privacy.contact.issueUrl     // 固定 canonical URL：https://github.com/leoho0722/naver-blog-image-downloader/issues
 ```
 
 實作為扁平 JSON 時以 index 表達陣列（例 `privacy.sections.0.title`），或使用 JSON array by `t('privacy.sections', { returnObjects: true })`。此 change 採用 `returnObjects` 形式，於 type 定義處加型別標記避免使用 `any`。
+
+**設計調整（2026-04-18 法務檢視後）**：移除了 `privacy.versionLabel`（頁面不再顯示 Web 版號）與 `privacy.contact.email`（以 GitHub Issues 取代 email）；新增 `privacy.contact.issueLinkLabel` / `issueUrl` 以支援 CTA 形式的連結。
 
 ### SEO / Canonical
 
@@ -103,64 +108,78 @@ privacy.contact.email        // 聯絡信箱（以 CLAUDE.md 的 leo160918@gmail
 
 ## Content outline（apply 階段作為 zh-TW.json master 撰稿依據）
 
-主體稱謂：**專案名義**（「Naver Blog Image Downloader」）；不以個人名義署名。
+主體稱謂：**本專案**（不使用「我們」或個人姓名；Data Controller 身份在 contact 章節揭露為 Leo Ho）。
+
+**法務檢視後（2026-04-18）**：章節擴充為 10 個、移除無法兌現的「來信刪除」承諾、加入跨境傳輸 / 安全 / 法律依據章節。
 
 **intro**
 
-本產品為開源個人專案，以最低資料蒐集原則運作。使用者無需註冊帳號，本產品不販售資料、不投放廣告。本頁說明我們（指專案）蒐集哪些資料、如何使用、以及使用者可如何控制。
+本產品為開源個人專案，以最低資料蒐集原則運作。使用者無需註冊帳號，本專案不販售資料、不投放廣告。本頁說明本專案蒐集哪些資料、如何使用，以及使用者可如何控制。
 
 **dataCollection（蒐集範圍）**
 
-- 使用者輸入的 Naver Blog URL：由 App 或 Web 傳送至我們的後端服務，僅用於抓取圖片並打包，處理完成後不再保留
-- 匿名使用者識別碼（僅 Mobile App）：App 首次啟動時透過 Firebase Authentication 自動建立匿名 UID，該 UID 用於綁定當機回報與操作 log；**不含 email、手機號碼、姓名、社群帳號等個資**，且 UID 由裝置端保管（iOS Keychain / Android EncryptedSharedPreferences）
-- 操作 log（僅 Mobile App）：重要操作（如抓取、下載、清除快取等）會以結構化文件寫入 Firestore `users/{anonymousUid}/logs/{auto-id}`，欄位包含操作類型、時間戳、相關 metadata、裝置資訊（OS 版本、機型）
-- 當機堆疊（僅 Mobile App）：透過 Firebase Crashlytics 自動回報；內容為堆疊追蹤與裝置資訊，用於修復 bug
-- 本機資料（不上傳）：語系、主題偏好、已下載圖片清單與縮圖快取，僅儲存於裝置，可透過設定頁「清除快取」移除
+- 使用者輸入的 Naver Blog URL：僅用於抓取圖片並打包，處理完成後即不再使用。本專案**不主動寫入長期儲存**；AWS 系統 log 可能短暫保留相關技術記錄並依 AWS 預設 rotation 自動清除（避免絕對承諾）
+- 匿名裝置識別碼（僅 Mobile App）：自動建立的匿名識別碼，不含 email / 手機 / 姓名 / 社群帳號；本專案不會將其與真實身份連結。由第三方驗證服務（Firebase Authentication）產生並保存於裝置端
+- 操作紀錄（僅 Mobile App）：為診斷錯誤與改善穩定性，以匿名識別碼為鍵透過 Cloud Firestore 記錄；不暴露具體 Firestore 路徑
+- 當機紀錄（僅 Mobile App）：Firebase Crashlytics 自動回報；全名使用「Firebase Crashlytics」以保持一致
+- 本機資料（不上傳）：語系 / 主題 / 已下載清單 / 縮圖快取
 
 **dataUsage（用途）**
 
-- 完成「抓取 / 打包 / 下載 Naver Blog 圖片」功能
-- 以操作 log 診斷錯誤、改善穩定性
-- 以當機回報定位 bug
-- 明確不做：profiling、廣告投放、資料販售、跨 App 追蹤
+- 完成「抓取 / 打包 / 下載 Naver Blog 圖片」
+- 以操作紀錄診斷錯誤、改善穩定性
+- 以 Firebase Crashlytics 回報定位並修復錯誤
+- 本專案明確不做：profiling、廣告、資料販售、跨第三方 App / 網站追蹤（避免與 Apple ATT 語意混淆）
 
 **thirdParty（第三方服務）**
 
-- **AWS Lambda + S3**：後端打包流程與圖片 ZIP 暫存，由專案所有者管理
-- **Firebase Authentication**（Google LLC）：匿名登入，session 由 Firebase SDK 處理並持久化於裝置
-- **Cloud Firestore**（Google LLC）：操作 log 儲存
-- **Firebase Crashlytics**（Google LLC）：當機回報
-- **Naver**：由使用者輸入的 URL 從 Naver Blog 抓取圖片，對應 Naver 自身的 Cookie 與 Terms
+- AWS Lambda + S3（Amazon Web Services, Inc.）
+- Firebase Authentication（Google LLC）—— 匿名登入
+- Cloud Firestore（Google LLC）—— 以匿名識別碼為鍵儲存操作紀錄（**不提「UID」字眼**，與其他章節一致）
+- Firebase Crashlytics（Google LLC）
+- Naver：使用者有責任確認其使用情境符合 Naver 服務條款；本專案不保證抓取行為合法性，亦未取得任何 Naver 授權（L7）
 
-每項服務均連結至其官方隱私政策 URL（apply 階段確認連結有效）。
+**dataTransfer（跨境資料傳輸，新增）**
+
+為提供服務，操作紀錄與當機紀錄可能儲存於美國（Google Cloud Platform）；後端打包流程於本專案選擇的 AWS 區域執行。使用本產品即表示同意。
 
 **retention（保存與刪除）**
 
-- S3 打包後 ZIP 檔案：透過 bucket lifecycle rule `jobs/` 前綴物件 **1 天後自動刪除**
-- 下載 presigned URL：**1 小時** 後過期
-- Firestore 操作 log：目前不主動清除，依 Firebase 政策保留；使用者如需刪除可透過 `PRIVACY_POLICY_CONTACT_EMAIL` 信箱提出請求，我們將刪除該匿名 UID 下所有文件
-- Crashlytics：依 Firebase 政策保留
-- 本機快取：由使用者透過 App 設定頁「清除快取」即時清除
+- S3 jobs/ 1 天 lifecycle
+- Presigned URL 1 小時
+- 雲端操作紀錄：不主動清除，依第三方雲端資料庫服務預設保留；由於紀錄以匿名識別碼為鍵、不與任何個資連結，**本專案沒有管道把特定紀錄對應回某位使用者**；解除安裝 App 即可停止新紀錄
+- Firebase Crashlytics：依 Firebase 政策保留
+- 本機快取：使用者自行清除
+- **本專案承諾停止服務時一併刪除所有雲端操作紀錄**（新增，L8）
+
+**security（資訊安全，新增）**
+
+HTTPS/TLS 加密傳輸；雲端儲存依平台預設加密靜態資料；不匯出至未揭露的第三方。
 
 **userRights（使用者權利）**
 
-- 無帳號系統，沒有「登出」概念；要停止使用直接解除安裝 App 或不使用 Web
-- 可透過本頁 contact 信箱請求刪除 Firestore 中關聯該匿名 UID 的所有 log 文件
-- 可於 App 設定頁清除本機快取
-- 在 Web 可於瀏覽器設定清除本站 Local Storage / Cookie（若未來有加）
+- 解除安裝 / 停止使用
+- App 設定頁清除本機快取
+- 瀏覽器清除本站 Local Storage / Cookie（若日後有寫入）
+- **GDPR 第 15–20 條權利無法以個別方式履行**（因不蒐集可識別資料）；EU/EEA 使用者有特殊需求可透過 contact 提出（新增，L10）
 
 **children（兒童隱私）**
 
-本產品不針對 13 歲以下兒童設計，不主動蒐集兒童資料。使用年齡分級以 App Store / Google Play 上架分級為準。
+列明三個法域的年齡差異：COPPA 13 / PIPA 14 / GDPR 16（可下調至 13）。本專案不主動蒐集上述任一分類兒童資料（L3）。
 
-**changes（變更通知）**
+**legalBasis（法律依據與適用範圍，新增）**
 
-隱私政策以本頁「最後更新日期」為準。重大變更會透過 GitHub Release Notes 與 App 內 What's New 揭露。
+EU/EEA 使用者：GDPR Art. 6(1)(b) 履行服務合約 + Art. 6(1)(f) 正當利益。其他法域強制規定另行遵守（L6）。
 
-**contact**
+**changes（政策變更）**
 
-- Email：`PRIVACY_POLICY_CONTACT_EMAIL` 常數（預設 `leo160918@gmail.com`）
-- GitHub Issues：專案 repo issues 頁面（apply 階段補上正確 URL）
+以「最後更新」日期為準；重大變更提前於 GitHub Release Notes 與 App 內「最新消息」公告；**公告後繼續使用即視為同意**（L11）。
+
+**contact（聯絡本專案）**
+
+- **Data Controller 揭露**：Leo Ho（GitHub: leoho0722）（L2）
+- 聯絡管道：本專案 GitHub Repo Issues（`https://github.com/leoho0722/naver-blog-image-downloader/issues`）
+- 不再使用個人 email，避免被商店曝光後收到垃圾信（L13）
 
 ## Migration Plan
 

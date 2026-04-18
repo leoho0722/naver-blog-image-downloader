@@ -10,6 +10,15 @@ vi.mock("react-i18next", () => ({
         if (key === "privacy.sections") {
           return [];
         }
+        if (key === "privacy.contact") {
+          return {
+            title: "privacy.contact.title",
+            body: "privacy.contact.body",
+            issueLinkLabel: "privacy.contact.issueLinkLabel",
+            issueUrl:
+              "https://github.com/leoho0722/naver-blog-image-downloader/issues",
+          };
+        }
         return {};
       }
       if (key === "settingsThemeToggle") {

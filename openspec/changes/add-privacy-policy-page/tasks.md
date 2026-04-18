@@ -47,3 +47,38 @@
   - Console 無 error / warning
 - [x] 6.3 `apps/mobile/` 執行 `flutter analyze` No issues found、`flutter test` 140 tests all passed（含新 privacy_policy_url_test 4 項）；iOS 模擬器實機點擊驗證留給使用者（需要實體裝置 / 模擬器才能驗證 `url_launcher` 真實行為）
 - [x] 6.4 已 commit（`9738c0a` — `feat(privacy): 新增共用隱私政策頁面供 App 上架使用`），body 以列點摘要 Web / Mobile / i18n / 揭露範圍四個面向，含兩端 minor bump，38 files changed +1633/-13
+
+## 7. 法務審閱後重整（2026-04-18 追加）
+
+- [x] 7.1 以「專業法務翻譯官」+「專業法務」雙角色審閱四語系隱私政策，整理 14 項 findings（T1–T12 翻譯、L1–L14 法律）
+- [x] 7.2 四語系 i18n 結構重整並覆蓋 **Required privacy content topics** spec requirement：移除 `privacy.versionLabel`、`privacy.contact.email`；新增 `privacy.contact.issueLinkLabel` / `privacy.contact.issueUrl`；sections 由 7 擴增為 10（新增 `dataTransfer` / `security` / `legalBasis`），覆蓋該 requirement 列出的全部 10 個必要 topic id
+- [x] 7.3 內容層面修正：
+  - 主體由「我們」統一為「本專案」（L12）
+  - 聯絡管道由個人 email 改為專案 GitHub Issues（L13）
+  - 頁面不顯示 Web 版號（L14，`PrivacyPolicyPage.tsx` 移除版本列；對應 design.md 的 **Version / Last-updated source: 僅常數檔的「最後更新」日期；不顯示 Web 版號** 決策）
+  - thirdParty 章節「匿名 UID」→「匿名識別碼」（T1 內部一致性）
+  - Crashlytics 統一使用「Firebase Crashlytics」全名（T2）
+  - zh-TW「當機堆疊」→「當機紀錄」、ja「クラッシュスタック」→「クラッシュレポート」、ko「크래시 스택」→「크래시 리포트」（T3–T5）
+  - zh-TW「跨應用程式追蹤」→「跨 App 追蹤」、en "track across apps" → "track users across third-party apps or websites"（T6–T7）
+  - ja「セッション」措辭改回識別子本身（T8）、「児童」→「子ども」（T9）
+- [x] 7.4 法律面修正：
+  - L1：URL 保留改為「本專案不主動寫入長期儲存；AWS 系統 log 可能短暫保留並依 rotation 自動清除」，避免絕對承諾
+  - L2：contact 章節揭露 Data Controller 為 Leo Ho（GitHub: leoho0722）
+  - L3：Children's privacy 列明 COPPA 13 / PIPA 14 / GDPR 16 三法域差異
+  - L4：dataCollection 加「本專案不會將此識別碼與任何真實身份連結」說明 pseudonymization 性質
+  - L5：新增 `dataTransfer` section 揭露跨境資料傳輸
+  - L6：新增 `legalBasis` section 引用 GDPR Art. 6(1)(b) 與 (f)
+  - L7：thirdParty 的 Naver 條目加免責（使用者責任確認 TOS、不保證合法性、未取得授權）
+  - L8：retention 加「本專案承諾停止服務時一併刪除所有雲端操作紀錄」
+  - L9：新增 `security` section 揭露 HTTPS/TLS 與雲端靜態加密
+  - L10：userRights 明文「GDPR 第 15–20 條權利無法以個別方式履行」
+  - L11：changes 加「公告後繼續使用即視為同意更新後版本」
+- [x] 7.5 程式碼 / 測試 / spec / design 同步更新：
+  - `apps/web/src/lib/config/privacy-policy.ts`：移除 `PRIVACY_POLICY_CONTACT_EMAIL`，僅保留 `PRIVACY_POLICY_LAST_UPDATED`
+  - `apps/web/src/pages/PrivacyPolicyPage.tsx`：移除版本列，contact 區塊改為 GitHub Issues 按鈕（`target="_blank"` + `rel="noopener noreferrer"`）
+  - `apps/web/src/__tests__/pages/PrivacyPolicyPage.test.tsx`：移除版本斷言，改驗證 GitHub issue URL；新增「不顯示 Web 版號」測試
+  - `apps/web/src/__tests__/routes.test.tsx`：i18n mock 加上 `privacy.contact` returnObjects 支援
+  - `specs/web-privacy-policy/spec.md`：新增 Requirement「Required privacy content topics」列明 10 個 section id；更新「Privacy policy page at /privacy」移除版本要求 + 加入 contact 連結需求；更新「Privacy-policy config constant」為單一常數
+  - `design.md`：Decisions / i18n key 結構 / Content outline 全部同步新結構
+- [x] 7.6 在 Claude in Chrome 驗證 4 語系內容、document.title 切換、contact 連結 `target="_blank"` 正確
+
