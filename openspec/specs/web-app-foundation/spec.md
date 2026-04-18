@@ -100,13 +100,14 @@ tests:
 ---
 ### Requirement: React Router v7 routing with two routes
 
-The app SHALL use React Router v7 with `createBrowserRouter`. Routes SHALL be organized under two layout components: `PublicLayout` (for landing and intro pages) and `AppLayout` (for the Web SPA). The router's `basename` SHALL be set to `import.meta.env.BASE_URL` so route paths automatically track the deployment base path.
+The app SHALL use React Router v7 with `createBrowserRouter`. Routes SHALL be organized under two layout components: `PublicLayout` (for landing, intro, privacy-policy, and not-found pages) and `AppLayout` (for the Web SPA). The router's `basename` SHALL be set to `import.meta.env.BASE_URL` so route paths automatically track the deployment base path.
 
 The routable paths SHALL be:
 
 - `/` — renders `IntroRootPage` within `PublicLayout`
 - `/intro/mobile` — renders `IntroMobilePage` within `PublicLayout`
 - `/intro/web` — renders `IntroWebPage` within `PublicLayout`
+- `/privacy` — renders `PrivacyPolicyPage` within `PublicLayout`
 - `/app/web` — renders `HomePage` within `AppLayout`
 - `/app/web/gallery/:blogId` — renders `GalleryPage` within `AppLayout`
 
@@ -128,6 +129,11 @@ Legacy redirect routes SHALL also be defined (see the `web-legacy-redirects` cap
 
 - **WHEN** user navigates to `/intro/web`
 - **THEN** the `IntroWebPage` component is rendered within `PublicLayout`
+
+#### Scenario: Navigate to privacy policy page
+
+- **WHEN** user navigates to `/privacy`
+- **THEN** the `PrivacyPolicyPage` component is rendered within `PublicLayout`
 
 #### Scenario: Navigate to web app home
 
@@ -156,67 +162,41 @@ Legacy redirect routes SHALL also be defined (see the `web-legacy-redirects` cap
 
 
 <!-- @trace
-source: unify-landing-in-apps-web
+source: add-privacy-policy-page
 updated: 2026-04-18
 code:
-  - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/pages/HomePage.tsx
-  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
-  - apps/web/src/routes.tsx
-  - docs/mobile/images/setting_view_ios_snapshot.png
-  - apps/web/src/components/intro/ScreenshotCarousel.tsx
-  - docs/web/index.html
-  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
-  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
-  - docs/mobile/images/photo_gallery_view_android_snapshot.png
-  - docs/mobile/images/photo_gallery_view_ios_snapshot.png
-  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
-  - docs/mobile/index.html
-  - apps/web/src/pages/intro/IntroRootPage.tsx
-  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
-  - apps/web/src/components/layout/AppLayout.tsx
-  - docs/mobile/css/style.css
-  - docs/mobile/js/main.js
-  - docs/mobile/images/photo_detail_view_android_snapshot.png
-  - .github/workflows/deploy-pages.yml
-  - apps/web/src/lib/i18n/messages/en.json
-  - apps/web/src/pages/GalleryPage.tsx
-  - apps/web/src/lib/i18n/messages/ja.json
-  - apps/web/src/lib/stores/use-settings-store.ts
-  - apps/web/src/components/intro/DownloadBadge.tsx
-  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
-  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
-  - apps/web/src/pages/intro/IntroMobilePage.tsx
-  - apps/web/src/components/intro/FeatureCard.tsx
-  - docs/mobile/images/setting_view_android_snapshot.png
-  - docs/mobile/images/blog_input_view_android_snapshot.png
-  - docs/mobile/images/blog_input_view_ios_snapshot.png
-  - apps/web/src/components/layout/ThemeLocaleControls.tsx
-  - README.md
-  - apps/web/CLAUDE.md
+  - apps/mobile/lib/l10n/app_localizations_zh.dart
+  - apps/mobile/lib/l10n/app_localizations_ko.dart
+  - apps/mobile/lib/l10n/app_ja.arb
   - apps/web/src/lib/i18n/messages/zh-TW.json
-  - apps/web/src/components/layout/PublicLayout.tsx
-  - docs/mobile/images/photo_detail_view_ios_snapshot.png
-  - apps/web/src/App.tsx
+  - apps/mobile/lib/config/privacy_policy_url.dart
   - apps/web/package.json
-  - docs/index.html
-  - docs/mobile/mobile-architecture.md
-  - apps/web/src/components/intro/IntroFooter.tsx
-  - apps/web/src/pages/NotFoundPage.tsx
-  - docs/mobile/js/i18n.js
-  - apps/web/src/lib/config/ui-controls.ts
-  - apps/web/src/components/intro/IntroNav.tsx
-  - apps/web/src/components/intro/StepCard.tsx
-  - apps/web/src/pages/intro/IntroWebPage.tsx
-  - apps/web/public/intro/mobile/photo_gallery_view_ios_snapshot.png
+  - apps/web/src/routes.tsx
+  - apps/web/src/components/privacy/PrivacyPolicySection.tsx
   - apps/web/src/lib/config/public-navigation.ts
+  - apps/mobile/lib/l10n/app_localizations.dart
+  - apps/web/src/lib/config/privacy-policy.ts
+  - apps/web/src/pages/PrivacyPolicyPage.tsx
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/mobile/lib/l10n/app_localizations_en.dart
+  - apps/mobile/lib/l10n/app_ko.arb
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/hooks/use-page-meta.ts
+  - apps/mobile/lib/l10n/app_localizations_ja.dart
+  - apps/mobile/pubspec.lock
+  - apps/mobile/lib/l10n/app_zh_TW.arb
+  - apps/mobile/lib/ui/settings/widgets/settings_view.dart
+  - apps/mobile/pubspec.yaml
+  - apps/web/src/components/intro/IntroFooter.tsx
+  - apps/mobile/lib/l10n/app_en.arb
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/mobile/lib/l10n/app_zh.arb
 tests:
-  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
-  - apps/web/src/__tests__/pages/HomePage.test.tsx
+  - apps/web/src/__tests__/pages/PrivacyPolicyPage.test.tsx
+  - apps/web/src/__tests__/lib/i18n/privacy-parity.test.ts
+  - apps/mobile/test/config/privacy_policy_url_test.dart
   - apps/web/src/__tests__/routes.test.tsx
-  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
-  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
-  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/web/src/__tests__/components/intro/IntroFooter.test.tsx
 -->
 
 ---

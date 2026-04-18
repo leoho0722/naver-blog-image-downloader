@@ -45,7 +45,10 @@
   - 在 `/privacy` 直接 reload，URL 與內容仍正確
   - `/legal/privacy` 依決策不 redirect、正確落入 NotFoundPage
   - Console 無 error / warning
-- [x] 6.3 `apps/mobile/` 執行 `flutter analyze` No issues found、`flutter test` 140 tests all passed（含新 privacy_policy_url_test 4 項）；iOS 模擬器實機點擊驗證留給使用者（需要實體裝置 / 模擬器才能驗證 `url_launcher` 真實行為）
+- [x] 6.3 `apps/mobile/` 執行 `flutter analyze` No issues found、`flutter test` 140 tests all passed（含新 privacy_policy_url_test 4 項）；兩端實機驗證皆通過：
+  - **iOS 模擬器（iPhone 17 / iOS 26.4）**：`flutter build ios --simulator --debug` 成功、`url_launcher_ios_url_launcher_ios.bundle` 已打包；App 啟動後 Settings 頁以 accessibility snapshot 確認「法律資訊」區段與「隱私政策」`Card.filled + ListTile` 正確呈現；版本 `1.6.0 (2)`；以 `xcrun simctl openurl` 驗證 `https://leoho0722.github.io/naver-blog-image-downloader/privacy` 能被 MobileSafari 解析與開啟
+  - **Android 模擬器（sdk gphone64 arm64 / Android 16 API 36）**：`flutter build apk --debug` 成功、`adb install` 完成；設定頁以 screenshot 確認「法律資訊 → 隱私政策」ListTile 帶 `Icons.open_in_new`；**實機 tap 端到端驗證通過** —— 點擊後 `dumpsys activity` 顯示 `topResumedActivity=com.android.chrome/ChromeTabbedActivity`，Chrome 開啟正確 URL（`url_launcher` 的 `LaunchMode.externalApplication` 正常觸發）
+  - 目前兩端瀏覽器打開後都顯示 Web 版 NotFoundPage，因為 Web `/privacy` 尚未 push + GitHub Pages 部署；待 Web 部署後即會顯示實際隱私政策頁面。此為**預期行為**，已確認 Web 端 `*` catch-all 路由正確
 - [x] 6.4 已 commit（`9738c0a` — `feat(privacy): 新增共用隱私政策頁面供 App 上架使用`），body 以列點摘要 Web / Mobile / i18n / 揭露範圍四個面向，含兩端 minor bump，38 files changed +1633/-13
 
 ## 7. 法務審閱後重整（2026-04-18 追加）
