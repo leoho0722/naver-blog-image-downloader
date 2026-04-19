@@ -1,5 +1,5 @@
 {
-    "_comment": "由 calibrate.py 從 AppMockUp 版 zhTW 素材產生；手動微調後再跑會被覆寫。",
+    "_comment": "手動維護：背景色 / 字級 / 標題副標 y / 設備框 top_y；新增裝置時比照現有結構填。",
     "scenario_by_index": {
         "1": "photo_gallery_grid",
         "2": "photo_detail_native",

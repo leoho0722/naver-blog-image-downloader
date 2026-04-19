@@ -1,6 +1,6 @@
 ---
 name: store-assets
-description: 從 store_listings.json + 多語系原始 app 截圖自動合成 App Store / Google Play 上架素材。用 Pillow 合成、自動下載設備框（Apple / Samsung）與 Noto Sans CJK 字型；取代 AppMockUp 手動流程。
+description: 從 store_listings.json + 多語系原始 app 截圖自動合成 App Store / Google Play 上架素材。用 Pillow 合成、自動下載設備框（Apple / Samsung）與 Noto Sans CJK 字型。
 ---
 
 # Store Assets 產生器
@@ -24,8 +24,6 @@ apps/mobile/assets/screenshots/store-assets-generated/
     ├── Phone Screenshot {1..4}.png    1620x2880
     └── Tablet Screenshot {1..4}.png   1620x2880
 ```
-
-**命名結尾為 `-generated`** 以區隔於 AppMockUp 產出的 `app-store/` / `play-store/`。
 
 ## 使用
 
@@ -54,16 +52,17 @@ uv run generate.py --locale en --device iphone-16-pro-max --screen 1
 
 下載後放在 `frames/` 與 `fonts/`（均 gitignore）。
 
-## 校準 config
+## config.json
 
-`config.json` 的版面參數（背景色、文字位置、設備框座標）由 `calibrate.py` 從 AppMockUp 版 zhTW 既有素材自動抽出。
+版面參數（背景色、字級、標題 / 副標 / 設備框 y 座標）手動維護於 `config.json`。
 
-首次或 AppMockUp 版改過時重跑：
-```bash
-uv run calibrate.py
-```
+設計準則：
+- 標題 bottom → 副標 top = 副標 bottom → 設備框 top ≈ 2.75% × canvas height（視覺等距）
+- 背景色統一 `#FFFFFF`
+- 標題粗體 `#1F1F1F`、副標 Regular `#4A4A4A`
+- 跨裝置以百分比而非絕對像素，確保視覺一致
 
-會覆寫 `config.json`；之後可手動微調數值。
+要加新裝置就在 `devices` 加一組對應 key，依現有結構填 `output_size` / `frame_file` / `frame_url` / `screenshot_source` / `title` / `subtitle` / `frame.top_y` 即可。
 
 ## scenario → screenshot index 對應
 
