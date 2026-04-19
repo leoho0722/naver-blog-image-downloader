@@ -1,0 +1,99 @@
+{
+    "description": "上架素材多語系文案",
+    "locales": [
+        "zhTW",
+        "en",
+        "ja",
+        "ko"
+    ],
+    "screens": [
+        {
+            "index": 1,
+            "scenario": "photo_gallery_grid",
+            "localizations": {
+                "zhTW": {
+                    "title": "全部看見，挑你要的",
+                    "subtitle": "不必再一頁頁慢慢滾"
+                },
+                "en": {
+                    "title": "See All. Pick Any.",
+                    "subtitle": "No more endless scrolling"
+                },
+                "ja": {
+                    "title": "全部見て、欲しいだけ",
+                    "subtitle": "もうスクロールしなくていい"
+                },
+                "ko": {
+                    "title": "전부 보고, 원하는 것만",
+                    "subtitle": "더 이상 끝없이 스크롤할 필요 없이"
+                }
+            }
+        },
+        {
+            "index": 2,
+            "scenario": "photo_detail_native",
+            "localizations": {
+                "zhTW": {
+                    "title": "像翻自己的相簿",
+                    "subtitle": "全螢幕、高畫質、滑順翻頁"
+                },
+                "en": {
+                    "title": "Feels Like Yours",
+                    "subtitle": "Full screen, silky swipes"
+                },
+                "ja": {
+                    "title": "アルバムをめくる感覚",
+                    "subtitle": "大画面・高画質・なめらか"
+                },
+                "ko": {
+                    "title": "앨범처럼 자연스럽게",
+                    "subtitle": "풀스크린·고화질·매끄럽게"
+                }
+            }
+        },
+        {
+            "index": 3,
+            "scenario": "blog_input_with_url",
+            "localizations": {
+                "zhTW": {
+                    "title": "幾秒鐘，整本抓回來",
+                    "subtitle": "貼上網址，剩下交給 App"
+                },
+                "en": {
+                    "title": "Blog in Seconds",
+                    "subtitle": "Paste the URL. Done"
+                },
+                "ja": {
+                    "title": "ブログ丸ごと、数秒で",
+                    "subtitle": "URL 貼るだけで全自動"
+                },
+                "ko": {
+                    "title": "블로그 전체, 몇 초면",
+                    "subtitle": "주소만 붙이면 나머지는 자동"
+                }
+            }
+        },
+        {
+            "index": 4,
+            "scenario": "settings_default",
+            "localizations": {
+                "zhTW": {
+                    "title": "你的 App，你的樣子",
+                    "subtitle": "主題、語言、圖示、快取，你說了算"
+                },
+                "en": {
+                    "title": "Make It Yours",
+                    "subtitle": "Theme, language, icon"
+                },
+                "ja": {
+                    "title": "アプリは、あなた好みに",
+                    "subtitle": "テーマ・言語・アイコンを自由に"
+                },
+                "ko": {
+                    "title": "내 손에 맞춘 앱",
+                    "subtitle": "테마·언어·아이콘, 마음대로"
+                }
+            }
+        }
+    ]
+}

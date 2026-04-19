@@ -15,6 +15,10 @@
 #   SCENARIOS_FILTER — 只跑指定場景（逗號分隔），如 "photo_gallery_grid,photo_gallery_select"
 #   LOCALES_FILTER   — 只跑指定語系（逗號分隔），如 "zhTW,en"
 #   THEMES_FILTER    — 只跑指定主題（逗號分隔），如 "light"
+#   WAIT_BONUS_SECS  — 每個場景額外加上的等待秒數（預設 0），用於慢速模擬器或平板 AVD
+#
+# 狀態列會自動鎖定為 10:00 / Wi-Fi 滿格 / 電量 100%（隱藏通知與行動網路），
+# 讓所有截圖視覺一致；腳本結束時自動退出 demo mode 還原。
 #
 # 所有場景 / 語系 / 主題 / 等待秒數皆來自 screenshot_matrix.json，
 # 新增場景時只要編輯該 JSON 並執行 `dart run scripts/generate_maestro_matrix.dart`。
@@ -68,6 +72,18 @@ if ! "$ADB" -s "$DEVICE" shell pm list packages 2>/dev/null | grep -q "^package:
   exit 1
 fi
 
+# 鎖定狀態列為商店素材友善樣式：10:00 / Wi-Fi 滿格 / 電量 100% / 隱藏通知與行動網路。
+# 透過 Android System UI demo mode 達成；腳本結束自動退出 demo mode 還原。
+"$ADB" -s "$DEVICE" shell settings put global sysui_demo_allowed 1 >/dev/null 2>&1 || true
+"$ADB" -s "$DEVICE" shell am broadcast -a com.android.systemui.demo -e command enter >/dev/null 2>&1 || true
+"$ADB" -s "$DEVICE" shell am broadcast -a com.android.systemui.demo -e command clock -e hhmm 1000 >/dev/null 2>&1 || true
+"$ADB" -s "$DEVICE" shell am broadcast -a com.android.systemui.demo -e command battery -e level 100 -e plugged false >/dev/null 2>&1 || true
+"$ADB" -s "$DEVICE" shell am broadcast -a com.android.systemui.demo -e command network -e wifi show -e level 4 >/dev/null 2>&1 || true
+"$ADB" -s "$DEVICE" shell am broadcast -a com.android.systemui.demo -e command network -e mobile hide >/dev/null 2>&1 || true
+"$ADB" -s "$DEVICE" shell am broadcast -a com.android.systemui.demo -e command notifications -e visible false >/dev/null 2>&1 || true
+echo "🔒 狀態列鎖定：10:00 / Wi-Fi / 100%" | tee -a "$LOG_FILE"
+trap '"$ADB" -s "$DEVICE" shell am broadcast -a com.android.systemui.demo -e command exit >/dev/null 2>&1 || true' EXIT
+
 # 從 JSON 讀取 locales / themes / scenarios（含 Android 等待秒數）
 LOCALES=()
 while IFS= read -r line; do LOCALES+=("$line"); done < <(jq -r '.locales[]' "$JSON")
@@ -110,6 +126,7 @@ for locale in "${LOCALES_FILTERED[@]}"; do
     for entry in "${SCENARIO_ENTRIES_FILTERED[@]}"; do
       scenario="${entry%%:*}"
       WAIT_SECS="${entry##*:}"
+      WAIT_SECS=$((WAIT_SECS + ${WAIT_BONUS_SECS:-0}))
       TOTAL=$((TOTAL+1))
       OUT_PATH="${SUB_DIR}/${scenario}.png"
 

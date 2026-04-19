@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:naver_blog_image_downloader/l10n/app_localizations.dart';
 
-import '../config/app_icon.dart';
 import '../data/services/photo_viewer_service.dart';
 import '../ui/blog_input/view_model/blog_input_view_model.dart';
 import '../ui/blog_input/widgets/blog_input_view.dart';
@@ -426,8 +425,8 @@ class _NativePhotoViewerScenarioState
   Future<void> _prepareAndLaunch() async {
     try {
       final file = await _writeAssetToTemporaryFile(
-        assetPath: AppIcon.defaultIcon.previewAsset,
-        filename: 'screenshot_photo_viewer.png',
+        assetPath: screenshotSamplePhotoAssets.first,
+        filename: 'screenshot_photo_viewer.jpg',
       );
       if (!mounted) return;
       setState(() {
@@ -496,9 +495,8 @@ Future<_PreparedGalleryData> _prepareGalleryData() async {
 
   for (var index = 0; index < screenshotPhotos.length; index++) {
     final photo = screenshotPhotos[index];
-    final assetPath = index.isEven
-        ? AppIcon.defaultIcon.previewAsset
-        : AppIcon.newIcon.previewAsset;
+    final assetPath =
+        screenshotSamplePhotoAssets[index % screenshotSamplePhotoAssets.length];
     final file = await _writeAssetToTemporaryFile(
       assetPath: assetPath,
       filename: photo.filename,

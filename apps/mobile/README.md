@@ -97,3 +97,21 @@ SCENARIOS_FILTER=photo_gallery_grid,photo_gallery_select \
 ```
 
 詳細新增場景流程與常見坑，見 [`.claude/skills/screenshot-workflow/SKILL.md`](.claude/skills/screenshot-workflow/SKILL.md)。
+
+## 上架素材產生
+
+從 screenshot matrix 拍好的多語系原始截圖 + `assets/screenshots/store_listings.json`（各畫面標題/副標文案），由 `store-assets` skill 自動合成 App Store / Play Store 的多語系上架素材（含設備框、標題、副標）。
+
+```bash
+cd .claude/skills/store-assets
+
+# 全部語系（zhTW/en/ja/ko）× 全部裝置 × 全部 screen，共 80 張
+uv run generate.py
+
+# 過濾
+uv run generate.py --locale en --device iphone-16-pro-max --screen 1
+```
+
+產出放到 `assets/screenshots/store-assets-generated/`（已 gitignore）；`frames/` 設備框與 `fonts/` Noto Sans CJK 首次執行時自動從 GitHub 下載。
+
+詳細工作流程（版面參數校準、裝置框來源、Google Play 主題大圖位置）見 [`.claude/skills/store-assets/SKILL.md`](.claude/skills/store-assets/SKILL.md)。
