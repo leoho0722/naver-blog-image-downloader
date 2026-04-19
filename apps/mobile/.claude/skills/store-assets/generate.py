@@ -110,11 +110,11 @@ def download_file(url: str, dest: Path) -> None:
     """
     print(f"⬇️  下載 {dest.name} ...")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    response = requests.get(url, stream=True, timeout=60)
-    response.raise_for_status()
-    with open(dest, "wb") as f:
-        for chunk in response.iter_content(chunk_size=65536):
-            f.write(chunk)
+    with requests.get(url, stream=True, timeout=60) as response:
+        response.raise_for_status()
+        with open(dest, "wb") as f:
+            for chunk in response.iter_content(chunk_size=65536):
+                f.write(chunk)
     print(f"   ✅ {dest.relative_to(SKILL_DIR)} ({dest.stat().st_size // 1024} KB)")
 
 
@@ -333,11 +333,14 @@ def detect_frame_inner_rect(
     return bbox
 
 
-def compose_one(job: RenderJob, device_config: dict) -> Image.Image:
+def compose_one(
+    job: RenderJob, device_config: dict, frame: Image.Image
+) -> Image.Image:
     """合成單張上架素材。
 
     [job] 描述要合成的 locale / device / screen 與文字內容。
     [device_config] 該裝置在 config.json 內的設定片段。
+    [frame] 已載入好的裝置框 RGBA Image；由 caller 快取重用，避免每張都重開檔。
 
     回傳合成完成的 RGBA [Image]。
     """
@@ -370,14 +373,12 @@ def compose_one(job: RenderJob, device_config: dict) -> Image.Image:
         font=subtitle_font,
     )
 
-    # 設備框 + 內嵌 app 截圖
-    frame_path = FRAMES_DIR / device_config["frame_file"]
-    cache_key = str(frame_path)
-    frame = Image.open(frame_path).convert("RGBA")
+    # 設備框（由 caller 快取傳入）+ 內嵌 app 截圖
+    cache_key = device_config["frame_file"]
     screen_mask = build_screen_mask(frame, cache_key=cache_key)
     bbox = screen_mask.getbbox()
     if bbox is None:
-        raise ValueError(f"設備框 {frame_path} 找不到內螢幕區")
+        raise ValueError(f"設備框 {device_config['frame_file']} 找不到內螢幕區")
     inner_left, inner_top, inner_right, inner_bottom = bbox
     inner_w = inner_right - inner_left
     inner_h = inner_bottom - inner_top
@@ -390,7 +391,7 @@ def compose_one(job: RenderJob, device_config: dict) -> Image.Image:
     if not screenshot_path.exists():
         raise FileNotFoundError(f"找不到原始截圖 {screenshot_path}")
     screenshot = Image.open(screenshot_path).convert("RGB")
-    screenshot_fitted = screenshot.resize((inner_w, inner_h), Image.LANCZOS)
+    screenshot_fitted = screenshot.resize((inner_w, inner_h), Image.Resampling.LANCZOS)
 
     # 合成：把 app 截圖貼進設備框，遮罩只認內螢幕區
     # 外透明（設備輪廓外）與 bezel 都 mask=0，確保截圖不會從鏡頭孔、圓角或 PNG 邊緣透出來。
@@ -406,7 +407,7 @@ def compose_one(job: RenderJob, device_config: dict) -> Image.Image:
     frame_w, frame_h = framed.size
     scale = min(max_frame_h / frame_h, (width * 0.95) / frame_w)
     target_size = (int(frame_w * scale), int(frame_h * scale))
-    framed_resized = framed.resize(target_size, Image.LANCZOS)
+    framed_resized = framed.resize(target_size, Image.Resampling.LANCZOS)
     frame_x = (width - target_size[0]) // 2
     canvas_rgba = canvas.convert("RGBA")
     canvas_rgba.alpha_composite(framed_resized, dest=(frame_x, frame_top_y))
@@ -483,6 +484,12 @@ def main() -> None:
     ensure_fonts(locales_needed)
     ensure_frames(config, devices_needed)
 
+    # 預先載入所有要用到的裝置框，避免迴圈內重複開檔（同一台裝置會被用 N 張截圖共用）
+    frames: dict[str, Image.Image] = {
+        device_id: Image.open(FRAMES_DIR / config["devices"][device_id]["frame_file"]).convert("RGBA")
+        for device_id in devices_needed
+    }
+
     total = len(jobs)
     for index, job in enumerate(jobs, start=1):
         device_config = config["devices"][job.device_id]
@@ -491,7 +498,7 @@ def main() -> None:
         out_path = out_dir / device_config["output_name"].format(index=job.screen_index)
 
         print(f"[{index}/{total}] {job.locale}/{job.device_id}/#{job.screen_index}")
-        image = compose_one(job, device_config)
+        image = compose_one(job, device_config, frames[job.device_id])
         image.convert("RGB").save(out_path, "PNG", optimize=True)
         print(f"   ✅ {out_path.relative_to(ASSETS_DIR)}")
 
