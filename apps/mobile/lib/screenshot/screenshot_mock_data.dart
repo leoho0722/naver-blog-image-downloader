@@ -13,6 +13,21 @@ const String screenshotBlogUrl =
 /// 截圖情境共用的 Blog 識別碼。
 const String screenshotBlogId = 'screenshot-blog-id';
 
+/// 截圖情境使用的 9 張範例照片 asset 路徑，對應 [screenshotPhotos]。
+///
+/// 這些圖片來自 Pexels（可商用、無需標註），已壓縮至 long-edge 1280px。
+const List<String> screenshotSamplePhotoAssets = [
+  'assets/samples/sample_photo_01.jpg',
+  'assets/samples/sample_photo_02.jpg',
+  'assets/samples/sample_photo_03.jpg',
+  'assets/samples/sample_photo_04.jpg',
+  'assets/samples/sample_photo_05.jpg',
+  'assets/samples/sample_photo_06.jpg',
+  'assets/samples/sample_photo_07.jpg',
+  'assets/samples/sample_photo_08.jpg',
+  'assets/samples/sample_photo_09.jpg',
+];
+
 /// 截圖情境共用的照片清單。
 const List<PhotoEntity> screenshotPhotos = [
   PhotoEntity(

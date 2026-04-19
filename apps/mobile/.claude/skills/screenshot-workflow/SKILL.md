@@ -64,6 +64,16 @@ maestro test .maestro/screenshot_matrix.yaml
 
 前置：iOS 模擬器已 boot，Runner.app 已 build + install。
 
+**本專案支援的 iOS 模擬器**：
+
+| 模擬器 | 分類 |
+|--------|------|
+| iPhone 17 Pro Max | `ios-phone` |
+| iPhone 14 Plus | `ios-phone` |
+| iPad Pro 13 M5 | `ios-tablet` |
+
+每次只能跑一台（腳本以第一台 booted 或 `SIM_ID` 指定），需要三台都跑請依序切換模擬器重跑。
+
 ```bash
 # 跑整個 4×2×11 = 88 張
 apps/mobile/scripts/run_ios_screenshot_matrix.sh
@@ -83,6 +93,8 @@ SCENARIOS_FILTER=settings_default LOCALES_FILTER=zhTW THEMES_FILTER=light,dark \
 SIM_ID=XXXX-XXXX apps/mobile/scripts/run_ios_screenshot_matrix.sh
 ```
 
+> 腳本會自動把狀態列鎖成 9:41 / Wi-Fi 滿格 / 電量 100% 充電中（Apple 傳統時間），結束時自動還原。
+
 Build + install 流程（若尚未 install 或改過 Flutter 程式碼）：
 ```bash
 # 透過 xcodebuildmcp（Claude Code 內）
@@ -94,6 +106,15 @@ install_app_sim({ appPath: "/tmp/naver_blog_image_downloader_sim_dd/Build/Produc
 ## 跑 Android matrix
 
 前置：Android emulator 已 boot，**debug 版** APK 已 install（screenshot mode 只在 `kDebugMode` 生效）。
+
+**本專案支援的 Android 模擬器**：
+
+| 模擬器 | 分類 |
+|--------|------|
+| Medium Phone | `android-phone` |
+| Medium Tablet | `android-tablet` |
+
+每次只能跑一台（腳本以第一台 adb connected 或 `DEVICE` 指定），需要兩台都跑請依序切換 emulator 重跑。
 
 ```bash
 # Boot emulator
@@ -109,7 +130,12 @@ scripts/run_android_screenshot_matrix.sh
 
 # 過濾同 iOS：SCENARIOS_FILTER / LOCALES_FILTER / THEMES_FILTER
 SCENARIOS_FILTER=photo_detail_native scripts/run_android_screenshot_matrix.sh
+
+# 慢速模擬器：額外等待秒數
+WAIT_BONUS_SECS=5 scripts/run_android_screenshot_matrix.sh
 ```
+
+> 腳本會自動把狀態列鎖成 10:00 / Wi-Fi 滿格 / 電量 100%（隱藏通知與行動網路），結束時自動退出 demo mode 還原。
 
 **常見坑：**
 - 「截圖都是 splash screen」→ `waitSecsAndroid` 不夠，Android cold start 比 iOS 慢
@@ -130,6 +156,35 @@ SCENARIOS_FILTER=photo_detail_native scripts/run_android_screenshot_matrix.sh
 預設輸出目錄：
 - iOS：`/tmp/naver_blog_image_downloader_ios_screenshots_<timestamp>/`
 - Android：`/tmp/naver_blog_image_downloader_android_screenshots_<timestamp>/`
+
+## 移入 assets/screenshots
+
+跑完 matrix 後 `/tmp/` 只是暫存，要依模擬器分類移入 `apps/mobile/assets/screenshots/`，讓下游（store-assets skill 等）能直接引用。
+
+### 模擬器 ↔ 目標目錄對照
+
+| 平台 | 模擬器 | 目標目錄 |
+|------|--------|----------|
+| iOS | iPhone 17 Pro Max | `assets/screenshots/ios-phone/iPhone 17 Pro Max/` |
+| iOS | iPhone 14 Plus | `assets/screenshots/ios-phone/iPhone 14 Plus/` |
+| iOS | iPad Pro 13 M5 | `assets/screenshots/ios-tablet/` |
+| Android | Medium Phone | `assets/screenshots/android-phone/` |
+| Android | Medium Tablet | `assets/screenshots/android-tablet/` |
+
+> iOS phone 有兩款機型，各自用子資料夾區分；其他平台只有一款機型，直接平鋪在 `{locale}/{theme}/` 層。
+
+### 移動指令
+
+以 iPhone 17 Pro Max 為例，其他裝置改 `SRC` / `DEST` 即可：
+
+```bash
+cd apps/mobile
+SRC=/tmp/naver_blog_image_downloader_ios_screenshots_<timestamp>
+DEST="assets/screenshots/ios-phone/iPhone 17 Pro Max"
+rm -rf "$DEST" && mkdir -p "$(dirname "$DEST")" && mv "$SRC" "$DEST"
+```
+
+**注意：** 指令會先清掉目標目錄舊內容再整包搬過去。如果只想合併某幾個 locale，改用 `rsync -a "$SRC"/ "$DEST"/`，不帶 `--delete` 保留既有檔案。
 
 ## 相關檔案速查
 

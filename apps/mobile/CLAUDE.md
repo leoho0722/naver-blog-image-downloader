@@ -44,7 +44,7 @@ Firebase（Auth + Firestore + Crashlytics）— AuthService / LogService / Crash
    - Private 項目（含 `_` 開頭的 class、method、field）亦須撰寫註解
    - `copyWith` 方法須列出所有參數說明與回傳描述
    - `operator ==` 須標記 `[other]` 參數，`hashCode` 須標記回傳描述
-4. **截圖自動化**：新增 / 修改 screenshot 場景、語系、主題時，**唯一** SSOT 為 `scripts/screenshot_matrix.json`。切勿直接改 `lib/screenshot/screenshot_scenario_definitions.dart` 或 `.maestro/screenshot_matrix.yaml`（由 `scripts/generate_maestro_matrix.dart` 產生覆寫）。完整流程與 matrix 執行指令見 `.claude/skills/screenshot-workflow/SKILL.md`。
+4. **截圖自動化**：新增 / 修改 screenshot 場景、語系、主題時，**唯一** SSOT 為 `scripts/screenshot_matrix.json`。切勿直接改 `lib/screenshot/screenshot_scenario_definitions.dart` 或 `.maestro/screenshot_matrix.yaml`（由 `scripts/generate_maestro_matrix.dart` 產生覆寫）。完整流程與 matrix 執行指令見 `.claude/skills/screenshot-workflow/SKILL.md`。Matrix 拍出的原始截圖進一步合成 App Store / Play Store 上架素材（加上設備框與多語系文案）由 `.claude/skills/store-assets/SKILL.md` 負責。
 5. **原生程式碼規範（Swift / Kotlin）**：
    - 縮排使用 4 格空格（Dart 用 2 格，原生用 4 格）
    - 所有註解須以**正體中文**撰寫，具備**高可讀性**、**直覺易懂**、**高可維護性**，使用連 PM 或 Flutter 初學者都能理解的白話說明

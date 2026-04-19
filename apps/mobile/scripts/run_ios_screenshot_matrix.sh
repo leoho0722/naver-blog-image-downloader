@@ -14,6 +14,9 @@
 #   LOCALES_FILTER   — 只跑指定語系（逗號分隔），如 "zhTW,en"
 #   THEMES_FILTER    — 只跑指定主題（逗號分隔），如 "light"
 #
+# 狀態列會自動鎖定為 9:41 / Wi-Fi 滿格 / 電量 100% 充電中（Apple 傳統時間），
+# 讓所有截圖視覺一致；腳本結束時自動還原。
+#
 # 所有場景 / 語系 / 主題 / 等待秒數皆來自 screenshot_matrix.json，
 # 新增場景時只要編輯該 JSON 並執行 `dart run scripts/generate_maestro_matrix.dart`。
 set -uo pipefail
@@ -58,6 +61,19 @@ if ! xcrun simctl list devices booted | grep -q "$SIM_ID"; then
   echo "❌ 模擬器 $SIM_ID 未 boot，請先啟動後再執行" | tee -a "$LOG_FILE"
   exit 1
 fi
+
+# 鎖定狀態列為商店素材友善樣式：9:41 / Wi-Fi 滿格 / 電量 100% 充電中 / 無行動網路。
+# 匯出時視覺一致，避免每張截圖時間 / 電量亂跳；腳本結束自動還原。
+xcrun simctl status_bar "$SIM_ID" override \
+  --time "9:41" \
+  --batteryState charged \
+  --batteryLevel 100 \
+  --wifiMode active \
+  --wifiBars 3 \
+  --cellularMode notSupported \
+  --dataNetwork wifi >/dev/null 2>&1 || true
+echo "🔒 狀態列鎖定：9:41 / Wi-Fi / 100%" | tee -a "$LOG_FILE"
+trap 'xcrun simctl status_bar "$SIM_ID" clear >/dev/null 2>&1 || true' EXIT
 
 # 從 JSON 讀取 locales / themes，並套用 *_FILTER 環境變數做白名單過濾
 LOCALES=()

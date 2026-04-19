@@ -47,6 +47,7 @@ Changes can be parked（暫存）— temporarily moved out of `openspec/changes/
 - **Minor**（`1.5.0 → 1.6.0`）：對使用者可見的新功能或行為變更。
 - **Patch**（`1.5.0 → 1.5.1`）：Bug 修正、開發者工具、自動化腳本、CI/CD 等不影響正式使用者的改動。
 - **Major**：API 破壞性變更。
+- **buildNumber** (`+1`)：僅 mobile 使用，代表內部 build 版本，無特別聲明則不需進行 bump。
 
 例如 screenshot 自動化、Spectra 工具腳本、lint/format 規則調整皆屬 patch；新畫面、新 API、行為調整則屬 minor。
 

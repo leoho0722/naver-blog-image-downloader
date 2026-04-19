@@ -1,0 +1,146 @@
+{
+    "_comment": "手動維護：背景色 / 字級 / 標題副標 y / 設備框 top_y；新增裝置時比照現有結構填。",
+    "scenario_by_index": {
+        "1": "photo_gallery_grid",
+        "2": "photo_detail_native",
+        "3": "blog_input_with_url",
+        "4": "settings_default"
+    },
+    "devices": {
+        "iphone-16-pro-max": {
+            "store": "app-store",
+            "output_name": "Apple iPhone 16 Pro Max Screenshot {index}.png",
+            "output_size": [
+                1320,
+                2868
+            ],
+            "frame_file": "iphone-16-pro-max.png",
+            "frame_url": "https://raw.githubusercontent.com/fastlane/frameit-frames/gh-pages/latest/Apple%20iPhone%2016%20Pro%20Max%20Black%20Titanium.png",
+            "screenshot_source": "ios-phone/iPhone 17 Pro Max/{locale}/light/{scenario}.png",
+            "background_color": "#FFFFFF",
+            "title": {
+                "y": 129,
+                "font_size": 85,
+                "color": "#1F1F1F",
+                "weight": "Bold"
+            },
+            "subtitle": {
+                "y": 293,
+                "font_size": 49,
+                "color": "#4A4A4A",
+                "weight": "Regular"
+            },
+            "frame": {
+                "top_y": 421
+            }
+        },
+        "iphone-14-plus": {
+            "store": "app-store",
+            "output_name": "Apple iPhone 14 Plus Screenshot {index}.png",
+            "output_size": [
+                1284,
+                2778
+            ],
+            "frame_file": "iphone-14-plus.png",
+            "frame_url": "https://raw.githubusercontent.com/fastlane/frameit-frames/gh-pages/latest/Apple%20iPhone%2014%20Plus%20Midnight.png",
+            "screenshot_source": "ios-phone/iPhone 14 Plus/{locale}/light/{scenario}.png",
+            "background_color": "#FFFFFF",
+            "title": {
+                "y": 125,
+                "font_size": 83,
+                "color": "#1F1F1F",
+                "weight": "Bold"
+            },
+            "subtitle": {
+                "y": 284,
+                "font_size": 48,
+                "color": "#4A4A4A",
+                "weight": "Regular"
+            },
+            "frame": {
+                "top_y": 408
+            }
+        },
+        "ipad-pro-129": {
+            "store": "app-store",
+            "output_name": "Apple iPad Pro 12.9 Inch Screenshot {index}.png",
+            "output_size": [
+                2048,
+                2732
+            ],
+            "frame_file": "ipad-pro-129.png",
+            "frame_url": "https://raw.githubusercontent.com/fastlane/frameit-frames/gh-pages/latest/Apple%20iPad%20Pro%20%2812.9-inch%29%20%284th%20generation%29%20Space%20Gray.png",
+            "screenshot_source": "ios-tablet/{locale}/light/{scenario}.png",
+            "background_color": "#FFFFFF",
+            "title": {
+                "y": 122,
+                "font_size": 112,
+                "color": "#1F1F1F",
+                "weight": "Bold"
+            },
+            "subtitle": {
+                "y": 309,
+                "font_size": 64,
+                "color": "#4A4A4A",
+                "weight": "Regular"
+            },
+            "frame": {
+                "top_y": 448
+            }
+        },
+        "galaxy-s21-ultra": {
+            "store": "play-store",
+            "output_name": "Phone Screenshot {index}.png",
+            "output_size": [
+                1620,
+                2880
+            ],
+            "frame_file": "galaxy-s21-ultra.png",
+            "frame_url": "https://raw.githubusercontent.com/fastlane/frameit-frames/gh-pages/latest/Samsung%20Galaxy%20S21%20Ultra%205G%20Black.png",
+            "screenshot_source": "android-phone/{locale}/light/{scenario}.png",
+            "background_color": "#FFFFFF",
+            "title": {
+                "y": 129,
+                "font_size": 105,
+                "color": "#1F1F1F",
+                "weight": "Bold"
+            },
+            "subtitle": {
+                "y": 313,
+                "font_size": 60,
+                "color": "#4A4A4A",
+                "weight": "Regular"
+            },
+            "frame": {
+                "top_y": 452
+            }
+        },
+        "galaxy-tab-s7": {
+            "store": "play-store",
+            "output_name": "Tablet Screenshot {index}.png",
+            "output_size": [
+                1620,
+                2880
+            ],
+            "frame_file": "galaxy-tab-s7.png",
+            "frame_url": null,
+            "screenshot_source": "android-tablet/{locale}/light/{scenario}.png",
+            "background_color": "#FFFFFF",
+            "title": {
+                "y": 129,
+                "font_size": 89,
+                "color": "#1F1F1F",
+                "weight": "Bold"
+            },
+            "subtitle": {
+                "y": 297,
+                "font_size": 51,
+                "color": "#4A4A4A",
+                "weight": "Regular"
+            },
+            "frame": {
+                "top_y": 427
+            }
+        }
+    }
+}

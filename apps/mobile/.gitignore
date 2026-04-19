@@ -46,3 +46,12 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# screenshot-workflow 產出的原始截圖（由 Maestro matrix 自動拍攝，不進版控）
+/assets/screenshots/android-phone/
+/assets/screenshots/android-tablet/
+/assets/screenshots/ios-phone/
+/assets/screenshots/ios-tablet/
+
+# store-assets skill 產出的上架素材（由 generate.py 合成，不進版控）
+/assets/screenshots/store-assets-generated/

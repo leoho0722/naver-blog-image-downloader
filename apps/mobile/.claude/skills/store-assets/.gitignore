@@ -1,0 +1,6 @@
+frames/*
+!frames/.gitkeep
+fonts/*
+!fonts/.gitkeep
+.venv/
+__pycache__/

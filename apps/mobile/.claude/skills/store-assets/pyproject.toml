@@ -1,0 +1,9 @@
+[project]
+name = "store-assets"
+version = "0.1.0"
+description = "從 store_listings.json 與多語系原始截圖合成 App Store / Play Store 上架素材"
+requires-python = ">=3.10"
+dependencies = [
+    "pillow>=12.2.0",
+    "requests>=2.33.1",
+]
