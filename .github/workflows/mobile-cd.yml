@@ -10,10 +10,15 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    name: Tag & Release
+  version:
+    name: Resolve version from pubspec
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      build_number: ${{ steps.resolve.outputs.build_number }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      skip: ${{ steps.resolve.outputs.skip }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -21,31 +26,193 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Extract version from pubspec.yaml
-        id: version
+      - name: Resolve mobile semver, buildNumber, and tag
+        id: resolve
         run: |
           VERSION_FULL=$(grep -E '^version: ' apps/mobile/pubspec.yaml | head -1 | awk '{print $2}')
           if [ -z "$VERSION_FULL" ]; then
-            echo "::error::Failed to read version from apps/mobile/pubspec.yaml"
+            echo "::error::無法從 apps/mobile/pubspec.yaml 讀出 version 欄位；請確認格式為 `version: X.Y.Z+N`，詳見 apps/mobile/docs/android-release.md"
             exit 1
           fi
           VERSION=${VERSION_FULL%+*}
+          BUILD_NUMBER=${VERSION_FULL##*+}
+          if [ "$VERSION" = "$VERSION_FULL" ] || [ -z "$BUILD_NUMBER" ]; then
+            echo "::error::pubspec version `${VERSION_FULL}` 缺少 +buildNumber；請在 pubspec.yaml 以 `X.Y.Z+N` 格式提供 buildNumber（詳見 apps/mobile/docs/android-release.md）"
+            exit 1
+          fi
           TAG="mobile-v${VERSION}"
           git fetch --tags --force
           if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
-            echo "::notice::Tag ${TAG} already exists — skipping release (bump pubspec version to publish a new one)."
+            echo "::notice::Tag ${TAG} 已存在——本次 CD 跳過（欲再次發布請 bump pubspec 的 semver）"
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "build_number=${BUILD_NUMBER}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
+  android-release:
+    name: Android — Build & Upload to Play Store (Internal + Closed)
+    needs: version
+    if: needs.version.outputs.skip == 'false'
+    runs-on: ubuntu-latest
+    outputs:
+      new_build_number: ${{ steps.bump.outputs.new_build_number }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate required Android release secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          missing=()
+          [ -z "$ANDROID_KEYSTORE_BASE64" ] && missing+=("ANDROID_KEYSTORE_BASE64")
+          [ -z "$ANDROID_KEYSTORE_PASSWORD" ] && missing+=("ANDROID_KEYSTORE_PASSWORD")
+          [ -z "$ANDROID_KEY_ALIAS" ] && missing+=("ANDROID_KEY_ALIAS")
+          [ -z "$ANDROID_KEY_PASSWORD" ] && missing+=("ANDROID_KEY_PASSWORD")
+          [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ] && missing+=("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::缺少必要的 GitHub Secrets：${missing[*]}；請依 apps/mobile/docs/android-release.md 第「必備 GitHub Secrets」章節設定"
+            exit 1
+          fi
+          echo "::notice::所有 Android release secrets 皆已設定"
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          pub-cache: true
+
+      - name: Setup Ruby + bundler (fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+          working-directory: apps/mobile/android
+          bundler-cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: apps/mobile
+        run: flutter pub get
+
+      - name: Code Generation (Riverpod)
+        working-directory: apps/mobile
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Restore Android signing materials from secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          echo "::notice::從 Secrets 還原 keystore 與 key.properties（transient files，job 結束會清除）"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > apps/mobile/android/app/keystore.jks
+          if [ ! -s apps/mobile/android/app/keystore.jks ]; then
+            echo "::error::keystore 還原後大小為 0；請檢查 ANDROID_KEYSTORE_BASE64 secret 內容是否完整（詳見 apps/mobile/docs/android-release.md）"
+            exit 1
+          fi
+          cat > apps/mobile/android/key.properties <<EOF
+          storeFile=app/keystore.jks
+          storePassword=${ANDROID_KEYSTORE_PASSWORD}
+          keyAlias=${ANDROID_KEY_ALIAS}
+          keyPassword=${ANDROID_KEY_PASSWORD}
+          EOF
+
+      - name: Restore Play service account JSON
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          mkdir -p apps/mobile/android/fastlane
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > apps/mobile/android/fastlane/play-service-account.json
+          if [ ! -s apps/mobile/android/fastlane/play-service-account.json ]; then
+            echo "::error::Play service account JSON 寫入後大小為 0；請檢查 GOOGLE_PLAY_SERVICE_ACCOUNT_JSON secret 內容"
+            exit 1
+          fi
+          echo "::notice::Play service account JSON 已還原（fastlane/play-service-account.json）"
+
+      - name: Bump buildNumber in pubspec.yaml
+        id: bump
+        run: |
+          set -euo pipefail
+          CURRENT="${{ needs.version.outputs.build_number }}"
+          if ! [[ "$CURRENT" =~ ^[0-9]+$ ]]; then
+            echo "::error::目前 buildNumber '${CURRENT}' 非純數字，無法自動遞增；請手動修 pubspec.yaml"
+            exit 1
+          fi
+          NEW=$((CURRENT + 1))
+          echo "::notice::buildNumber 由 +${CURRENT} 遞增為 +${NEW}"
+          VERSION="${{ needs.version.outputs.version }}"
+          # 取代 pubspec.yaml 的 version 行；sed in-place 相容 GNU sed（ubuntu runner）
+          sed -i "s/^version: .*/version: ${VERSION}+${NEW}/" apps/mobile/pubspec.yaml
+          echo "new_build_number=${NEW}" >> "$GITHUB_OUTPUT"
+
+      - name: Build signed release AAB (fastlane build_release_aab)
+        working-directory: apps/mobile/android
+        env:
+          BUILD_NUMBER: ${{ steps.bump.outputs.new_build_number }}
+        run: |
+          echo "::notice::開始建置 signed AAB，BUILD_NUMBER=${BUILD_NUMBER}"
+          bundle exec fastlane build_release_aab
+
+      - name: Upload AAB to Play Store (Internal + Closed) — fastlane upload_beta
+        working-directory: apps/mobile/android
+        run: |
+          echo "::notice::開始上傳 AAB 至 Play Store Internal 與 Closed track"
+          bundle exec fastlane upload_beta
+
+      - name: Commit bumped pubspec back to main
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          branch: main
+          commit_message: |
+            style(mobile): bump build number 至 +${{ steps.bump.outputs.new_build_number }}
+
+            - CD 自動遞增 versionCode，保持 Play Store 單調遞增不變式
+            - [skip ci]
+          file_pattern: apps/mobile/pubspec.yaml
+
+      - name: Clean up transient signing and credential files
+        if: always()
+        run: |
+          rm -f apps/mobile/android/app/keystore.jks
+          rm -f apps/mobile/android/key.properties
+          rm -f apps/mobile/android/fastlane/play-service-account.json
+          echo "::notice::已清除 keystore.jks、key.properties、play-service-account.json"
+
+  release:
+    name: Tag & Release
+    needs: [version, android-release]
+    if: needs.version.outputs.skip == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: main
+
       - name: Get commits since last mobile tag
-        if: steps.version.outputs.skip == 'false'
         id: changelog
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
+          TAG="${{ needs.version.outputs.tag }}"
           PREVIOUS_TAG=$(git tag --list "mobile-v*" --sort=-version:refname | grep -v "^${TAG}$" | head -n 1 || echo "")
           if [ -z "$PREVIOUS_TAG" ]; then
             COMMITS=$(git log --pretty=format:"- %s (%h)" -- apps/mobile)
@@ -55,18 +222,16 @@ jobs:
           echo "$COMMITS" > /tmp/commits.txt
 
       - name: Generate release notes
-        if: steps.version.outputs.skip == 'false'
         uses: ./.github/actions/generate-release-notes
         with:
-          tag: ${{ steps.version.outputs.tag }}
+          tag: ${{ needs.version.outputs.tag }}
           commits_file: /tmp/commits.txt
           output_file: /tmp/mobile_release_notes.md
           ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}
 
       - name: Create release
-        if: steps.version.outputs.skip == 'false'
         uses: ./.github/actions/create-release
         with:
-          tag: ${{ steps.version.outputs.tag }}
-          title: "Mobile v${{ steps.version.outputs.version }}"
+          tag: ${{ needs.version.outputs.tag }}
+          title: "Mobile v${{ needs.version.outputs.version }}"
           notes_file: /tmp/mobile_release_notes.md

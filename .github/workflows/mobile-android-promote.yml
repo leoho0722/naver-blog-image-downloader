@@ -1,0 +1,87 @@
+name: Mobile Android — Promote to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要 promote 的 mobile tag（例：mobile-v1.7.0）"
+        required: true
+        type: string
+      rollout:
+        description: "Staged rollout 百分比（0.0–1.0，預設 0.1 代表 10%）"
+        required: false
+        default: "0.1"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  promote:
+    name: Promote Closed (alpha) release to Production
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate inputs
+        env:
+          TAG: ${{ inputs.tag }}
+          ROLLOUT: ${{ inputs.rollout }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$TAG" =~ ^mobile-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::tag 輸入 '${TAG}' 不符 mobile-v<X.Y.Z> 格式"
+            exit 1
+          fi
+          # 僅允許 0.0（不含，Play Store 不接受 0）~ 1.0（含）之間的小數字串
+          if ! awk -v r="$ROLLOUT" 'BEGIN{ if (r+0 > 0 && r+0 <= 1.0) exit 0; else exit 1 }'; then
+            echo "::error::rollout 輸入 '${ROLLOUT}' 超出合法範圍（必須是大於 0 且小於等於 1 的小數）"
+            exit 1
+          fi
+          echo "::notice::即將以 tag=${TAG}、rollout=${ROLLOUT} 進行 Production promote"
+
+      - name: Validate required secrets
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::error::缺少 GitHub Secret：GOOGLE_PLAY_SERVICE_ACCOUNT_JSON；請依 apps/mobile/docs/android-release.md 設定"
+            exit 1
+          fi
+
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 1
+
+      - name: Setup Ruby + bundler (fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+          working-directory: apps/mobile/android
+          bundler-cache: true
+
+      - name: Restore Play service account JSON
+        env:
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          mkdir -p apps/mobile/android/fastlane
+          printf '%s' "$GOOGLE_PLAY_SERVICE_ACCOUNT_JSON" > apps/mobile/android/fastlane/play-service-account.json
+          if [ ! -s apps/mobile/android/fastlane/play-service-account.json ]; then
+            echo "::error::Play service account JSON 寫入後大小為 0；請檢查 secret 內容"
+            exit 1
+          fi
+          echo "::notice::Play service account JSON 已還原（fastlane/play-service-account.json）"
+
+      - name: Promote to Production (fastlane promote_to_production)
+        working-directory: apps/mobile/android
+        env:
+          ROLLOUT: ${{ inputs.rollout }}
+        run: |
+          echo "::notice::開始 promote：tag=${{ inputs.tag }}、rollout=${ROLLOUT}"
+          bundle exec fastlane promote_to_production
+
+      - name: Clean up transient credential file
+        if: always()
+        run: |
+          rm -f apps/mobile/android/fastlane/play-service-account.json
+          echo "::notice::已清除 play-service-account.json"

@@ -12,3 +12,9 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+app/keystore.jks
+
+# fastlane 產出物（CD runtime 產生；不進版控）
+fastlane/report.xml
+fastlane/README.md
+fastlane/play-service-account.json
