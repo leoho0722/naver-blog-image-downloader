@@ -45,25 +45,25 @@ The pipeline SHALL read the current `+buildNumber` from `apps/mobile/pubspec.yam
 #### Scenario: buildNumber increment and commit-back
 
 - **WHEN** `pubspec.yaml` starts at `1.7.0+3`, the pipeline runs, AAB uploads to Internal and Closed both succeed
-- **THEN** the AAB SHALL be built with `--build-number=4`, and a new commit SHALL appear on `main` changing `pubspec.yaml` to `1.7.0+4` with a message matching `style(mobile): bump build number 至 +4` containing `[skip ci]` in the body
+- **THEN** the AAB SHALL be built with `--build-number=4`, and a new commit SHALL appear on `main` changing `pubspec.yaml` to `1.7.0+4` with a message matching `chore(mobile): bump build number 至 +4` containing `[skip ci]` in the body
 
 #### Scenario: Commit-back does not retrigger Mobile CI
 
 - **WHEN** the pipeline pushes the buildNumber bump commit to `main`
 - **THEN** `Mobile CI` SHALL NOT be triggered by that push (enforced by `[skip ci]` token in the commit message)
 
-### Requirement: Pipeline SHALL upload the same AAB to Play Store Internal and Closed tracks
+### Requirement: Pipeline SHALL publish the produced AAB to both Internal and Closed tracks
 
-The pipeline SHALL upload the produced AAB to the Google Play Store Internal testing track (fastlane `track: "internal"`) and then to the Closed testing track (fastlane `track: "alpha"`) using the same AAB artifact. Both uploads SHALL be attempted in sequence within a single pipeline run. The pipeline SHALL NOT upload to Open testing (`beta`) or Production (`production`) automatically under any circumstance.
+The pipeline SHALL upload the produced AAB to the Google Play Store Internal testing track (fastlane `track: "internal"`) and SHALL then make the same release available on the Closed testing track (fastlane `track: "alpha"`) by invoking `upload_to_play_store` with `track: "internal"` and `track_promote_to: "alpha"` (and `skip_upload_aab: true`), so that both tracks hold the identical versionCode as a single release. Both steps SHALL be attempted in sequence within a single pipeline run. The pipeline SHALL NOT re-upload the same AAB twice (Play Developer API rejects duplicate versionCodes). The pipeline SHALL NOT upload to Open testing (`beta`) or Production (`production`) automatically under any circumstance.
 
 #### Scenario: Both tracks succeed
 
-- **WHEN** fastlane uploads the AAB to Internal and the upload succeeds, then uploads the same AAB to Closed and that upload also succeeds
+- **WHEN** fastlane uploads the AAB to Internal and the upload succeeds, then promotes the Internal draft release to Closed (alpha) via `track_promote_to`
 - **THEN** the pipeline SHALL proceed to the commit-back and tag/release steps
 
-#### Scenario: Internal succeeds, Closed fails
+#### Scenario: Internal succeeds, Closed promote fails
 
-- **WHEN** Internal upload succeeds but Closed upload fails (network error, Play API rejection, etc.)
+- **WHEN** Internal upload succeeds but the `track_promote_to: "alpha"` step fails (network error, Play API rejection, track not configured, etc.)
 - **THEN** the pipeline SHALL fail, SHALL NOT commit buildNumber back to `main`, and SHALL NOT create the git tag or GitHub Release
 
 #### Scenario: Attempt to reach Production automatically

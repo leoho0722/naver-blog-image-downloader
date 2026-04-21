@@ -62,20 +62,24 @@ platform :android do
       skip_upload_changelogs: true
     )
 
-    # 再上 Closed（alpha）：Play Developer API 沒有「一次上多 track」的原子操作，
-    # 以兩次 sequential call 帶同一個 AAB 實作。
-    UI.message("上傳到 Closed testing（fastlane track: alpha）")
+    # 再讓 Closed（alpha）也擁有同一個 release：
+    # 刻意「不」第二次 upload_to_play_store 帶同一個 AAB——Play Developer API
+    # 會以「該 versionCode 已被使用」拒絕重複上傳。改用 track_promote_to 把
+    # Internal 剛建立的 draft release 以原子操作 promote 到 alpha track。
+    UI.message("將 Internal draft release promote 到 Closed testing（fastlane track: alpha）")
     upload_to_play_store(
-      track: "alpha",
-      aab: AAB_PATH,
+      track: "internal",
+      track_promote_to: "alpha",
       release_status: "draft",
+      skip_upload_aab: true,
+      skip_upload_apk: true,
       skip_upload_metadata: true,
       skip_upload_images: true,
       skip_upload_screenshots: true,
       skip_upload_changelogs: true
     )
 
-    UI.success("Internal + Closed 兩個 track 均已上傳。")
+    UI.success("Internal + Closed 兩個 track 均已持有此 release。")
   end
 
   desc "把 Closed（alpha）track 已存在的 release promote 到 Production（staged rollout 由環境變數 ROLLOUT 指定，0.0–1.0）"

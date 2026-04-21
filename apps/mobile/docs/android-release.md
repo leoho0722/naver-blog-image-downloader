@@ -152,7 +152,7 @@ base64 upload-keystore.jks                  # Linux (輸出後複製)
 首次 merge 之後觀察：
 
 - [ ] `Mobile CI` 綠燈後 `Mobile CD` 接上，`android-release` job 成功走完 Internal + Closed 上傳。
-- [ ] pubspec commit 回 main，commit message 類似 `style(mobile): bump build number 至 +2` 且含 `[skip ci]`。
+- [ ] pubspec commit 回 main，commit message 類似 `chore(mobile): bump build number 至 +2` 且含 `[skip ci]`。
 - [ ] `Mobile CI` **沒有**被 commit-back 再次觸發（重點驗證 `[skip ci]` 機制）。
 - [ ] `mobile-v<X.Y.Z>` git tag 與 GitHub Release 已建立。
 - [ ] Play Console Internal / Closed track 都可看到新 release，versionCode 與 pubspec 新 `+N` 一致。

@@ -12,7 +12,7 @@
     - `upload_beta`：將 signed AAB 同時上傳到 Internal + Closed track（CD 自動呼叫）
     - `promote_to_production`：將 Closed 的 release promote 到 Production（手動觸發）
 - 修改 `apps/mobile/android/app/build.gradle.kts`：新增 release signing config，金鑰資訊改從 `key.properties` 讀取（本地檔案與 `keystore.jks` 皆納入 `.gitignore`，由 CD 在執行時從 GitHub Secrets 還原）。
-- 擴充 `.github/workflows/mobile-cd.yml`：在既有 tag/release job 之前，插入 `android-release` job，負責讀 `pubspec.yaml` 的 `+buildNumber` → 自動遞增 → 以新 buildNumber 建置並上傳 → 成功後把 bumped pubspec 以 `style(mobile): bump build number to +N [skip ci]` commit 回 `main`（避免 CI 無限迴圈）。tag / GitHub Release 的建立移到 `android-release` 成功之後，確保「有 tag 就等於有實際上傳到 Play Store」。
+- 擴充 `.github/workflows/mobile-cd.yml`：在既有 tag/release job 之前，插入 `android-release` job，負責讀 `pubspec.yaml` 的 `+buildNumber` → 自動遞增 → 以新 buildNumber 建置並上傳 → 成功後把 bumped pubspec 以 `chore(mobile): bump build number 至 +N [skip ci]` commit 回 `main`（避免 CI 無限迴圈）。tag / GitHub Release 的建立移到 `android-release` 成功之後，確保「有 tag 就等於有實際上傳到 Play Store」。
 - 新增 `.github/workflows/mobile-android-promote.yml`：`workflow_dispatch` 觸發，輸入要 promote 的 `mobile-v<version>` tag，呼叫 `fastlane promote_to_production`，預設 `rollout: 0.1`（10% staged rollout），rollout 百分比可由 workflow 輸入覆寫。
 - 新增 GitHub Secrets 使用契約：`ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD`、`GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`。對應的設定步驟與金鑰輪替流程寫進 `apps/mobile/docs/android-release.md`。
 - 版號管理：此 change 本身屬 minor bump（使用者可見的交付是「從現在開始每次 bump 會推到 Play Store beta」），`apps/mobile/pubspec.yaml` 由 `1.6.1+1` bump 到 `1.7.0+1`。

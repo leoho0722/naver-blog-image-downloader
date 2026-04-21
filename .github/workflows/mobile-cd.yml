@@ -183,7 +183,7 @@ jobs:
         with:
           branch: main
           commit_message: |
-            style(mobile): bump build number 至 +${{ steps.bump.outputs.new_build_number }}
+            chore(mobile): bump build number 至 +${{ steps.bump.outputs.new_build_number }}
 
             - CD 自動遞增 versionCode，保持 Play Store 單調遞增不變式
             - [skip ci]

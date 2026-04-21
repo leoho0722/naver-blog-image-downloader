@@ -66,7 +66,7 @@ Stakeholders：mobile 開發者（我自己）、Play Console 測試群組成員
 3. Play Store 上傳（Internal + Closed 都成功）後，以 `stefanzweifel/git-auto-commit-action@v7`（既有 CI workflow 已使用）把 pubspec 變更 commit 回 `main`，commit message：
 
         ```
-        style(mobile): bump build number 至 +<N+1>
+        chore(mobile): bump build number 至 +<N+1>
 
         - CD 自動遞增 versionCode，保持 Play Store 單調遞增不變式
         - [skip ci]
@@ -83,17 +83,20 @@ Stakeholders：mobile 開發者（我自己）、Play Console 測試群組成員
 3. 不 commit 回 main，每次 CD 都用 `+N`（讀到什麼用什麼）。
     - **拒絕**：pubspec 只有 `+1` 的話永遠都用 `+1` build，Play Store 第二次上傳就會因 versionCode 未遞增被拒。
 
-### Decision: Internal + Closed 平行上傳以兩次 `supply` sequential call 實作
+### Decision: Internal 先上 AAB、Closed 以 `track_promote_to` 共享同一 release
 
-**選擇**：`fastlane upload_beta` lane 先 `upload_to_play_store(track: "internal", …)`，再 `upload_to_play_store(track: "alpha", …, skip_upload_aab: false)`，兩次都上同一個 AAB。兩次都成功才視為 lane 成功。
+**選擇**：`fastlane upload_beta` lane 先 `upload_to_play_store(track: "internal", aab: AAB_PATH, …)` 實際上傳 AAB 並建立 Internal draft release，再以 `upload_to_play_store(track: "internal", track_promote_to: "alpha", skip_upload_aab: true, …)` 把該 release 以原子操作 promote 到 Closed（alpha）track。兩步都成功才視為 lane 成功。
 
 **理由**：
 
-- Play Developer API 每個 track 是獨立 release，沒有「一次上多 track」的 API。
-- 先 `internal`（受眾小、快速驗證 binary 可安裝）再 `alpha`（closed），失敗點比較容易判讀：internal 失敗 = 檔案或帳號問題；alpha 失敗 = track 設定問題。
-- 兩者共用同一個 AAB 檔案，fastlane `supply` 會 reuse（第二次 call 設 `skip_upload_aab` 視情況；實作上兩 track 傳同 AAB 是 fastlane 支援的 idempotent 操作）。
+- Play Developer API **不允許**同一個 versionCode 的 AAB 被當成新 release 上第二次，會以「Version code has already been used」拒絕。先上 Internal 再用 `track_promote_to` 讓 Closed 共享同一個 release，是官方支援的 idempotent 路徑。
+- 失敗點好判讀：Internal 失敗 = 檔案或帳號問題；promote 失敗 = Closed track 設定或權限問題。
+- 兩條 track 指向**同一個** release（而不是兩份獨立 release），版本追蹤與未來 promote 到 Production 的路徑最短。
 
-**替代**：`upload_to_play_store` 的 `tracks:` array。拒絕：fastlane `supply` 目前 `track` 欄位是單一值，array 寫法並非 stable API。
+**替代方案**：
+
+1. 兩次 `upload_to_play_store` 都帶同一個 AAB。拒絕：Play Developer API 會以 versionCode 重複直接拒絕第二次 upload（實測與官方 docs 一致）。
+2. `upload_to_play_store` 的 `tracks:` array。拒絕：fastlane `supply` 目前 `track` 欄位是單一值，array 寫法並非 stable API。
 
 **Track 名稱對應表**（Play Console UI vs Play Developer API / fastlane）：
 
@@ -164,7 +167,7 @@ Stakeholders：mobile 開發者（我自己）、Play Console 測試群組成員
 - **Risk**：pubspec 的 `+buildNumber` 在 release 分支 / cherry-pick / revert 情境下可能落後 Play Store 實際值 → Mitigation：Non-Goal 已聲明只信 pubspec；若真發生，人工在 pubspec 一次跳到大於 Play Store 的值即可。
 - **Risk**：GitHub Actions runner 對 Ruby / fastlane 版本有隱性相容問題 → Mitigation：Gemfile 鎖 fastlane minor，`bundler-cache: true` 確保 reproducible。
 - **Risk**：upload keystore 遺失（只存於 Secrets，未備份）→ Mitigation：tasks 要求產生 keystore 時產出 keystore + 密碼的加密備份（開發者自己保管，例如 1Password），流程寫進 `android-release.md`；若 opt-in Play App Signing，重新產 upload key 也可由 Play Console 重新綁定。
-- **Trade-off**：選擇「每次 CD 都 commit 回 pubspec」會讓 git log 多出一筆 `style(mobile): bump build number …` commit，略顯吵。可接受，因為保留 buildNumber 的可追蹤性；若未來嫌吵可改為 rebase-squash 工作流程（Non-Goal）。
+- **Trade-off**：選擇「每次 CD 都 commit 回 pubspec」會讓 git log 多出一筆 `chore(mobile): bump build number …` commit，略顯吵。可接受，因為保留 buildNumber 的可追蹤性；若未來嫌吵可改為 rebase-squash 工作流程（Non-Goal）。
 - **Trade-off**：staged rollout 預設 10% 可能對極少使用者的 app 沒意義（10% 可能只有個位數使用者）。但保留 workflow 輸入可覆寫成 `1.0`，彈性留給操作者。
 
 ## Migration Plan
