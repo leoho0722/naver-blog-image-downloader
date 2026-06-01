@@ -5,6 +5,7 @@
         "glm-5.1:cloud",
         "minimax-m2.7:cloud",
         "kimi-k2.6:cloud",
-        "deepseek-v4-pro:cloud"
+        "deepseek-v4-pro:cloud",
+        "minimax-m3:cloud"
     ]
 }
