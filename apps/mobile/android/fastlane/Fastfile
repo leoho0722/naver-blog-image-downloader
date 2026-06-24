@@ -1,0 +1,111 @@
+# Android release 自動化 lane 集合
+# ------------------------------------------------------------
+# 三條 lane：
+#   - build_release_aab：以 Flutter 產 signed release AAB
+#   - upload_beta      ：把剛產好的 AAB 先上 Internal 再上 Closed track
+#   - promote_to_production：把 Closed (alpha) track 既有 release promote 到 Production
+#
+# 完整設計理由與失敗行為準則請見 `apps/mobile/docs/android-release.md`
+# 與 `openspec/changes/mobile-android-cd-fastlane/design.md`。
+
+default_platform(:android)
+
+# AAB 產出路徑（Flutter 固定位置）
+# fastlane 的 working directory 在執行時是 `apps/mobile/android/`，
+# 所以要往上跳一層到 mobile root 找 `build/` 目錄。
+AAB_PATH = File.expand_path("../../build/app/outputs/bundle/release/app-release.aab", __dir__)
+
+# Flutter 專案 root（`apps/mobile/`）
+FLUTTER_DIR = File.expand_path("../..", __dir__)
+
+platform :android do
+  desc "以 Flutter 產出 signed release AAB（版本號由環境變數 BUILD_NUMBER 指定）"
+  lane :build_release_aab do
+    build_number = ENV["BUILD_NUMBER"]
+    UI.user_error!("環境變數 BUILD_NUMBER 未設定；無法決定 versionCode。") if build_number.nil? || build_number.strip.empty?
+
+    UI.message("開始建置 release AAB，BUILD_NUMBER=#{build_number}")
+
+    # 以 `--build-number` 覆寫 pubspec 讀到的 `+buildNumber`，
+    # 確保 Play Store 的 versionCode 單調遞增。
+    sh(
+      "flutter", "build", "appbundle",
+      "--release",
+      "--build-number=#{build_number}",
+      chdir: FLUTTER_DIR
+    )
+
+    unless File.exist?(AAB_PATH)
+      UI.user_error!("AAB 未在預期位置產出：#{AAB_PATH}")
+    end
+
+    UI.success("AAB 建置完成：#{AAB_PATH}")
+  end
+
+  desc "把 AAB 同時上傳到 Play Store Internal（internal）與 Closed（alpha）track"
+  lane :upload_beta do
+    unless File.exist?(AAB_PATH)
+      UI.user_error!("找不到 AAB：#{AAB_PATH}；請先執行 `build_release_aab`。")
+    end
+
+    UI.message("開始 beta 上傳流程；AAB=#{AAB_PATH}")
+
+    # 先上 Internal：受眾小、最快驗證 binary 可安裝。
+    UI.message("上傳到 Internal testing（fastlane track: internal）")
+    upload_to_play_store(
+      track: "internal",
+      aab: AAB_PATH,
+      release_status: "draft",
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true
+    )
+
+    # 再讓 Closed（alpha）也擁有同一個 release：
+    # 刻意「不」第二次 upload_to_play_store 帶同一個 AAB——Play Developer API
+    # 會以「該 versionCode 已被使用」拒絕重複上傳。改用 track_promote_to 把
+    # Internal 剛建立的 draft release 以原子操作 promote 到 alpha track。
+    UI.message("將 Internal draft release promote 到 Closed testing（fastlane track: alpha）")
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "alpha",
+      release_status: "draft",
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true
+    )
+
+    UI.success("Internal + Closed 兩個 track 均已持有此 release。")
+  end
+
+  desc "把 Closed（alpha）track 已存在的 release promote 到 Production（staged rollout 由環境變數 ROLLOUT 指定，0.0–1.0）"
+  lane :promote_to_production do
+    rollout = ENV["ROLLOUT"]
+    UI.user_error!("環境變數 ROLLOUT 未設定；無法決定 staged rollout 百分比。") if rollout.nil? || rollout.strip.empty?
+
+    rollout_f = Float(rollout) rescue nil
+    if rollout_f.nil? || rollout_f <= 0.0 || rollout_f > 1.0
+      UI.user_error!("ROLLOUT 必須是 0.0（不含）~ 1.0（含）之間的小數，目前為：#{rollout.inspect}")
+    end
+
+    UI.message("開始 Production promote，來源 track=alpha，rollout=#{rollout_f}")
+
+    upload_to_play_store(
+      track: "alpha",
+      track_promote_to: "production",
+      rollout: rollout_f.to_s,
+      skip_upload_aab: true,
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true
+    )
+
+    UI.success("已 promote 到 Production，rollout=#{rollout_f}")
+  end
+end

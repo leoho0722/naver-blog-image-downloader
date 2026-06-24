@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -7,6 +9,17 @@ plugins {
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
     id("de.mannodermaus.android-junit")
+}
+
+// 讀取 release signing 設定（`apps/mobile/android/key.properties`）。
+// 本機開發時由開發者自 `key.properties.template` 複製產生；
+// CI/CD 由 workflow 於 runtime 從 GitHub Secrets 還原。
+// 此檔案未提供時 release buildType 會 fallback 回 debug key，讓 `flutter run --release` 在沒有 keystore 的機器上仍可執行。
+val keystoreProperties = Properties().apply {
+    val keystoreFile = rootProject.file("key.properties")
+    if (keystoreFile.exists()) {
+        keystoreFile.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -38,11 +51,32 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            // Release signing 設定來源：`apps/mobile/android/key.properties`
+            // `storeFile` 欄位的 path 相對於 `apps/mobile/android/`（rootProject），
+            // 符合 Flutter 官方 key.properties 慣例（例如 `app/keystore.jks`）。
+            // 缺檔時 storeFile 會是 null，Gradle 仍能完成 evaluation；
+            // 實際 `assembleRelease` / `bundleRelease` 在沒有 keystore 時會報錯（預期行為）。
+            val storeFilePath = keystoreProperties.getProperty("storeFile")
+            if (storeFilePath != null) {
+                storeFile = rootProject.file(storeFilePath)
+            }
+            storePassword = keystoreProperties.getProperty("storePassword")
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // 有 `key.properties` 時用 release signing；否則 fallback 回 debug key，
+            // 讓沒有 keystore 的機器仍可 `flutter run --release`。
+            signingConfig = if (!keystoreProperties.isEmpty) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

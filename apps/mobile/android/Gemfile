@@ -1,0 +1,5 @@
+source "https://rubygems.org"
+
+# 鎖定 fastlane 的 minor 範圍，避免 major 更新打破 lane 設定。
+# Gemfile.lock 會精確固定當下 patch 版本；CI 與本機都以 `bundle exec fastlane …` 執行。
+gem "fastlane", "~> 2.233"

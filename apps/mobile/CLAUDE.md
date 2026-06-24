@@ -52,3 +52,12 @@ Firebase（Auth + Firestore + Crashlytics）— AuthService / LogService / Crash
    - Swift 當有多個傳入參數時，須使用 `- Parameters:` 並將各參數各自一行（單一參數使用 `- Parameter paramName:`）
    - 不得直接在生命週期方法（`didFinishLaunchingWithOptions`/`configureFlutterEngine`）內撰寫邏輯，應抽成獨立方法
    - Private 方法透過 Extension 方式管理（Swift: `private extension`，Kotlin: file-level `private fun ClassName.xxx()`）
+
+## Android Release / CD
+
+- Android release 完整流程、GitHub Secrets 清單、keystore 建立、Play Console service account 授權、金鑰輪替 SOP 一律記錄於 [docs/android-release.md](docs/android-release.md)。
+- 以下檔案屬 signing / Play Store 憑證，**絕對不得進版控**（`.gitignore` 已排除）：
+  - `android/key.properties`（本機從 `android/key.properties.template` 複製後填值；CD 由 GitHub Secrets 於 runtime 還原）
+  - `android/app/keystore.jks`（本機 release 測試或 CD runtime 才存在）
+  - `android/fastlane/play-service-account.json`（CD runtime 才存在，job 結束會刪除）
+- fastlane 以 `android/Gemfile` + `android/Gemfile.lock` 鎖定版本，本機使用 `cd android && bundle install && bundle exec fastlane <lane>` 執行；CI 使用同一套 Gemfile。

@@ -1,0 +1,19 @@
+# Android Release Signing 設定範本
+# ------------------------------------------------------------
+# 複製此檔為 `key.properties`（同一資料夾 `apps/mobile/android/`）後填入實際值，
+# 本機即可產 signed release AAB / APK。
+#
+# `key.properties` 與 `app/keystore.jks` 皆已排進 `.gitignore`，絕不得 commit。
+# CI/CD 不使用本檔；由 `.github/workflows/mobile-cd.yml` 於 runtime 從 GitHub Secrets 還原。
+#
+# 欄位說明：
+# - storeFile      ：keystore 相對路徑（相對於 `apps/mobile/android/`）；本機通常是 `app/keystore.jks`
+# - storePassword  ：keystore 密碼
+# - keyAlias       ：keystore 內 key 的 alias 名稱
+# - keyPassword    ：該 alias 的密碼
+#
+# 詳細 keystore 建立流程與 Play Console 前置步驟請見：apps/mobile/docs/android-release.md
+storeFile=app/keystore.jks
+storePassword=
+keyAlias=upload
+keyPassword=

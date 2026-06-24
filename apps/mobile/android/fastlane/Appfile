@@ -1,0 +1,8 @@
+# fastlane Appfile：描述此 Android app 的識別資訊與 Play Developer API 憑證路徑。
+#
+# `json_key_file` 指向 runtime 由 GitHub Actions workflow（或開發者本機）產出的
+# service account JSON；此檔案不得進版控，且已在 `.gitignore` 中排除。
+# 詳細流程見：apps/mobile/docs/android-release.md
+
+json_key_file("fastlane/play-service-account.json")
+package_name("com.leoho.naverBlogImageDownloader.android")
