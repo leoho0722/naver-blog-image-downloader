@@ -1,4 +1,12 @@
 import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Minus,
+  Plus,
+  X,
+} from "lucide-react";
+import {
   useCallback,
   useEffect,
   useRef,
@@ -6,6 +14,8 @@ import {
   type PointerEvent as ReactPointerEvent,
   type WheelEvent,
 } from "react";
+import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 
 import type { PhotoEntity } from "../../lib/api/types";
 
@@ -13,6 +23,7 @@ interface ImageViewerProps {
   photos: PhotoEntity[];
   initialIndex: number;
   onClose: () => void;
+  onDownload?: (index: number) => void;
 }
 
 const MIN_SCALE = 1;
@@ -23,7 +34,9 @@ export default function ImageViewer({
   photos,
   initialIndex,
   onClose,
+  onDownload,
 }: ImageViewerProps) {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
@@ -52,6 +65,14 @@ export default function ImageViewer({
       resetZoom();
     },
     [photos.length, resetZoom],
+  );
+
+  const jumpTo = useCallback(
+    (index: number) => {
+      setCurrentIndex(index);
+      resetZoom();
+    },
+    [resetZoom],
   );
 
   const zoom = useCallback((delta: number) => {
@@ -136,44 +157,39 @@ export default function ImageViewer({
     }
   };
 
-  return (
+  const dims =
+    photo.width && photo.height ? `${photo.width}×${photo.height}` : null;
+  const roundBtn =
+    "flex items-center justify-center rounded-full bg-white/[0.12] text-[#f3ede4] transition-colors duration-200 hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-white/[0.12]";
+
+  return createPortal(
     <div
       ref={containerRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+      className="animate-fade-in fixed inset-0 z-50 flex flex-col text-[#f3ede4]"
+      style={{ background: "rgba(26, 21, 15, 0.96)" }}
       role="dialog"
       aria-modal="true"
       aria-label="圖片檢視器"
     >
-      {/* 頂部列 */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-3">
-        <span className="text-sm text-white/80">
-          {currentIndex + 1} / {photos.length}
+      {/* 頂部列：檔名 · 尺寸 + 關閉 */}
+      <div className="flex items-center gap-3 px-5 py-4">
+        <span className="min-w-0 truncate text-[12.5px] text-[#f3ede4]/50">
+          {photo.filename}
+          {dims && ` · ${dims}`}
         </span>
         <button
           type="button"
           onClick={onClose}
-          className="rounded-full p-2 text-white/80 hover:bg-white/10"
-          aria-label="關閉"
+          className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.12] px-[18px] py-[9px] text-[13px] font-semibold text-[#f3ede4] transition-colors hover:bg-white/20"
         >
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <X size={13} strokeWidth={2.5} />
+          {t("viewerClose")}
         </button>
       </div>
 
-      {/* 圖片 */}
+      {/* 圖片區 */}
       <div
-        className="h-full w-full overflow-hidden"
+        className="relative flex flex-1 items-center justify-center overflow-hidden px-4 sm:px-20"
         onWheel={handleWheel}
         onDoubleClick={handleDoubleClick}
         onPointerDown={handlePointerDown}
@@ -187,59 +203,94 @@ export default function ImageViewer({
           src={photo.url}
           alt={photo.filename}
           referrerPolicy="no-referrer"
-          className="h-full w-full object-contain transition-transform duration-100"
+          className="max-h-full max-w-full rounded-xl object-contain"
           style={{
             transform: `scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px)`,
+            transition: "transform 0.1s",
+            boxShadow: "0 16px 60px rgba(0,0,0,0.5)",
           }}
           draggable={false}
         />
-      </div>
-
-      {/* 左右導航按鈕 */}
-      {currentIndex > 0 && (
         <button
           type="button"
           onClick={() => goTo(-1)}
-          className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white/80 hover:bg-black/60"
-          aria-label="上一張"
+          disabled={currentIndex === 0}
+          className={`absolute left-3 h-[46px] w-[46px] sm:left-[22px] ${roundBtn}`}
+          aria-label={t("viewerPrev")}
         >
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
+          <ChevronLeft size={24} />
         </button>
-      )}
-      {currentIndex < photos.length - 1 && (
         <button
           type="button"
           onClick={() => goTo(1)}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white/80 hover:bg-black/60"
-          aria-label="下一張"
+          disabled={currentIndex === photos.length - 1}
+          className={`absolute right-3 h-[46px] w-[46px] sm:right-[22px] ${roundBtn}`}
+          aria-label={t("viewerNext")}
         >
-          <svg
-            className="h-6 w-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M9 5l7 7-7 7"
-            />
-          </svg>
+          <ChevronRight size={24} />
         </button>
-      )}
-    </div>
+      </div>
+
+      {/* 底部控制列 */}
+      <div className="flex flex-col items-center gap-3 px-5 pt-3 pb-[18px]">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => zoom(-ZOOM_STEP)}
+            className={`h-[34px] w-[34px] ${roundBtn}`}
+            aria-label="縮小"
+          >
+            <Minus size={14} />
+          </button>
+          <span className="rounded-full bg-white/[0.12] px-[18px] py-[7px] text-[13px] tabular-nums">
+            {currentIndex + 1} / {photos.length}
+          </span>
+          <button
+            type="button"
+            onClick={() => zoom(ZOOM_STEP)}
+            className={`h-[34px] w-[34px] ${roundBtn}`}
+            aria-label="放大"
+          >
+            <Plus size={14} />
+          </button>
+          {onDownload && (
+            <button
+              type="button"
+              onClick={() => onDownload(currentIndex)}
+              className="flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] px-5 py-[9px] text-[13px] font-semibold text-[var(--color-on-primary)] transition-all hover:brightness-[1.07] active:scale-95"
+            >
+              <Download size={14} />
+              {t("downloadSingle")}
+            </button>
+          )}
+        </div>
+
+        {/* 縮圖列 */}
+        <div className="flex max-w-[90%] gap-1.5 overflow-x-auto px-1 py-0.5">
+          {photos.map((thumb, i) => (
+            <img
+              key={thumb.id}
+              src={thumb.url}
+              alt=""
+              referrerPolicy="no-referrer"
+              onClick={() => jumpTo(i)}
+              className="h-12 w-12 shrink-0 cursor-pointer rounded-lg object-cover transition-opacity duration-200"
+              style={{
+                opacity: i === currentIndex ? 1 : 0.45,
+                boxShadow:
+                  i === currentIndex
+                    ? "0 0 0 2px var(--color-primary)"
+                    : "none",
+              }}
+            />
+          ))}
+        </div>
+
+        <span className="text-[11.5px] text-[#f3ede4]/35">
+          {t("viewerHint")}
+        </span>
+      </div>
+    </div>,
+    document.body,
   );
 }

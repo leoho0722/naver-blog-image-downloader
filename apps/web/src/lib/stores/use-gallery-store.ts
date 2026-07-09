@@ -5,11 +5,17 @@ import type { PhotoEntity } from "../api/types";
 interface GalleryState {
   photos: PhotoEntity[];
   blogId: string;
+  blogUrl: string;
   jobId: string;
   selectedIds: Set<string>;
   isSelectMode: boolean;
 
-  load: (photos: PhotoEntity[], blogId: string, jobId: string) => void;
+  load: (
+    photos: PhotoEntity[],
+    blogId: string,
+    jobId: string,
+    blogUrl?: string,
+  ) => void;
   toggleSelectMode: () => void;
   toggleSelection: (id: string) => void;
   selectAll: () => void;
@@ -19,12 +25,20 @@ interface GalleryState {
 export const useGalleryStore = create<GalleryState>((set, get) => ({
   photos: [],
   blogId: "",
+  blogUrl: "",
   jobId: "",
   selectedIds: new Set(),
   isSelectMode: false,
 
-  load: (photos, blogId, jobId) =>
-    set({ photos, blogId, jobId, selectedIds: new Set(), isSelectMode: false }),
+  load: (photos, blogId, jobId, blogUrl = "") =>
+    set({
+      photos,
+      blogId,
+      jobId,
+      blogUrl,
+      selectedIds: new Set(),
+      isSelectMode: false,
+    }),
 
   toggleSelectMode: () => {
     const { isSelectMode } = get();

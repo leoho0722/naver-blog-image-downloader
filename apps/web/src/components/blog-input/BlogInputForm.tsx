@@ -69,12 +69,12 @@ export default function BlogInputForm() {
       className="w-full"
     >
       <div
-        className={`flex gap-2 rounded-2xl border p-1.5 transition-all duration-300 ${
+        className={`flex items-center gap-1.5 rounded-[22px] border p-[7px] transition-all duration-300 ${
           isDragOver
-            ? "border-[var(--color-primary)] bg-[var(--color-primary-container)]/50 scale-[1.01]"
-            : "border-[var(--color-outline-variant)]/60 bg-[var(--color-surface-container)]/50"
+            ? "scale-[1.01] border-[var(--color-primary)] bg-[var(--color-primary-container)]/50"
+            : "border-[var(--color-outline-variant)] bg-[var(--color-surface-container)]"
         }`}
-        style={{ boxShadow: "var(--shadow-soft)" }}
+        style={{ boxShadow: "var(--shadow-elevated)" }}
       >
         <input
           type="url"
@@ -82,13 +82,13 @@ export default function BlogInputForm() {
           onChange={(e) => setUrl(e.target.value)}
           placeholder={t("blogInputUrlHint")}
           disabled={isLoading}
-          className="min-w-0 flex-1 rounded-xl bg-transparent px-4 py-3 text-[15px] outline-none placeholder:text-[var(--color-outline)]"
+          className="min-w-0 flex-1 bg-transparent px-[18px] py-[13px] text-[15px] outline-none placeholder:text-[var(--color-outline)]"
         />
         <button
           type="button"
           onClick={handlePaste}
           disabled={isLoading}
-          className="shrink-0 rounded-xl px-3.5 py-2.5 text-sm font-medium text-[var(--color-primary)] transition-all duration-200 hover:bg-[var(--color-primary-container)]/70 active:scale-95 disabled:opacity-40"
+          className="shrink-0 rounded-full px-3 text-[13.5px] font-semibold text-[var(--color-primary)] transition-all duration-200 hover:bg-[var(--color-primary-container)]/60 disabled:opacity-40"
           aria-label={t("blogInputPaste")}
         >
           {t("blogInputPaste")}
@@ -96,16 +96,18 @@ export default function BlogInputForm() {
         <button
           type="submit"
           disabled={isLoading}
-          className="shrink-0 rounded-xl bg-[var(--color-primary)] px-6 py-2.5 text-sm font-semibold text-[var(--color-on-primary)] transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-40"
+          className="shrink-0 rounded-full bg-[var(--color-primary)] px-[26px] py-[13px] text-[14.5px] font-bold text-[var(--color-on-primary)] transition-all duration-200 hover:brightness-[1.07] active:scale-95 disabled:opacity-55"
           style={{
-            boxShadow: isLoading ? "none" : "0 2px 8px rgba(21, 101, 192, 0.3)",
+            boxShadow: isLoading
+              ? "none"
+              : "0 4px 14px var(--color-primary-glow)",
           }}
         >
           {isLoading ? t("blogInputFetching") : t("blogInputFetchButton")}
         </button>
       </div>
       {errorMessage && (
-        <p className="animate-fade-in mt-3 text-sm text-[var(--color-error)]">
+        <p className="animate-fade-in mt-4 text-center text-[13.5px] text-[var(--color-error)]">
           {errorMessage}
         </p>
       )}

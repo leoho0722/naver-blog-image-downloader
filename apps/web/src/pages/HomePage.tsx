@@ -29,26 +29,37 @@ export default function HomePage() {
     enabled: fetchPhase === "idle",
   });
 
+  const isIdle = fetchPhase === "idle";
+
   return (
     <>
       {!hasSeenOnboarding && <OnboardingCard />}
-      <div className="flex min-h-[70vh] flex-col items-center justify-center">
+      <div className="flex min-h-[78vh] flex-col items-center justify-center text-center">
         <div className="w-full max-w-xl">
+          {/* 三色圓點點綴 */}
+          <div className="animate-fade-in-up mb-6 flex items-center justify-center gap-2.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)]" />
+            <span className="h-[7px] w-[7px] rounded-full bg-[var(--color-secondary)]" />
+            <span className="h-3 w-3 rounded-full bg-[#a5788f]" />
+          </div>
           <h2
-            className="animate-fade-in-up mb-3 text-center text-3xl tracking-tight sm:text-4xl"
+            className="animate-fade-in-up stagger-1 mb-3.5 text-center text-[32px] leading-tight tracking-tight sm:text-4xl"
             style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
           >
             {t("blogInputTitle")}
           </h2>
-          <p className="animate-fade-in-up stagger-1 mb-10 text-center text-[15px] leading-relaxed text-[var(--color-on-surface-variant)]">
+          <p className="animate-fade-in-up stagger-2 mb-9 text-center text-[15px] leading-relaxed text-[var(--color-on-surface-variant)]">
             {t("blogInputSubtitle")}
           </p>
-          <div className="animate-fade-in-up stagger-2">
+          <div className="animate-fade-in-up stagger-3">
             <BlogInputForm />
           </div>
-          <div className="animate-fade-in-up stagger-3">
-            <FetchProgress phase={fetchPhase} />
-          </div>
+          <FetchProgress phase={fetchPhase} />
+          {isIdle && (
+            <p className="mt-8 text-[13px] text-[var(--color-on-surface-variant)]">
+              {t("blogInputHint")}
+            </p>
+          )}
         </div>
       </div>
     </>

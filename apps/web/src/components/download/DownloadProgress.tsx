@@ -1,3 +1,5 @@
+import { Check, X } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { useDownloadStore } from "../../lib/stores/use-download-store";
@@ -12,73 +14,68 @@ export default function DownloadProgress({ onClose }: DownloadProgressProps) {
 
   if (downloadPhase === "idle") return null;
 
-  return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  return createPortal(
+    <div
+      className="animate-fade-in fixed inset-0 z-[60] flex items-center justify-center px-4"
+      style={{
+        backgroundColor: "var(--color-scrim)",
+        backdropFilter: "blur(3px)",
+      }}
+    >
       <div
-        className="mx-4 w-full max-w-xs rounded-2xl p-8"
-        style={{
-          backgroundColor: "var(--color-surface-container-high)",
-          boxShadow: "var(--shadow-elevated)",
-        }}
+        className="flex w-[330px] max-w-[calc(100vw-2rem)] flex-col items-center gap-4 rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container)] px-7 py-8"
+        style={{ boxShadow: "0 24px 70px rgba(30, 20, 8, 0.35)" }}
         role="dialog"
         aria-modal="true"
-        aria-label="下載進度"
+        aria-label={t("packaging")}
       >
         {downloadPhase === "packaging" && (
-          <div className="flex flex-col items-center gap-5">
-            <div className="h-10 w-10 animate-spin rounded-full border-[2.5px] border-[var(--color-primary)] border-t-transparent" />
-            <p className="text-sm font-medium text-[var(--color-on-surface)]">
+          <div className="w-full text-center">
+            <p
+              className="mb-1.5 text-[16.5px] font-semibold text-[var(--color-on-surface)]"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
               {t("packaging")}
             </p>
+            <p className="mb-[18px] text-[13px] text-[var(--color-on-surface-variant)]">
+              {t("packagingHint")}
+            </p>
+            <div className="relative h-2 overflow-hidden rounded-full bg-[var(--color-primary-container)]">
+              <div className="animate-indeterminate-bar rounded-full bg-[var(--color-primary)]" />
+            </div>
           </div>
         )}
 
         {downloadPhase === "completed" && (
-          <div className="flex flex-col items-center gap-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)]/10">
-              <svg
-                className="h-6 w-6 text-[var(--color-primary)]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+          <>
+            <div className="flex h-[54px] w-[54px] items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-on-primary)]">
+              <Check size={25} strokeWidth={2.5} />
             </div>
-            <p className="text-sm font-medium text-[var(--color-on-surface)]">
-              {t("packagingComplete", { count: fileCount })}
-            </p>
+            <div className="text-center">
+              <p
+                className="mb-1.5 text-[16.5px] font-semibold text-[var(--color-on-surface)]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {t("packagingDone")}
+              </p>
+              <p className="text-[13px] text-[var(--color-on-surface-variant)]">
+                {t("packagingComplete", { count: fileCount })}
+              </p>
+            </div>
             <button
               type="button"
               onClick={onClose}
-              className="w-full rounded-xl py-2.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary-container)]/60"
+              className="w-full rounded-full bg-[var(--color-primary)] py-3 text-sm font-bold text-[var(--color-on-primary)] transition-all duration-200 hover:brightness-[1.07] active:scale-[0.98]"
             >
               {t("commonOk")}
             </button>
-          </div>
+          </>
         )}
 
         {downloadPhase === "error" && (
-          <div className="flex flex-col items-center gap-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-error)]/10">
-              <svg
-                className="h-6 w-6 text-[var(--color-error)]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+          <>
+            <div className="flex h-[54px] w-[54px] items-center justify-center rounded-full bg-[var(--color-error)]/15 text-[var(--color-error)]">
+              <X size={25} strokeWidth={2.5} />
             </div>
             <p className="text-center text-sm text-[var(--color-error)]">
               {error ?? t("packagingFailed")}
@@ -86,13 +83,14 @@ export default function DownloadProgress({ onClose }: DownloadProgressProps) {
             <button
               type="button"
               onClick={onClose}
-              className="w-full rounded-xl py-2.5 text-sm font-medium text-[var(--color-on-surface-variant)] transition-colors hover:bg-[var(--color-surface-container)]"
+              className="w-full rounded-full py-3 text-sm font-semibold text-[var(--color-on-surface-variant)] transition-colors hover:bg-[var(--color-surface-container-high)]"
             >
               {t("viewerClose")}
             </button>
-          </div>
+          </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

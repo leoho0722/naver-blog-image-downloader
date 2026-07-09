@@ -1,8 +1,10 @@
 import { useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { useSettingsStore } from "../../lib/stores/use-settings-store";
 
+/** 首次造訪的歡迎卡：三步驟引導，溫潤圓角卡片 + 陶土橘藥丸按鈕。 */
 export default function OnboardingCard() {
   const { t } = useTranslation();
   const dismissOnboarding = useSettingsStore((s) => s.dismissOnboarding);
@@ -19,50 +21,71 @@ export default function OnboardingCard() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleDismiss]);
 
-  return (
-    <div className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  const steps = [
+    t("onboardingStep1"),
+    t("onboardingStep2"),
+    t("onboardingStep3"),
+  ];
+
+  return createPortal(
+    <div
+      className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center"
+      style={{
+        backgroundColor: "var(--color-scrim)",
+        backdropFilter: "blur(3px)",
+      }}
+    >
       <div
-        className="mx-4 w-full max-w-sm rounded-2xl bg-[var(--color-surface-container-high)] p-8 shadow-[var(--shadow-elevated)]"
+        className="w-[350px] max-w-[calc(100vw-2rem)] rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container)] p-8"
+        style={{ boxShadow: "0 24px 70px rgba(30, 20, 8, 0.35)" }}
         role="dialog"
         aria-modal="true"
         aria-labelledby="onboarding-title"
       >
-        <div className="flex flex-col items-center gap-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)]/10">
-            <svg
-              className="h-6 w-6 text-[var(--color-primary)]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"
-              />
-            </svg>
-          </div>
-          <h3
-            id="onboarding-title"
-            className="text-lg font-semibold text-[var(--color-on-surface)]"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            {t("onboardingTitle")}
-          </h3>
-          <p className="text-center text-sm leading-relaxed text-[var(--color-on-surface-variant)] whitespace-pre-line">
-            {t("onboardingDesc")}
-          </p>
-          <button
-            type="button"
-            autoFocus
-            onClick={handleDismiss}
-            className="mt-1 w-full rounded-xl bg-[var(--color-primary)] py-2.5 text-sm font-semibold text-[var(--color-on-primary)] shadow-[0_2px_8px_rgba(21,101,192,0.3)] transition-all duration-200 hover:brightness-110 active:scale-95"
-          >
-            {t("onboardingStart")}
-          </button>
+        {/* 三色點綴（9px，間距 7px，下方 14px） */}
+        <div className="mb-[14px] flex items-center justify-center gap-[7px]">
+          <span className="h-[9px] w-[9px] rounded-full bg-[var(--color-primary)]" />
+          <span className="h-[9px] w-[9px] rounded-full bg-[var(--color-secondary)]" />
+          <span
+            className="h-[9px] w-[9px] rounded-full"
+            style={{
+              background:
+                "color-mix(in oklab, #a5788f 80%, var(--color-surface-container))",
+            }}
+          />
         </div>
+
+        <h3
+          id="onboarding-title"
+          className="mb-5 text-center text-[21px] text-[var(--color-on-surface)]"
+          style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
+        >
+          {t("onboardingTitle")}
+        </h3>
+
+        <div className="mb-6 flex flex-col gap-[14px]">
+          {steps.map((step, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <span className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full bg-[var(--color-primary-container)] text-[13px] font-bold text-[var(--color-primary)]">
+                {i + 1}
+              </span>
+              <span className="text-[14px] leading-[1.5] text-[var(--color-on-surface-variant)]">
+                {step}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          autoFocus
+          onClick={handleDismiss}
+          className="w-full rounded-full bg-[var(--color-primary)] py-[13px] text-[14.5px] font-bold text-[var(--color-on-primary)] transition-all duration-200 hover:brightness-[1.07] active:scale-[0.98]"
+        >
+          {t("onboardingStart")}
+        </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

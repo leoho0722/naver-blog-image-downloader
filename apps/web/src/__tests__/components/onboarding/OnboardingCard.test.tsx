@@ -22,12 +22,14 @@ describe("OnboardingCard", () => {
     vi.clearAllMocks();
   });
 
-  it("renders with title and start button", () => {
+  it("renders with title, three steps and start button", () => {
     render(<OnboardingCard />);
 
     expect(screen.getByText("onboardingTitle")).toBeInTheDocument();
     expect(screen.getByText("onboardingStart")).toBeInTheDocument();
-    expect(screen.getByText("onboardingDesc")).toBeInTheDocument();
+    expect(screen.getByText("onboardingStep1")).toBeInTheDocument();
+    expect(screen.getByText("onboardingStep2")).toBeInTheDocument();
+    expect(screen.getByText("onboardingStep3")).toBeInTheDocument();
   });
 
   it("clicking start button calls dismissOnboarding", async () => {

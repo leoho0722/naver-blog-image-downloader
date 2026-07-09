@@ -6,49 +6,75 @@ interface FetchProgressProps {
   phase: FetchPhase;
 }
 
+const STEPS: { key: FetchPhase; labelKey: string; messageKey: string }[] = [
+  {
+    key: "submitting",
+    labelKey: "fetchStepSubmitting",
+    messageKey: "statusSubmitting",
+  },
+  {
+    key: "processing",
+    labelKey: "fetchStepProcessing",
+    messageKey: "statusProcessing",
+  },
+  {
+    key: "completed",
+    labelKey: "fetchStepCompleted",
+    messageKey: "statusCompleted",
+  },
+];
+
 export default function FetchProgress({ phase }: FetchProgressProps) {
   const { t } = useTranslation();
 
   if (phase === "idle" || phase === "error") return null;
 
-  const PHASE_KEYS: Record<string, string> = {
-    submitting: "statusSubmitting",
-    processing: "statusProcessing",
-    completed: "statusCompleted",
-  };
-
-  const label = t(PHASE_KEYS[phase]);
-  const steps: FetchPhase[] = ["submitting", "processing", "completed"];
-  const currentIndex = steps.indexOf(phase);
+  const currentIndex = STEPS.findIndex((s) => s.key === phase);
+  const message = t(STEPS[Math.max(0, currentIndex)].messageKey);
 
   return (
-    <div className="mt-8 flex items-center justify-center gap-4">
-      {steps.map((step, i) => (
-        <div key={step} className="flex items-center gap-3">
-          <div
-            className={`h-2 w-2 rounded-full transition-all duration-500 ${
-              i <= currentIndex
-                ? "bg-[var(--color-primary)] scale-125"
-                : "bg-[var(--color-outline-variant)]"
-            }`}
-          />
-          {i < steps.length - 1 && (
-            <div
-              className={`h-px w-10 transition-colors duration-500 ${
-                i < currentIndex
-                  ? "bg-[var(--color-primary)]"
-                  : "bg-[var(--color-outline-variant)]"
-              }`}
-            />
-          )}
-        </div>
-      ))}
-      <span className="ml-1 text-sm text-[var(--color-on-surface-variant)]">
-        {label}
-      </span>
-      {phase !== "completed" && (
-        <div className="h-4 w-4 animate-spin rounded-full border-2 border-[var(--color-primary)] border-t-transparent" />
-      )}
+    <div className="animate-fade-in mt-10 flex flex-col items-center gap-4">
+      <div className="flex items-center gap-2.5">
+        {STEPS.map((step, i) => {
+          const reached = i <= currentIndex;
+          const passed = i < currentIndex;
+          const active = i === currentIndex;
+          return (
+            <div key={step.key} className="flex items-center gap-2.5">
+              <div className="flex flex-col items-center gap-1.5">
+                <span
+                  className={`h-[11px] w-[11px] rounded-full transition-colors duration-500 ${
+                    reached
+                      ? "bg-[var(--color-primary)]"
+                      : "bg-[var(--color-outline-variant)]"
+                  } ${active ? "animate-pulse-dot" : ""}`}
+                />
+                <span
+                  className={`text-xs ${
+                    reached
+                      ? "text-[var(--color-on-surface)]"
+                      : "text-[var(--color-on-surface-variant)]"
+                  }`}
+                >
+                  {t(step.labelKey)}
+                </span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <span
+                  className={`mb-[22px] h-0.5 w-[46px] rounded-full transition-colors duration-500 ${
+                    passed
+                      ? "bg-[var(--color-primary)]"
+                      : "bg-[var(--color-outline-variant)]"
+                  }`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p className="text-[13.5px] text-[var(--color-on-surface-variant)]">
+        {message}
+      </p>
     </div>
   );
 }

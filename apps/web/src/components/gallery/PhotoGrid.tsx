@@ -48,7 +48,7 @@ export default function PhotoGrid({ onViewPhoto }: PhotoGridProps) {
 
   return (
     <div
-      className={`grid grid-cols-3 gap-2 pb-8 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 ${
+      className={`grid grid-cols-2 gap-[13px] pt-3.5 pb-24 sm:grid-cols-3 md:grid-cols-4 ${
         isSelectMode ? "select-mode" : ""
       }`}
     >

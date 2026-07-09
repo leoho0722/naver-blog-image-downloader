@@ -1,57 +1,75 @@
-@import "tailwindcss";
+/* 字型 @import 必須排在所有規則之前（含 tailwindcss import），否則會被 Lightning CSS 丟棄，導致正式環境載不到字型 */
 @import url("https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap");
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+@import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * 色彩系統：C 溫潤版（warm）
+ * 以陶土橘（terracotta）為主色、暖米白為底、鼠尾草綠為輔色，
+ * 讓整體視覺帶著溫潤、手作、安心的氣質。
+ * 沿用 M3 token 命名，讓所有元件（bg-[var(--color-...)]）自動套用。
+ */
 :root {
-  --color-primary: #1565c0;
+  /* 主色：陶土橘 */
+  --color-primary: #c17a56;
   --color-on-primary: #ffffff;
-  --color-primary-container: #d4e3ff;
-  --color-on-primary-container: #001c3a;
-  --color-secondary: #555f71;
+  --color-primary-container: #f6e7db;
+  --color-on-primary-container: #6f3d20;
+  /* 輔色：鼠尾草綠 */
+  --color-secondary: #8aa37b;
   --color-on-secondary: #ffffff;
-  --color-secondary-container: #d9e3f8;
-  --color-surface: #f6f8fc;
-  --color-on-surface: #1a1c1e;
-  --color-surface-variant: #dfe2eb;
-  --color-on-surface-variant: #43474e;
-  --color-surface-container: #eaecf0;
-  --color-surface-container-high: #e2e4e8;
-  --color-outline: #73777f;
-  --color-outline-variant: #c3c6cf;
-  --color-error: #ba1a1a;
+  --color-secondary-container: #dfe7d5;
+  /* 表面：暖米白 → 暖白卡片 */
+  --color-surface: #f7f3ec;
+  --color-on-surface: #42392f;
+  --color-surface-variant: #efe6d6;
+  --color-on-surface-variant: #8c8172;
+  --color-surface-container: #fffdf8;
+  --color-surface-container-high: #f2ead9;
+  --color-outline: #b6a992;
+  --color-outline-variant: #e9e1d2;
+  /* 錯誤：暖磚紅 */
+  --color-error: #bf5f4d;
   --color-on-error: #ffffff;
-  --color-error-container: #ffdad6;
+  --color-error-container: #f7ddd6;
+
+  /* 遮罩（modal 背景）與主色光暈 */
+  --color-scrim: rgba(58, 48, 35, 0.42);
+  --color-primary-glow: rgba(193, 122, 86, 0.35);
 
   --font-display: "Gowun Dodum", sans-serif;
-  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.04);
-  --shadow-elevated:
-    0 2px 8px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.06);
+  --shadow-soft:
+    0 1px 3px rgba(96, 74, 44, 0.07), 0 4px 14px rgba(96, 74, 44, 0.08);
+  --shadow-elevated: 0 8px 28px rgba(96, 74, 44, 0.14);
 }
 
 .dark {
-  --color-primary: #a6c8ff;
-  --color-on-primary: #00315e;
-  --color-primary-container: #004884;
-  --color-on-primary-container: #d4e3ff;
-  --color-secondary: #bdc7dc;
-  --color-on-secondary: #273141;
-  --color-secondary-container: #3e4758;
-  --color-surface: #0f1115;
-  --color-on-surface: #e2e2e6;
-  --color-surface-variant: #43474e;
-  --color-on-surface-variant: #c3c6cf;
-  --color-surface-container: #1a1c21;
-  --color-surface-container-high: #242630;
-  --color-outline: #8d9199;
-  --color-outline-variant: #43474e;
-  --color-error: #ffb4ab;
-  --color-on-error: #690005;
-  --color-error-container: #93000a;
+  --color-primary: #dba283;
+  --color-on-primary: #33200f;
+  --color-primary-container: #463628;
+  --color-on-primary-container: #f7d9c6;
+  --color-secondary: #9db08d;
+  --color-on-secondary: #26301f;
+  --color-secondary-container: #3b4632;
+  --color-surface: #221e18;
+  --color-on-surface: #ede6da;
+  --color-surface-variant: #332d24;
+  --color-on-surface-variant: #a19684;
+  --color-surface-container: #2b261f;
+  --color-surface-container-high: #373026;
+  --color-outline: #6f6656;
+  --color-outline-variant: #3c352a;
+  --color-error: #e6907e;
+  --color-on-error: #4a1a11;
+  --color-error-container: #5c2c22;
 
-  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
-  --shadow-elevated:
-    0 2px 8px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.2);
+  --color-scrim: rgba(16, 13, 8, 0.55);
+  --color-primary-glow: rgba(219, 162, 131, 0.28);
+
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
+  --shadow-elevated: 0 8px 28px rgba(0, 0, 0, 0.35);
 }
 
 html {
@@ -105,6 +123,45 @@ html.dark {
   }
 }
 
+/* 進行中的步驟脈動點 */
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.45);
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+
+/* 不確定進度條：後端無回傳百分比，改用來回滑動的進度段落表達「處理中」 */
+@keyframes indeterminate-bar {
+  0% {
+    left: -40%;
+    width: 40%;
+  }
+  50% {
+    width: 55%;
+  }
+  100% {
+    left: 100%;
+    width: 40%;
+  }
+}
+
+.animate-indeterminate-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  animation: indeterminate-bar 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
 .animate-fade-in-up {
   animation: fade-in-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -133,7 +190,9 @@ html.dark {
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in-up,
   .animate-fade-in,
-  .animate-slide-in-right {
+  .animate-slide-in-right,
+  .animate-pulse-dot,
+  .animate-indeterminate-bar {
     animation: none;
   }
 }

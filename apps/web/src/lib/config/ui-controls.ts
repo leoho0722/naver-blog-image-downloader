@@ -26,6 +26,14 @@ export const LOCALE_LABELS: Record<AppLocale, string> = {
   ko: "한",
 };
 
+/** 語言的完整名稱，用於設定選單的清單呈現 */
+export const LOCALE_FULL_LABELS: Record<AppLocale, string> = {
+  "zh-TW": "繁體中文",
+  en: "English",
+  ja: "日本語",
+  ko: "한국어",
+};
+
 export const LOCALES: AppLocale[] = ["zh-TW", "en", "ja", "ko"];
 
 export function getNextTheme(theme: ThemeMode): ThemeMode {
