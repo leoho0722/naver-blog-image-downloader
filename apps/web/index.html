@@ -3,6 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- iOS 加到主畫面的圖示：iOS 不吃 SVG，必須提供 PNG -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- PWA / Android 加到主畫面用的設定檔（名稱、圖示、顏色）-->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- 讓 iOS 以獨立 App 模式開啟，並指定主畫面顯示的名稱與狀態列樣式 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="照片下載器" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#7f9c70" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Naver Blog 照片下載器</title>
   </head>

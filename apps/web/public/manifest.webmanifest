@@ -1,0 +1,25 @@
+{
+  "name": "Naver Blog 照片下載器",
+  "short_name": "照片下載器",
+  "description": "把 Naver Blog 文章裡的照片批次下載、直接存進相簿。",
+  "lang": "zh-TW",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "theme_color": "#7f9c70",
+  "background_color": "#fffdf8",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
