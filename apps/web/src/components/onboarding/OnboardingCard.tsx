@@ -37,7 +37,11 @@ export default function OnboardingCard() {
 
   return createPortal(
     <div
-      className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center"
+      // 遮罩不做淡入：一掛載就以完整的半透明遮罩 + 模糊蓋住整個畫面。
+      // 若對整層遮罩做 fade-in，淡入過程中遮罩還很透明，底下清晰的首頁
+      //（「下載 Naver Blog 照片」標題、輸入框）會先露出來，看起來就像
+      // 「背景先出現、歡迎卡才慢慢蓋上」。改成只讓卡片本身做進場動畫。
+      className="fixed inset-0 z-50 flex items-center justify-center"
       style={{
         backgroundColor: "var(--color-scrim)",
         backdropFilter: "blur(3px)",
@@ -49,7 +53,8 @@ export default function OnboardingCard() {
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="w-[350px] max-w-[calc(100vw-2rem)] rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container)] p-8 outline-none"
+        // 只有卡片做進場動畫（淡入 + 微微上移），遮罩則是即時就位。
+        className="animate-fade-in-up w-[350px] max-w-[calc(100vw-2rem)] rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container)] p-8 outline-none"
         style={{ boxShadow: "0 24px 70px rgba(30, 20, 8, 0.35)" }}
         role="dialog"
         aria-modal="true"
