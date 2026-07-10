@@ -115,6 +115,14 @@ describe("HomePage", () => {
     expect(screen.getByTestId("onboarding-card")).toBeInTheDocument();
   });
 
+  it("首次造訪時不 render 首頁內容，避免標題在遮罩底下透出", () => {
+    mockHasSeenOnboarding = false;
+    render(<HomePage />);
+
+    // 歡迎卡出現期間，首頁輸入表單不應存在（底下維持乾淨底色）
+    expect(screen.queryByTestId("blog-input-form")).not.toBeInTheDocument();
+  });
+
   it("已看過教學時不顯示 onboarding card", () => {
     mockHasSeenOnboarding = true;
     render(<HomePage />);

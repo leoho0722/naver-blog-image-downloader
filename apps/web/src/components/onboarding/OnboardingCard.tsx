@@ -37,24 +37,21 @@ export default function OnboardingCard() {
 
   return createPortal(
     <div
-      // 遮罩不做淡入：一掛載就以完整的半透明遮罩 + 模糊蓋住整個畫面。
-      // 若對整層遮罩做 fade-in，淡入過程中遮罩還很透明，底下清晰的首頁
-      //（「下載 Naver Blog 照片」標題、輸入框）會先露出來，看起來就像
-      // 「背景先出現、歡迎卡才慢慢蓋上」。改成只讓卡片本身做進場動畫。
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      // 歡迎卡只在首次造訪出現，此時首頁內容尚未 render（見 HomePage），
+      // 遮罩底下是乾淨的 App 底色，所以可以安心讓「遮罩 + 卡片」整組一起淡入，
+      // 不會有首頁「下載 Naver Blog 照片」標題在淡入過程中透出來。
+      className="animate-fade-in fixed inset-0 z-50 flex items-center justify-center"
       style={{
         backgroundColor: "var(--color-scrim)",
         backdropFilter: "blur(3px)",
-        // iOS Safari（18 以前）只認得 -webkit- 前綴，少了它模糊會被默默忽略，
-        // 只剩半透明遮罩，底下的首頁內容就會清楚透出來（手機版的「穿透」主因）。
+        // iOS Safari（18 以前）只認得 -webkit- 前綴，少了它模糊會被默默忽略。
         WebkitBackdropFilter: "blur(3px)",
       }}
     >
       <div
         ref={dialogRef}
         tabIndex={-1}
-        // 只有卡片做進場動畫（淡入 + 微微上移），遮罩則是即時就位。
-        className="animate-fade-in-up w-[350px] max-w-[calc(100vw-2rem)] rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container)] p-8 outline-none"
+        className="w-[350px] max-w-[calc(100vw-2rem)] rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container)] p-8 outline-none"
         style={{ boxShadow: "0 24px 70px rgba(30, 20, 8, 0.35)" }}
         role="dialog"
         aria-modal="true"

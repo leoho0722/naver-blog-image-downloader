@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 
@@ -31,50 +31,41 @@ export default function HomePage() {
 
   const isIdle = fetchPhase === "idle";
 
-  // 首次造訪時，歡迎卡（OnboardingCard）會以半透明遮罩蓋在首頁內容上。
-  // 若此時首頁還在播放進場動畫，動畫會從遮罩底下透出來（手機版尤其明顯），
-  // 造成「動畫穿透」。因此只有在「非首次造訪」時才播放進場動畫，
-  // 讓歡迎卡底下的背景保持安定。用 useRef 凍結首次 render 的值，
-  // 這樣按下「開始使用」關掉歡迎卡後，內容也不會突然重播一次動畫。
-  const playEntrance = useRef(hasSeenOnboarding).current;
-  const enter = (stagger = "") =>
-    playEntrance ? `animate-fade-in-up ${stagger}`.trim() : "";
+  // 首次造訪時只顯示歡迎卡，首頁內容先不 render——這樣歡迎卡的半透明遮罩
+  // 底下是乾淨的 App 底色，遮罩淡入時就不會有「下載 Naver Blog 照片」標題透出來。
+  // 按下「開始使用」後 hasSeenOnboarding 轉為 true，首頁內容才掛載並播放進場動畫。
+  if (!hasSeenOnboarding) {
+    return <OnboardingCard />;
+  }
 
   return (
-    <>
-      {!hasSeenOnboarding && <OnboardingCard />}
-      <div className="flex min-h-[78vh] flex-col items-center justify-center text-center">
-        <div className="w-full max-w-xl">
-          {/* 三色圓點點綴 */}
-          <div
-            className={`${enter()} mb-6 flex items-center justify-center gap-2.5`}
-          >
-            <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)]" />
-            <span className="h-[7px] w-[7px] rounded-full bg-[var(--color-secondary)]" />
-            <span className="h-3 w-3 rounded-full bg-[#a5788f]" />
-          </div>
-          <h2
-            className={`${enter("stagger-1")} mb-3.5 text-center text-[32px] leading-tight tracking-tight sm:text-4xl`}
-            style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
-          >
-            {t("blogInputTitle")}
-          </h2>
-          <p
-            className={`${enter("stagger-2")} mb-9 text-center text-[15px] leading-relaxed text-[var(--color-on-surface-variant)]`}
-          >
-            {t("blogInputSubtitle")}
-          </p>
-          <div className={enter("stagger-3")}>
-            <BlogInputForm />
-          </div>
-          <FetchProgress phase={fetchPhase} />
-          {isIdle && (
-            <p className="mt-8 text-[13px] text-[var(--color-on-surface-variant)]">
-              {t("blogInputHint")}
-            </p>
-          )}
+    <div className="flex min-h-[78vh] flex-col items-center justify-center text-center">
+      <div className="w-full max-w-xl">
+        {/* 三色圓點點綴 */}
+        <div className="animate-fade-in-up mb-6 flex items-center justify-center gap-2.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-primary)]" />
+          <span className="h-[7px] w-[7px] rounded-full bg-[var(--color-secondary)]" />
+          <span className="h-3 w-3 rounded-full bg-[#a5788f]" />
         </div>
+        <h2
+          className="animate-fade-in-up stagger-1 mb-3.5 text-center text-[32px] leading-tight tracking-tight sm:text-4xl"
+          style={{ fontFamily: "var(--font-display)", fontWeight: 700 }}
+        >
+          {t("blogInputTitle")}
+        </h2>
+        <p className="animate-fade-in-up stagger-2 mb-9 text-center text-[15px] leading-relaxed text-[var(--color-on-surface-variant)]">
+          {t("blogInputSubtitle")}
+        </p>
+        <div className="animate-fade-in-up stagger-3">
+          <BlogInputForm />
+        </div>
+        <FetchProgress phase={fetchPhase} />
+        {isIdle && (
+          <p className="mt-8 text-[13px] text-[var(--color-on-surface-variant)]">
+            {t("blogInputHint")}
+          </p>
+        )}
       </div>
-    </>
+    </div>
   );
 }
