@@ -41,6 +41,9 @@ export default function OnboardingCard() {
       style={{
         backgroundColor: "var(--color-scrim)",
         backdropFilter: "blur(3px)",
+        // iOS Safari（18 以前）只認得 -webkit- 前綴，少了它模糊會被默默忽略，
+        // 只剩半透明遮罩，底下的首頁內容就會清楚透出來（手機版的「穿透」主因）。
+        WebkitBackdropFilter: "blur(3px)",
       }}
     >
       <div

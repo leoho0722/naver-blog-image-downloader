@@ -20,6 +20,8 @@ export default function DownloadProgress({ onClose }: DownloadProgressProps) {
       style={{
         backgroundColor: "var(--color-scrim)",
         backdropFilter: "blur(3px)",
+        // 同 OnboardingCard：補上 -webkit- 前綴，讓 iOS Safari 也能正確套用背景模糊。
+        WebkitBackdropFilter: "blur(3px)",
       }}
     >
       <div
