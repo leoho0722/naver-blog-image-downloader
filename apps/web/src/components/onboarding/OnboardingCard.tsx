@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
@@ -8,10 +8,18 @@ import { useSettingsStore } from "../../lib/stores/use-settings-store";
 export default function OnboardingCard() {
   const { t } = useTranslation();
   const dismissOnboarding = useSettingsStore((s) => s.dismissOnboarding);
+  // 指向對話框卡片本身，開啟時把焦點移到這裡（而非按鈕），
+  // 兼顧無障礙焦點管理，又不會讓按鈕一打開就冒出瀏覽器預設的藍色 focus 外框。
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const handleDismiss = useCallback(() => {
     dismissOnboarding();
   }, [dismissOnboarding]);
+
+  // 歡迎卡一出現就把焦點移進對話框卡片，讓螢幕報讀器能宣讀、Esc 也能立即關閉。
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -36,7 +44,9 @@ export default function OnboardingCard() {
       }}
     >
       <div
-        className="w-[350px] max-w-[calc(100vw-2rem)] rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container)] p-8"
+        ref={dialogRef}
+        tabIndex={-1}
+        className="w-[350px] max-w-[calc(100vw-2rem)] rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container)] p-8 outline-none"
         style={{ boxShadow: "0 24px 70px rgba(30, 20, 8, 0.35)" }}
         role="dialog"
         aria-modal="true"
@@ -78,9 +88,8 @@ export default function OnboardingCard() {
 
         <button
           type="button"
-          autoFocus
           onClick={handleDismiss}
-          className="w-full rounded-full bg-[var(--color-primary)] py-[13px] text-[14.5px] font-bold text-[var(--color-on-primary)] transition-all duration-200 hover:brightness-[1.07] active:scale-[0.98]"
+          className="w-full rounded-full bg-[var(--color-primary)] py-[13px] text-[14.5px] font-bold text-[var(--color-on-primary)] outline-none transition-all duration-200 hover:brightness-[1.07] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-surface-container)] active:scale-[0.98]"
         >
           {t("onboardingStart")}
         </button>
