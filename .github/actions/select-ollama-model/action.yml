@@ -1,10 +1,13 @@
 name: Select Random Ollama Model
-description: 從 .github/ollama-models.json 隨機選擇一個 Ollama Cloud 模型
+description: 從 .github/ollama-models.json 隨機挑選 Ollama Cloud 模型，並輸出隨機排序的完整清單供 fallback 使用
 
 outputs:
   model:
-    description: 選中的模型名稱
+    description: 隨機選中的模型名稱（即清單第一個），供只需要單一模型的呼叫端使用
     value: ${{ steps.select.outputs.model }}
+  models:
+    description: 隨機排序後的完整模型清單（空白分隔），供需要在模型不可用時逐一改試的呼叫端使用
+    value: ${{ steps.select.outputs.models }}
 
 runs:
   using: composite
@@ -19,11 +22,16 @@ runs:
           exit 1
         fi
 
-        SELECTED=$(jq -r '.models[]' "$CONFIG" | shuf -n1)
-        if [[ -z "$SELECTED" ]]; then
+        # 輸出隨機排序後的完整清單：只要一個模型的呼叫端取第一個即可；
+        # 需要在模型無使用權限時改試其他模型的呼叫端，則可依序往下走。
+        SHUFFLED=$(jq -r '.models[]' "$CONFIG" | shuf | tr '\n' ' ' | sed 's/[[:space:]]*$//')
+        if [[ -z "$SHUFFLED" ]]; then
           echo "::error::ollama-models.json 的 models 陣列為空"
           exit 1
         fi
+        SELECTED=${SHUFFLED%% *}
 
         echo "model=$SELECTED" >> "$GITHUB_OUTPUT"
+        echo "models=$SHUFFLED" >> "$GITHUB_OUTPUT"
         echo "🎲 選中模型: $SELECTED"
+        echo "🎲 完整嘗試順序: $SHUFFLED"

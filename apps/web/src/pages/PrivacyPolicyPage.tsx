@@ -15,7 +15,7 @@ import { usePageMeta } from "../lib/hooks/use-page-meta";
  *   5. 聯絡方式區塊（透過 GitHub Issues 連回本專案）
  *
  * 頁面刻意不顯示 Web 版號：使用者進入此頁是為了瀏覽隱私政策，
- * 與 Web App 版號無直接相關；若需版本資訊可於 App Store / Google Play 查看。
+ * 與 Web App 版號無直接相關；版號資訊統一顯示在 App Layout 的 header。
  */
 
 /** 由 i18n 讀出的單一章節結構，對應 `privacy.sections[]` */

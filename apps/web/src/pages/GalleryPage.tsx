@@ -43,7 +43,7 @@ export default function GalleryPage() {
       );
       loadedRef.current = true;
     } else if (photos.length === 0) {
-      navigate("/app/web");
+      navigate("/app");
     }
   }, [location.state, load, navigate, photos.length]);
 
@@ -93,7 +93,7 @@ export default function GalleryPage() {
         )}
         <button
           type="button"
-          onClick={() => navigate("/app/web")}
+          onClick={() => navigate("/app")}
           className="ml-auto shrink-0 rounded-full px-2.5 py-1.5 text-[12.5px] font-semibold text-[var(--color-on-surface-variant)] transition-colors hover:bg-[var(--color-surface-container-high)] hover:text-[var(--color-on-surface)]"
         >
           {t("galleryChangeArticle")} →

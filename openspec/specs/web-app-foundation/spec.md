@@ -100,35 +100,25 @@ tests:
 ---
 ### Requirement: React Router v7 routing with two routes
 
-The app SHALL use React Router v7 with `createBrowserRouter`. Routes SHALL be organized under two layout components: `PublicLayout` (for landing, intro, privacy-policy, and not-found pages) and `AppLayout` (for the Web SPA). The router's `basename` SHALL be set to `import.meta.env.BASE_URL` so route paths automatically track the deployment base path.
+The app SHALL use React Router v7 with `createBrowserRouter`. Routes SHALL be organized under two layout components: `PublicLayout` (for the landing, privacy-policy, and not-found pages) and `AppLayout` (for the Web SPA). The router's `basename` SHALL be set to `import.meta.env.BASE_URL` so route paths automatically track the deployment base path.
 
 The routable paths SHALL be:
 
-- `/` — renders `IntroRootPage` within `PublicLayout`
-- `/intro/mobile` — renders `IntroMobilePage` within `PublicLayout`
-- `/intro/web` — renders `IntroWebPage` within `PublicLayout`
+- `/` — renders `LandingPage` within `PublicLayout`
 - `/privacy` — renders `PrivacyPolicyPage` within `PublicLayout`
-- `/app/web` — renders `HomePage` within `AppLayout`
-- `/app/web/gallery/:blogId` — renders `GalleryPage` within `AppLayout`
+- `/app` — renders `HomePage` within `AppLayout`
+- `/app/gallery/:blogId` — renders `GalleryPage` within `AppLayout`
 
 Unmatched routes SHALL render `NotFoundPage` within `PublicLayout` via a `*` catch-all.
+
+No route SHALL exist under an `/intro/` prefix, and no route SHALL render `IntroRootPage`, `IntroWebPage`, or `IntroMobilePage`; those components are deleted.
 
 Legacy redirect routes SHALL also be defined (see the `web-legacy-redirects` capability for details).
 
 #### Scenario: Navigate to root landing page
 
 - **WHEN** user navigates to `/`
-- **THEN** the `IntroRootPage` component is rendered within `PublicLayout`
-
-#### Scenario: Navigate to mobile intro page
-
-- **WHEN** user navigates to `/intro/mobile`
-- **THEN** the `IntroMobilePage` component is rendered within `PublicLayout`
-
-#### Scenario: Navigate to web intro page
-
-- **WHEN** user navigates to `/intro/web`
-- **THEN** the `IntroWebPage` component is rendered within `PublicLayout`
+- **THEN** the `LandingPage` component is rendered within `PublicLayout`
 
 #### Scenario: Navigate to privacy policy page
 
@@ -137,18 +127,23 @@ Legacy redirect routes SHALL also be defined (see the `web-legacy-redirects` cap
 
 #### Scenario: Navigate to web app home
 
-- **WHEN** user navigates to `/app/web`
+- **WHEN** user navigates to `/app`
 - **THEN** the `HomePage` component is rendered within `AppLayout`
 
 #### Scenario: Navigate to gallery with blogId after in-app fetch
 
-- **WHEN** the user has just fetched photos via `HomePage` (so `GalleryStore` holds the photos array for `blogId="abc123def456"`) and `HomePage` calls `navigate("/app/web/gallery/abc123def456", { state: { fetchResult, jobId } })`
+- **WHEN** the user has just fetched photos via `HomePage` (so `GalleryStore` holds the photos array for `blogId="abc123def456"`) and `HomePage` calls `navigate("/app/gallery/abc123def456", { state: { fetchResult, jobId } })`
 - **THEN** the `GalleryPage` component is rendered within `AppLayout` with `blogId` param value `abc123def456` and displays the photos from store
 
 #### Scenario: Direct deep-link to gallery without state
 
-- **WHEN** the user opens `/app/web/gallery/abc123def456` directly (reload, external link, or cold start) with no photos in `GalleryStore`
-- **THEN** the `GalleryPage` component mounts, detects the empty state, and immediately calls `navigate("/app/web")` as a fallback; the user lands on `HomePage` where they can paste a URL to fetch photos. Cold-start deep linking is NOT supported in this spec; see `web-legacy-redirects` for the matching redirect rule
+- **WHEN** the user opens `/app/gallery/abc123def456` directly (reload, external link, or cold start) with no photos in `GalleryStore`
+- **THEN** the `GalleryPage` component mounts, detects the empty state, and immediately calls `navigate("/app")` as a fallback; the user lands on `HomePage` where they can paste a URL to fetch photos. Cold-start deep linking is NOT supported in this spec; see `web-legacy-redirects` for the matching redirect rule
+
+#### Scenario: Navigate to a removed intro path
+
+- **WHEN** user navigates to `/intro/web` or `/intro/mobile`
+- **THEN** the route matches a legacy redirect and the browser navigates to `/` via `replace`; `NotFoundPage` is NOT rendered
 
 #### Scenario: Navigate to unknown route
 
@@ -162,41 +157,308 @@ Legacy redirect routes SHALL also be defined (see the `web-legacy-redirects` cap
 
 
 <!-- @trace
-source: add-privacy-policy-page
-updated: 2026-04-18
+source: remove-mobile-app-flatten-web-routes
+updated: 2026-08-31
 code:
-  - apps/mobile/lib/l10n/app_localizations_zh.dart
-  - apps/mobile/lib/l10n/app_localizations_ko.dart
-  - apps/mobile/lib/l10n/app_ja.arb
-  - apps/web/src/lib/i18n/messages/zh-TW.json
-  - apps/mobile/lib/config/privacy_policy_url.dart
-  - apps/web/package.json
-  - apps/web/src/routes.tsx
-  - apps/web/src/components/privacy/PrivacyPolicySection.tsx
-  - apps/web/src/lib/config/public-navigation.ts
-  - apps/mobile/lib/l10n/app_localizations.dart
-  - apps/web/src/lib/config/privacy-policy.ts
-  - apps/web/src/pages/PrivacyPolicyPage.tsx
+  - apps/mobile/.claude/settings.json
+  - .agents/skills/spectra-drift/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-40x40@2x.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-60x60@2x.png
+  - apps/mobile/lib/data/models/dtos/photo_download_response.dart
+  - apps/mobile/lib/ui/photo_detail/widgets/photo_detail_view.dart
+  - apps/mobile/scripts/screenshot_matrix.json
+  - .github/workflows/mobile-cd.yml
   - apps/web/src/lib/i18n/messages/ko.json
-  - apps/mobile/lib/l10n/app_localizations_en.dart
-  - apps/mobile/lib/l10n/app_ko.arb
-  - apps/web/src/lib/i18n/messages/ja.json
-  - apps/web/src/lib/hooks/use-page-meta.ts
-  - apps/mobile/lib/l10n/app_localizations_ja.dart
-  - apps/mobile/pubspec.lock
-  - apps/mobile/lib/l10n/app_zh_TW.arb
+  - apps/web/src/routes.tsx
+  - apps/mobile/ios/Runner/Configurations/Info.plist
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-29x29@2x.png
+  - apps/mobile/lib/screenshot/screenshot_scenarios.dart
+  - apps/web/src/pages/HomePage.tsx
+  - apps/mobile/ios/Podfile
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/ZoomableImageView.swift
+  - apps/mobile/l10n.yaml
+  - apps/mobile/lib/amplifyconfiguration.dart
+  - apps/mobile/ios/Runner/Services/PhotoService.swift
+  - apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+  - apps/mobile/lib/ui/core/app_error.dart
+  - apps/mobile/.claude/skills/store-assets/frames/.gitkeep
+  - apps/mobile/android/gradle.properties
+  - apps/mobile/README.md
+  - apps/mobile/lib/data/services/photo_service.dart
+  - apps/web/src/components/intro/FeatureCard.tsx
+  - apps/web/src/components/intro/ScreenshotCarousel.tsx
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-76x76@2x.png
+  - apps/mobile/android/app/src/main/res/values-night/styles.xml
+  - apps/mobile/lib/data/services/whats_new_data_source.dart
+  - apps/mobile/.claude/skills/store-assets/SKILL.md
+  - apps/mobile/assets/samples/sample_photo_03.jpg
+  - apps/mobile/ios/RunnerTests/PhotoFileInfoTests.swift
+  - .agents/skills/spectra-commit/SKILL.md
+  - apps/mobile/.claude/skills/spectra-audit/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-20x20@3x.png
+  - apps/mobile/lib/l10n/app_localizations_ko.dart
+  - apps/web/src/pages/intro/IntroWebPage.tsx
+  - apps/mobile/ios/Runner/Applications/AppDelegate.swift
+  - apps/mobile/ios/Runner/Applications/Channels/Features/GalleryChannel.swift
+  - apps/mobile/ios/Runner/Features/Base.lproj/LaunchScreen.storyboard
+  - apps/mobile/lib/data/services/auth_service.dart
+  - apps/mobile/lib/ui/photo_gallery/widgets/photo_gallery_view.dart
+  - apps/mobile/lib/app.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/channels/features/GalleryChannel.kt
+  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
+  - apps/mobile/.claude/skills/spectra-debug/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-20x20@2x.png
+  - apps/mobile/lib/config/whats_new_icon_resolver.dart
+  - apps/mobile/lib/data/services/photo_viewer_service.dart
+  - apps/mobile/lib/data/repositories/cache_repository.dart
+  - apps/mobile/CLAUDE.md
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/MainActivity.kt
+  - apps/mobile/lib/data/services/api_service.dart
+  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
+  - apps/web/src/pages/GalleryPage.tsx
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/viewmodel/PhotoViewerViewModel.kt
+  - apps/mobile/lib/ui/core/naver_url_validator.dart
+  - apps/mobile/ios/Runner/Applications/Channels/Features/AppIconChannel.swift
+  - apps/mobile/assets/store/google-play-feature-graphic.png
+  - apps/mobile/lib/ui/photo_gallery/view_model/photo_gallery_view_model.dart
+  - apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-1024x1024.png
+  - apps/mobile/lib/l10n/app_localizations.dart
+  - apps/mobile/android/app/build.gradle.kts
+  - apps/mobile/lib/screenshot/app_runtime_mode.dart
+  - apps/web/src/components/intro/DownloadBadge.tsx
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/LaunchImage.png
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/FileInfoContent.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-40x40@3x.png
+  - apps/mobile/lib/ui/core/view_model/app_settings_view_model.dart
+  - apps/web/src/lib/config/privacy-policy.ts
+  - apps/mobile/android/app/src/main/res/drawable/launch_background.xml
+  - apps/mobile/ios/Runner.xcodeproj/project.pbxproj
   - apps/mobile/lib/ui/settings/widgets/settings_view.dart
-  - apps/mobile/pubspec.yaml
-  - apps/web/src/components/intro/IntroFooter.tsx
+  - apps/mobile/lib/l10n/app_zh_TW.arb
+  - apps/mobile/lib/config/app_config.dart
+  - apps/mobile/lib/routing/app_router.dart
+  - apps/mobile/lib/screenshot/screenshot_config.dart
+  - apps/mobile/ios/Runner/GoogleService-Info.plist
+  - apps/mobile/scripts/generate_maestro_matrix.dart
+  - apps/mobile/ios/Runner/Headers/Runner-Bridging-Header.h
+  - .agents/skills/spectra-apply/SKILL.md
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+  - apps/web/src/pages/PrivacyPolicyPage.tsx
+  - README.md
+  - apps/mobile/scripts/run_ios_screenshot_matrix.sh
+  - AGENTS.md
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/AsyncButton.swift
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-60x60@3x.png
+  - apps/mobile/lib/data/services/crashlytics_service.dart
+  - apps/mobile/lib/data/services/local_storage_service.dart
+  - apps/mobile/.claude/skills/spectra-ingest/SKILL.md
+  - apps/mobile/lib/data/models/dtos/whats_new_request.dart
+  - apps/mobile/assets/screenshots/store_listings.json
+  - apps/mobile/assets/samples/sample_photo_06.jpg
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/PhotoViewerNavigationBar.swift
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/services/PhotoService.kt
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/PhotoViewerView.swift
+  - .agents/skills/spectra-ingest/SKILL.md
+  - apps/mobile/.claude/skills/store-assets/.python-version
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-1024x1024.png
+  - apps/mobile/lib/data/models/blog_cache_metadata.dart
+  - apps/mobile/lib/screenshot/widgets/screenshot_scaffold.dart
+  - apps/mobile/lib/ui/photo_gallery/widgets/photo_card.dart
+  - apps/mobile/lib/ui/whats_new/widgets/whats_new_dialog.dart
+  - apps/mobile/assets/samples/sample_photo_04.jpg
+  - apps/web/public/intro/mobile/photo_gallery_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
+  - apps/mobile/lib/ui/photo_detail/view_model/photo_detail_view_model.dart
+  - apps/mobile/.claude/skills/spectra-ask/SKILL.md
+  - apps/mobile/lib/data/models/download_batch_result.dart
   - apps/mobile/lib/l10n/app_en.arb
+  - .agents/skills/spectra-discuss/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/Contents.json
+  - apps/mobile/lib/screenshot/screenshot_app.dart
+  - apps/mobile/lib/utils/constants.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+  - apps/mobile/.maestro/screenshot_matrix.yaml
+  - apps/mobile/lib/ui/whats_new/widgets/whats_new_view.dart
+  - apps/mobile/.claude/skills/screenshot-workflow/SKILL.md
+  - apps/mobile/devtools_options.yaml
+  - apps/mobile/scripts/screenshot_common.sh
+  - apps/mobile/lib/data/services/log_service.dart
+  - apps/web/src/components/layout/PublicLayout.tsx
+  - apps/mobile/ios/Runner/Features/PhotoViewer/Model/PhotoFileInfo.swift
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/PhotoViewerActivity.kt
+  - apps/mobile/scripts/run_android_screenshot_matrix.sh
+  - apps/mobile/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+  - apps/mobile/pubspec.yaml
+  - CLAUDE.md
+  - apps/mobile/assets/samples/sample_photo_09.jpg
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-60x60@2x.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-76x76@2x.png
+  - apps/web/CLAUDE.md
+  - apps/mobile/lib/data/repositories/photo_repository.dart
+  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/channels/features/PhotoViewerChannel.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-83.5x83.5@2x.png
+  - apps/web/src/components/layout/AppLayout.tsx
+  - apps/mobile/.claude/skills/spectra-propose/SKILL.md
+  - apps/mobile/ios/Runner/Features/Base.lproj/Main.storyboard
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-38x38@3x.png
+  - apps/mobile/ios/Runner/Features/PhotoViewer/ViewModel/PhotoViewerViewModel.swift
+  - apps/mobile/analysis_options.yaml
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png
+  - apps/mobile/android/app/src/main/AndroidManifest.xml
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-29x29@2x.png
+  - apps/mobile/.claude/skills/spectra-apply/SKILL.md
+  - apps/mobile/android/app/src/main/res/drawable-v21/launch_background.xml
+  - apps/mobile/ios/Flutter/Debug.xcconfig
+  - .agents/skills/spectra-propose/SKILL.md
+  - apps/web/src/pages/intro/IntroRootPage.tsx
   - apps/web/src/lib/i18n/messages/en.json
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-76x76.png
+  - apps/mobile/lib/ui/blog_input/view_model/blog_input_view_model.dart
+  - apps/mobile/lib/config/whats_new_registry.dart
+  - apps/mobile/ios/Podfile.lock
+  - .github/workflows/mobile-ci.yml
+  - apps/mobile/assets/samples/sample_photo_02.jpg
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-38x38@2x.png
+  - apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_new.png
+  - apps/mobile/lib/data/repositories/log_repository.dart
+  - apps/mobile/lib/l10n/app_ja.arb
+  - apps/mobile/android/app/google-services.json
+  - apps/mobile/lib/data/models/dtos/whats_new_response.dart
+  - apps/mobile/lib/ui/download/widgets/download_view.dart
+  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
+  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
+  - apps/mobile/android/app/src/profile/AndroidManifest.xml
+  - apps/mobile/android/build.gradle.kts
+  - apps/mobile/lib/data/models/dtos/photo_download_request.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_new.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-20x20@2x.png
+  - apps/web/src/components/intro/IntroNav.tsx
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/Contents.json
+  - apps/mobile/lib/screenshot/screenshot_mock_data.dart
+  - apps/mobile/lib/data/models/photo_entity.dart
+  - apps/mobile/.claude/skills/store-assets/pyproject.toml
+  - apps/mobile/assets/icons/icon_default.png
+  - apps/mobile/lib/data/services/app_icon_service.dart
+  - apps/web/src/pages/intro/IntroMobilePage.tsx
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/Contents.json
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/CapsuleBottomBar.swift
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-29x29@3x.png
+  - apps/web/src/pages/NotFoundPage.tsx
+  - apps/mobile/lib/data/services/file_download_service.dart
+  - apps/mobile/ios/Runner/Services/PhotoSaveable.swift
+  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/CapsuleBottomBar.kt
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - .agents/skills/spectra-archive/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-40x40.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/README.md
+  - apps/mobile/lib/config/app_settings_keys.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/PhotoFileInfo.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-40x40@2x.png
+  - apps/mobile/lib/utils/extensions.dart
+  - apps/mobile/ios/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+  - apps/mobile/ios/Runner/Applications/SceneDelegate.swift
+  - apps/mobile/assets/samples/sample_photo_08.jpg
+  - apps/mobile/.claude/skills/spectra-discuss/SKILL.md
+  - apps/mobile/lib/config/privacy_policy_url.dart
+  - apps/mobile/.claude/skills/spectra-archive/SKILL.md
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/ZoomableImage.kt
+  - apps/web/src/pages/LandingPage.tsx
+  - apps/mobile/lib/data/models/whats_new_item.dart
+  - apps/mobile/lib/ui/blog_input/widgets/blog_input_view.dart
+  - apps/mobile/.claude/skills/store-assets/uv.lock
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-20x20.png
+  - apps/mobile/scripts/sync_scenarios.dart
+  - apps/web/package.json
+  - apps/mobile/lib/l10n/app_localizations_ja.dart
+  - apps/mobile/lib/data/models/dtos/job_status_response.dart
+  - apps/mobile/.metadata
+  - apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_new.png
+  - apps/mobile/assets/icons/icon_new.png
+  - apps/mobile/lib/ui/settings/view_model/settings_view_model.dart
+  - apps/mobile/pubspec.lock
+  - apps/mobile/lib/l10n/app_localizations_zh.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/ThemeColors.kt
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/services/PhotoSaveable.kt
+  - apps/mobile/.maestro/take_screenshot.yaml
+  - apps/mobile/lib/data/repositories/settings_repository.dart
+  - apps/mobile/.claude/skills/store-assets/config.json
+  - apps/mobile/ios/Flutter/Release.xcconfig
+  - apps/mobile/ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+  - apps/mobile/assets/samples/sample_photo_05.jpg
+  - apps/mobile/lib/data/models/fetch_result.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+  - apps/mobile/assets/samples/sample_photo_01.jpg
+  - apps/mobile/assets/samples/sample_photo_07.jpg
+  - apps/mobile/.claude/skills/store-assets/generate.py
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/FileInfoSheet.swift
+  - apps/mobile/lib/config/app_icon.dart
+  - apps/mobile/android/app/src/debug/AndroidManifest.xml
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-29x29@3x.png
+  - apps/mobile/lib/ui/whats_new/view_model/whats_new_view_model.dart
+  - apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_new.png
+  - apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_new.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-20x20@3x.png
+  - apps/mobile/lib/ui/download/view_model/download_view_model.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/channels/features/AppIconChannel.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-29x29.png
+  - apps/mobile/lib/config/supported_locale.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/PhotoViewerScreen.kt
+  - apps/mobile/.claude/skills/store-assets/fonts/.gitkeep
+  - apps/mobile/lib/l10n/app_localizations_en.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+  - apps/mobile/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  - apps/mobile/android/settings.gradle.kts
+  - apps/mobile/ios/Flutter/AppFrameworkInfo.plist
+  - apps/mobile/ios/RunnerTests/ThemeColorsTests.swift
+  - apps/mobile/lib/screenshot/screenshot_scenario_definitions.dart
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-40x40@3x.png
+  - apps/mobile/ios/RunnerTests/PhotoViewerViewModelTests.swift
+  - apps/mobile/android/app/src/main/res/values/styles.xml
+  - apps/mobile/lib/l10n/app_ko.arb
+  - apps/mobile/lib/main.dart
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-60x60@3x.png
+  - apps/mobile/ios/Runner.xcworkspace/contents.xcworkspacedata
+  - apps/web/src/lib/config/public-navigation.ts
+  - apps/mobile/ios/Runner/Applications/Channels/Features/PhotoViewerChannel.swift
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/PhotoViewerController.swift
+  - apps/mobile/lib/config/bottom_sheet_animation.dart
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/ZoomableScrollView.swift
+  - apps/mobile/lib/config/theme.dart
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-83.5x83.5@2x.png
+  - apps/mobile/ios/Runner/Features/PhotoViewer/Model/ThemeColors.swift
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
   - apps/mobile/lib/l10n/app_zh.arb
+  - apps/mobile/android/gradle/wrapper/gradle-wrapper.properties
+  - apps/web/src/components/intro/StepCard.tsx
 tests:
-  - apps/web/src/__tests__/pages/PrivacyPolicyPage.test.tsx
-  - apps/web/src/__tests__/lib/i18n/privacy-parity.test.ts
-  - apps/mobile/test/config/privacy_policy_url_test.dart
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/mobile/android/app/src/test/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/viewmodel/PhotoViewerViewModelTest.kt
+  - apps/mobile/test/widget_test.dart
+  - apps/mobile/test/ui/blog_input/blog_input_view_model_test.dart
+  - apps/mobile/android/app/src/test/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/ThemeColorsTest.kt
+  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
+  - apps/web/src/__tests__/pages/HomePage.test.tsx
+  - apps/mobile/test/ui/core/naver_url_validator_test.dart
+  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
+  - apps/mobile/test/data/services/api_service_test.dart
+  - apps/web/src/__tests__/pages/LandingPage.test.tsx
+  - apps/mobile/test/ui/photo_detail/photo_detail_view_model_test.dart
+  - apps/mobile/test/data/repositories/photo_repository_test.dart
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/mobile/test/ui/download/download_view_model_test.dart
   - apps/web/src/__tests__/routes.test.tsx
-  - apps/web/src/__tests__/components/intro/IntroFooter.test.tsx
+  - apps/mobile/test/config/privacy_policy_url_test.dart
+  - apps/mobile/android/app/src/test/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/PhotoFileInfoTest.kt
+  - apps/mobile/test/data/repositories/cache_repository_test.dart
+  - apps/mobile/test/ui/photo_gallery/photo_gallery_view_model_test.dart
 -->
 
 ---
@@ -748,20 +1010,23 @@ tests:
 
 The app SHALL define two layout components under `apps/web/src/components/layout/`:
 
-- `PublicLayout` — for landing, intro, and not-found pages. Structure SHALL be `<IntroNav /> <main><Outlet /></main> <IntroFooter />`. The layout SHALL consume `useSettingsStore` for theme and locale, and SHALL NOT manage theme state independently.
-- `AppLayout` — for the Web SPA pages (`/app/web` and `/app/web/gallery/:blogId`). This layout SHALL replace the previous `RootLayout.tsx` component with the same visual structure, except the header brand link SHALL point to `/app/web` instead of `/`.
-
-The previous `RootLayout.tsx` component SHALL be removed after `AppLayout.tsx` replaces it.
+- `PublicLayout` — for the landing, privacy-policy, and not-found pages. Structure SHALL be `<IntroNav /> <main><Outlet /></main> <IntroFooter />`. The layout SHALL consume `useSettingsStore` for theme and locale, and SHALL NOT manage theme state independently. `PublicLayout` SHALL render `<IntroNav />` with no props and SHALL NOT call `useMatches` to look up route-supplied anchor links.
+- `AppLayout` — for the Web SPA pages (`/app` and `/app/gallery/:blogId`). The header brand link SHALL point to `/app` instead of `/`.
 
 #### Scenario: PublicLayout renders child route
 
-- **WHEN** a child route such as `/` or `/intro/mobile` is matched
+- **WHEN** a child route such as `/` or `/privacy` is matched
 - **THEN** `PublicLayout` renders `<IntroNav />`, the matched child component in `<main>`, and `<IntroFooter />`
+
+#### Scenario: PublicLayout renders no anchor navigation
+
+- **WHEN** any `PublicLayout` page is rendered
+- **THEN** the header contains the brand link and the theme/locale controls only, and contains no in-page anchor links whose `href` begins with `#`
 
 #### Scenario: AppLayout header brand links to app root
 
 - **WHEN** the user views any page rendered under `AppLayout` and clicks the brand/title link in the header
-- **THEN** the browser navigates to `/app/web`
+- **THEN** the browser navigates to `/app`
 
 #### Scenario: Both layouts share theme and locale state
 
@@ -770,67 +1035,308 @@ The previous `RootLayout.tsx` component SHALL be removed after `AppLayout.tsx` r
 
 
 <!-- @trace
-source: unify-landing-in-apps-web
-updated: 2026-04-18
+source: remove-mobile-app-flatten-web-routes
+updated: 2026-08-31
 code:
+  - apps/mobile/.claude/settings.json
+  - .agents/skills/spectra-drift/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-40x40@2x.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-60x60@2x.png
+  - apps/mobile/lib/data/models/dtos/photo_download_response.dart
+  - apps/mobile/lib/ui/photo_detail/widgets/photo_detail_view.dart
+  - apps/mobile/scripts/screenshot_matrix.json
+  - .github/workflows/mobile-cd.yml
   - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/pages/HomePage.tsx
-  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
   - apps/web/src/routes.tsx
-  - docs/mobile/images/setting_view_ios_snapshot.png
-  - apps/web/src/components/intro/ScreenshotCarousel.tsx
-  - docs/web/index.html
-  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
-  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
-  - docs/mobile/images/photo_gallery_view_android_snapshot.png
-  - docs/mobile/images/photo_gallery_view_ios_snapshot.png
-  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
-  - docs/mobile/index.html
-  - apps/web/src/pages/intro/IntroRootPage.tsx
-  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
-  - apps/web/src/components/layout/AppLayout.tsx
-  - docs/mobile/css/style.css
-  - docs/mobile/js/main.js
-  - docs/mobile/images/photo_detail_view_android_snapshot.png
-  - .github/workflows/deploy-pages.yml
-  - apps/web/src/lib/i18n/messages/en.json
-  - apps/web/src/pages/GalleryPage.tsx
-  - apps/web/src/lib/i18n/messages/ja.json
-  - apps/web/src/lib/stores/use-settings-store.ts
-  - apps/web/src/components/intro/DownloadBadge.tsx
-  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
-  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
-  - apps/web/src/pages/intro/IntroMobilePage.tsx
+  - apps/mobile/ios/Runner/Configurations/Info.plist
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-29x29@2x.png
+  - apps/mobile/lib/screenshot/screenshot_scenarios.dart
+  - apps/web/src/pages/HomePage.tsx
+  - apps/mobile/ios/Podfile
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/ZoomableImageView.swift
+  - apps/mobile/l10n.yaml
+  - apps/mobile/lib/amplifyconfiguration.dart
+  - apps/mobile/ios/Runner/Services/PhotoService.swift
+  - apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+  - apps/mobile/lib/ui/core/app_error.dart
+  - apps/mobile/.claude/skills/store-assets/frames/.gitkeep
+  - apps/mobile/android/gradle.properties
+  - apps/mobile/README.md
+  - apps/mobile/lib/data/services/photo_service.dart
   - apps/web/src/components/intro/FeatureCard.tsx
-  - docs/mobile/images/setting_view_android_snapshot.png
-  - docs/mobile/images/blog_input_view_android_snapshot.png
-  - docs/mobile/images/blog_input_view_ios_snapshot.png
-  - apps/web/src/components/layout/ThemeLocaleControls.tsx
-  - README.md
-  - apps/web/CLAUDE.md
-  - apps/web/src/lib/i18n/messages/zh-TW.json
-  - apps/web/src/components/layout/PublicLayout.tsx
-  - docs/mobile/images/photo_detail_view_ios_snapshot.png
-  - apps/web/src/App.tsx
-  - apps/web/package.json
-  - docs/index.html
-  - docs/mobile/mobile-architecture.md
-  - apps/web/src/components/intro/IntroFooter.tsx
-  - apps/web/src/pages/NotFoundPage.tsx
-  - docs/mobile/js/i18n.js
-  - apps/web/src/lib/config/ui-controls.ts
-  - apps/web/src/components/intro/IntroNav.tsx
-  - apps/web/src/components/intro/StepCard.tsx
+  - apps/web/src/components/intro/ScreenshotCarousel.tsx
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-76x76@2x.png
+  - apps/mobile/android/app/src/main/res/values-night/styles.xml
+  - apps/mobile/lib/data/services/whats_new_data_source.dart
+  - apps/mobile/.claude/skills/store-assets/SKILL.md
+  - apps/mobile/assets/samples/sample_photo_03.jpg
+  - apps/mobile/ios/RunnerTests/PhotoFileInfoTests.swift
+  - .agents/skills/spectra-commit/SKILL.md
+  - apps/mobile/.claude/skills/spectra-audit/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-20x20@3x.png
+  - apps/mobile/lib/l10n/app_localizations_ko.dart
   - apps/web/src/pages/intro/IntroWebPage.tsx
+  - apps/mobile/ios/Runner/Applications/AppDelegate.swift
+  - apps/mobile/ios/Runner/Applications/Channels/Features/GalleryChannel.swift
+  - apps/mobile/ios/Runner/Features/Base.lproj/LaunchScreen.storyboard
+  - apps/mobile/lib/data/services/auth_service.dart
+  - apps/mobile/lib/ui/photo_gallery/widgets/photo_gallery_view.dart
+  - apps/mobile/lib/app.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/channels/features/GalleryChannel.kt
+  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
+  - apps/mobile/.claude/skills/spectra-debug/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-20x20@2x.png
+  - apps/mobile/lib/config/whats_new_icon_resolver.dart
+  - apps/mobile/lib/data/services/photo_viewer_service.dart
+  - apps/mobile/lib/data/repositories/cache_repository.dart
+  - apps/mobile/CLAUDE.md
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/MainActivity.kt
+  - apps/mobile/lib/data/services/api_service.dart
+  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
+  - apps/web/src/pages/GalleryPage.tsx
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/viewmodel/PhotoViewerViewModel.kt
+  - apps/mobile/lib/ui/core/naver_url_validator.dart
+  - apps/mobile/ios/Runner/Applications/Channels/Features/AppIconChannel.swift
+  - apps/mobile/assets/store/google-play-feature-graphic.png
+  - apps/mobile/lib/ui/photo_gallery/view_model/photo_gallery_view_model.dart
+  - apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-1024x1024.png
+  - apps/mobile/lib/l10n/app_localizations.dart
+  - apps/mobile/android/app/build.gradle.kts
+  - apps/mobile/lib/screenshot/app_runtime_mode.dart
+  - apps/web/src/components/intro/DownloadBadge.tsx
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/LaunchImage.png
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/FileInfoContent.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-40x40@3x.png
+  - apps/mobile/lib/ui/core/view_model/app_settings_view_model.dart
+  - apps/web/src/lib/config/privacy-policy.ts
+  - apps/mobile/android/app/src/main/res/drawable/launch_background.xml
+  - apps/mobile/ios/Runner.xcodeproj/project.pbxproj
+  - apps/mobile/lib/ui/settings/widgets/settings_view.dart
+  - apps/mobile/lib/l10n/app_zh_TW.arb
+  - apps/mobile/lib/config/app_config.dart
+  - apps/mobile/lib/routing/app_router.dart
+  - apps/mobile/lib/screenshot/screenshot_config.dart
+  - apps/mobile/ios/Runner/GoogleService-Info.plist
+  - apps/mobile/scripts/generate_maestro_matrix.dart
+  - apps/mobile/ios/Runner/Headers/Runner-Bridging-Header.h
+  - .agents/skills/spectra-apply/SKILL.md
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+  - apps/web/src/pages/PrivacyPolicyPage.tsx
+  - README.md
+  - apps/mobile/scripts/run_ios_screenshot_matrix.sh
+  - AGENTS.md
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/AsyncButton.swift
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-60x60@3x.png
+  - apps/mobile/lib/data/services/crashlytics_service.dart
+  - apps/mobile/lib/data/services/local_storage_service.dart
+  - apps/mobile/.claude/skills/spectra-ingest/SKILL.md
+  - apps/mobile/lib/data/models/dtos/whats_new_request.dart
+  - apps/mobile/assets/screenshots/store_listings.json
+  - apps/mobile/assets/samples/sample_photo_06.jpg
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/PhotoViewerNavigationBar.swift
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/services/PhotoService.kt
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/PhotoViewerView.swift
+  - .agents/skills/spectra-ingest/SKILL.md
+  - apps/mobile/.claude/skills/store-assets/.python-version
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-1024x1024.png
+  - apps/mobile/lib/data/models/blog_cache_metadata.dart
+  - apps/mobile/lib/screenshot/widgets/screenshot_scaffold.dart
+  - apps/mobile/lib/ui/photo_gallery/widgets/photo_card.dart
+  - apps/mobile/lib/ui/whats_new/widgets/whats_new_dialog.dart
+  - apps/mobile/assets/samples/sample_photo_04.jpg
   - apps/web/public/intro/mobile/photo_gallery_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
+  - apps/mobile/lib/ui/photo_detail/view_model/photo_detail_view_model.dart
+  - apps/mobile/.claude/skills/spectra-ask/SKILL.md
+  - apps/mobile/lib/data/models/download_batch_result.dart
+  - apps/mobile/lib/l10n/app_en.arb
+  - .agents/skills/spectra-discuss/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/Contents.json
+  - apps/mobile/lib/screenshot/screenshot_app.dart
+  - apps/mobile/lib/utils/constants.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+  - apps/mobile/.maestro/screenshot_matrix.yaml
+  - apps/mobile/lib/ui/whats_new/widgets/whats_new_view.dart
+  - apps/mobile/.claude/skills/screenshot-workflow/SKILL.md
+  - apps/mobile/devtools_options.yaml
+  - apps/mobile/scripts/screenshot_common.sh
+  - apps/mobile/lib/data/services/log_service.dart
+  - apps/web/src/components/layout/PublicLayout.tsx
+  - apps/mobile/ios/Runner/Features/PhotoViewer/Model/PhotoFileInfo.swift
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/PhotoViewerActivity.kt
+  - apps/mobile/scripts/run_android_screenshot_matrix.sh
+  - apps/mobile/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+  - apps/mobile/pubspec.yaml
+  - CLAUDE.md
+  - apps/mobile/assets/samples/sample_photo_09.jpg
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-60x60@2x.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-76x76@2x.png
+  - apps/web/CLAUDE.md
+  - apps/mobile/lib/data/repositories/photo_repository.dart
+  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/channels/features/PhotoViewerChannel.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-83.5x83.5@2x.png
+  - apps/web/src/components/layout/AppLayout.tsx
+  - apps/mobile/.claude/skills/spectra-propose/SKILL.md
+  - apps/mobile/ios/Runner/Features/Base.lproj/Main.storyboard
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-38x38@3x.png
+  - apps/mobile/ios/Runner/Features/PhotoViewer/ViewModel/PhotoViewerViewModel.swift
+  - apps/mobile/analysis_options.yaml
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png
+  - apps/mobile/android/app/src/main/AndroidManifest.xml
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-29x29@2x.png
+  - apps/mobile/.claude/skills/spectra-apply/SKILL.md
+  - apps/mobile/android/app/src/main/res/drawable-v21/launch_background.xml
+  - apps/mobile/ios/Flutter/Debug.xcconfig
+  - .agents/skills/spectra-propose/SKILL.md
+  - apps/web/src/pages/intro/IntroRootPage.tsx
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-76x76.png
+  - apps/mobile/lib/ui/blog_input/view_model/blog_input_view_model.dart
+  - apps/mobile/lib/config/whats_new_registry.dart
+  - apps/mobile/ios/Podfile.lock
+  - .github/workflows/mobile-ci.yml
+  - apps/mobile/assets/samples/sample_photo_02.jpg
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-38x38@2x.png
+  - apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_new.png
+  - apps/mobile/lib/data/repositories/log_repository.dart
+  - apps/mobile/lib/l10n/app_ja.arb
+  - apps/mobile/android/app/google-services.json
+  - apps/mobile/lib/data/models/dtos/whats_new_response.dart
+  - apps/mobile/lib/ui/download/widgets/download_view.dart
+  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
+  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
+  - apps/mobile/android/app/src/profile/AndroidManifest.xml
+  - apps/mobile/android/build.gradle.kts
+  - apps/mobile/lib/data/models/dtos/photo_download_request.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_new.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-20x20@2x.png
+  - apps/web/src/components/intro/IntroNav.tsx
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/Contents.json
+  - apps/mobile/lib/screenshot/screenshot_mock_data.dart
+  - apps/mobile/lib/data/models/photo_entity.dart
+  - apps/mobile/.claude/skills/store-assets/pyproject.toml
+  - apps/mobile/assets/icons/icon_default.png
+  - apps/mobile/lib/data/services/app_icon_service.dart
+  - apps/web/src/pages/intro/IntroMobilePage.tsx
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/Contents.json
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/CapsuleBottomBar.swift
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-29x29@3x.png
+  - apps/web/src/pages/NotFoundPage.tsx
+  - apps/mobile/lib/data/services/file_download_service.dart
+  - apps/mobile/ios/Runner/Services/PhotoSaveable.swift
+  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/CapsuleBottomBar.kt
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - .agents/skills/spectra-archive/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-40x40.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/README.md
+  - apps/mobile/lib/config/app_settings_keys.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/PhotoFileInfo.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-40x40@2x.png
+  - apps/mobile/lib/utils/extensions.dart
+  - apps/mobile/ios/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+  - apps/mobile/ios/Runner/Applications/SceneDelegate.swift
+  - apps/mobile/assets/samples/sample_photo_08.jpg
+  - apps/mobile/.claude/skills/spectra-discuss/SKILL.md
+  - apps/mobile/lib/config/privacy_policy_url.dart
+  - apps/mobile/.claude/skills/spectra-archive/SKILL.md
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/ZoomableImage.kt
+  - apps/web/src/pages/LandingPage.tsx
+  - apps/mobile/lib/data/models/whats_new_item.dart
+  - apps/mobile/lib/ui/blog_input/widgets/blog_input_view.dart
+  - apps/mobile/.claude/skills/store-assets/uv.lock
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-20x20.png
+  - apps/mobile/scripts/sync_scenarios.dart
+  - apps/web/package.json
+  - apps/mobile/lib/l10n/app_localizations_ja.dart
+  - apps/mobile/lib/data/models/dtos/job_status_response.dart
+  - apps/mobile/.metadata
+  - apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_new.png
+  - apps/mobile/assets/icons/icon_new.png
+  - apps/mobile/lib/ui/settings/view_model/settings_view_model.dart
+  - apps/mobile/pubspec.lock
+  - apps/mobile/lib/l10n/app_localizations_zh.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/ThemeColors.kt
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/services/PhotoSaveable.kt
+  - apps/mobile/.maestro/take_screenshot.yaml
+  - apps/mobile/lib/data/repositories/settings_repository.dart
+  - apps/mobile/.claude/skills/store-assets/config.json
+  - apps/mobile/ios/Flutter/Release.xcconfig
+  - apps/mobile/ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+  - apps/mobile/assets/samples/sample_photo_05.jpg
+  - apps/mobile/lib/data/models/fetch_result.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+  - apps/mobile/assets/samples/sample_photo_01.jpg
+  - apps/mobile/assets/samples/sample_photo_07.jpg
+  - apps/mobile/.claude/skills/store-assets/generate.py
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/FileInfoSheet.swift
+  - apps/mobile/lib/config/app_icon.dart
+  - apps/mobile/android/app/src/debug/AndroidManifest.xml
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-29x29@3x.png
+  - apps/mobile/lib/ui/whats_new/view_model/whats_new_view_model.dart
+  - apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_new.png
+  - apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_new.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-20x20@3x.png
+  - apps/mobile/lib/ui/download/view_model/download_view_model.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/channels/features/AppIconChannel.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-29x29.png
+  - apps/mobile/lib/config/supported_locale.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/PhotoViewerScreen.kt
+  - apps/mobile/.claude/skills/store-assets/fonts/.gitkeep
+  - apps/mobile/lib/l10n/app_localizations_en.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+  - apps/mobile/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  - apps/mobile/android/settings.gradle.kts
+  - apps/mobile/ios/Flutter/AppFrameworkInfo.plist
+  - apps/mobile/ios/RunnerTests/ThemeColorsTests.swift
+  - apps/mobile/lib/screenshot/screenshot_scenario_definitions.dart
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-40x40@3x.png
+  - apps/mobile/ios/RunnerTests/PhotoViewerViewModelTests.swift
+  - apps/mobile/android/app/src/main/res/values/styles.xml
+  - apps/mobile/lib/l10n/app_ko.arb
+  - apps/mobile/lib/main.dart
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-60x60@3x.png
+  - apps/mobile/ios/Runner.xcworkspace/contents.xcworkspacedata
   - apps/web/src/lib/config/public-navigation.ts
+  - apps/mobile/ios/Runner/Applications/Channels/Features/PhotoViewerChannel.swift
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/PhotoViewerController.swift
+  - apps/mobile/lib/config/bottom_sheet_animation.dart
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/ZoomableScrollView.swift
+  - apps/mobile/lib/config/theme.dart
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-83.5x83.5@2x.png
+  - apps/mobile/ios/Runner/Features/PhotoViewer/Model/ThemeColors.swift
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+  - apps/mobile/lib/l10n/app_zh.arb
+  - apps/mobile/android/gradle/wrapper/gradle-wrapper.properties
+  - apps/web/src/components/intro/StepCard.tsx
 tests:
-  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
-  - apps/web/src/__tests__/pages/HomePage.test.tsx
-  - apps/web/src/__tests__/routes.test.tsx
-  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
-  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
   - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/mobile/android/app/src/test/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/viewmodel/PhotoViewerViewModelTest.kt
+  - apps/mobile/test/widget_test.dart
+  - apps/mobile/test/ui/blog_input/blog_input_view_model_test.dart
+  - apps/mobile/android/app/src/test/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/ThemeColorsTest.kt
+  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
+  - apps/web/src/__tests__/pages/HomePage.test.tsx
+  - apps/mobile/test/ui/core/naver_url_validator_test.dart
+  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
+  - apps/mobile/test/data/services/api_service_test.dart
+  - apps/web/src/__tests__/pages/LandingPage.test.tsx
+  - apps/mobile/test/ui/photo_detail/photo_detail_view_model_test.dart
+  - apps/mobile/test/data/repositories/photo_repository_test.dart
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/mobile/test/ui/download/download_view_model_test.dart
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/mobile/test/config/privacy_policy_url_test.dart
+  - apps/mobile/android/app/src/test/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/PhotoFileInfoTest.kt
+  - apps/mobile/test/data/repositories/cache_repository_test.dart
+  - apps/mobile/test/ui/photo_gallery/photo_gallery_view_model_test.dart
 -->
 
 ---
@@ -841,18 +1347,17 @@ tests:
 - A hero area with a large `404` numeral using `var(--font-display)`
 - A lucide icon (such as `MapPinOff` or `SearchX`) paired with the numeral
 - A main heading and subheading sourced from i18n keys `notFound.title` and `notFound.desc`
-- Three calls-to-action as links:
+- Two calls-to-action as links:
   - Primary "Go home" → `/` (label from `notFound.ctaHome`)
-  - Secondary "Go to Web app" → `/app/web` (label from `notFound.ctaWebApp`)
-  - Secondary "See App intro" → `/intro/mobile` (label from `notFound.ctaMobileIntro`)
-- Responsive layout: CTAs stacked on mobile, horizontal on desktop
+  - Secondary "Go to Web app" → `/app` (label from `notFound.ctaWebApp`)
+- Responsive layout: CTAs stacked on narrow viewports, horizontal on desktop
 
-The page SHALL be visually consistent with `IntroRootPage` and SHALL NOT appear as a minimal placeholder.
+The page SHALL be visually consistent with `LandingPage` and SHALL NOT appear as a minimal placeholder. The page SHALL NOT render a CTA pointing at a mobile intro page, and the i18n key `notFound.ctaMobileIntro` SHALL NOT exist in any locale file.
 
 #### Scenario: NotFoundPage renders under PublicLayout
 
 - **WHEN** user navigates to an unknown path such as `/nonexistent`
-- **THEN** `NotFoundPage` is rendered within `PublicLayout` with the hero 404, icon, heading, subheading, and three CTA links
+- **THEN** `NotFoundPage` is rendered within `PublicLayout` with the hero 404, icon, heading, subheading, and exactly two CTA links
 
 #### Scenario: NotFoundPage "Go home" CTA navigates to root
 
@@ -862,76 +1367,317 @@ The page SHALL be visually consistent with `IntroRootPage` and SHALL NOT appear 
 #### Scenario: NotFoundPage "Go to Web app" CTA navigates to SPA
 
 - **WHEN** user clicks the secondary CTA labeled from `notFound.ctaWebApp` on `NotFoundPage`
-- **THEN** the browser navigates to `/app/web`
+- **THEN** the browser navigates to `/app`
 
-#### Scenario: NotFoundPage "See App intro" CTA navigates to mobile intro
+#### Scenario: NotFoundPage has no mobile intro CTA
 
-- **WHEN** user clicks the secondary CTA labeled from `notFound.ctaMobileIntro` on `NotFoundPage`
-- **THEN** the browser navigates to `/intro/mobile`
+- **WHEN** `NotFoundPage` is rendered under any locale
+- **THEN** no CTA navigating to `/intro/mobile` is present and no text resolved from `notFound.ctaMobileIntro` appears
 
 
 <!-- @trace
-source: unify-landing-in-apps-web
-updated: 2026-04-18
+source: remove-mobile-app-flatten-web-routes
+updated: 2026-08-31
 code:
+  - apps/mobile/.claude/settings.json
+  - .agents/skills/spectra-drift/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-40x40@2x.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-60x60@2x.png
+  - apps/mobile/lib/data/models/dtos/photo_download_response.dart
+  - apps/mobile/lib/ui/photo_detail/widgets/photo_detail_view.dart
+  - apps/mobile/scripts/screenshot_matrix.json
+  - .github/workflows/mobile-cd.yml
   - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/pages/HomePage.tsx
-  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
   - apps/web/src/routes.tsx
-  - docs/mobile/images/setting_view_ios_snapshot.png
-  - apps/web/src/components/intro/ScreenshotCarousel.tsx
-  - docs/web/index.html
-  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
-  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
-  - docs/mobile/images/photo_gallery_view_android_snapshot.png
-  - docs/mobile/images/photo_gallery_view_ios_snapshot.png
-  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
-  - docs/mobile/index.html
-  - apps/web/src/pages/intro/IntroRootPage.tsx
-  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
-  - apps/web/src/components/layout/AppLayout.tsx
-  - docs/mobile/css/style.css
-  - docs/mobile/js/main.js
-  - docs/mobile/images/photo_detail_view_android_snapshot.png
-  - .github/workflows/deploy-pages.yml
-  - apps/web/src/lib/i18n/messages/en.json
-  - apps/web/src/pages/GalleryPage.tsx
-  - apps/web/src/lib/i18n/messages/ja.json
-  - apps/web/src/lib/stores/use-settings-store.ts
-  - apps/web/src/components/intro/DownloadBadge.tsx
-  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
-  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
-  - apps/web/src/pages/intro/IntroMobilePage.tsx
+  - apps/mobile/ios/Runner/Configurations/Info.plist
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-29x29@2x.png
+  - apps/mobile/lib/screenshot/screenshot_scenarios.dart
+  - apps/web/src/pages/HomePage.tsx
+  - apps/mobile/ios/Podfile
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/ZoomableImageView.swift
+  - apps/mobile/l10n.yaml
+  - apps/mobile/lib/amplifyconfiguration.dart
+  - apps/mobile/ios/Runner/Services/PhotoService.swift
+  - apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+  - apps/mobile/lib/ui/core/app_error.dart
+  - apps/mobile/.claude/skills/store-assets/frames/.gitkeep
+  - apps/mobile/android/gradle.properties
+  - apps/mobile/README.md
+  - apps/mobile/lib/data/services/photo_service.dart
   - apps/web/src/components/intro/FeatureCard.tsx
-  - docs/mobile/images/setting_view_android_snapshot.png
-  - docs/mobile/images/blog_input_view_android_snapshot.png
-  - docs/mobile/images/blog_input_view_ios_snapshot.png
-  - apps/web/src/components/layout/ThemeLocaleControls.tsx
-  - README.md
-  - apps/web/CLAUDE.md
-  - apps/web/src/lib/i18n/messages/zh-TW.json
-  - apps/web/src/components/layout/PublicLayout.tsx
-  - docs/mobile/images/photo_detail_view_ios_snapshot.png
-  - apps/web/src/App.tsx
-  - apps/web/package.json
-  - docs/index.html
-  - docs/mobile/mobile-architecture.md
-  - apps/web/src/components/intro/IntroFooter.tsx
-  - apps/web/src/pages/NotFoundPage.tsx
-  - docs/mobile/js/i18n.js
-  - apps/web/src/lib/config/ui-controls.ts
-  - apps/web/src/components/intro/IntroNav.tsx
-  - apps/web/src/components/intro/StepCard.tsx
+  - apps/web/src/components/intro/ScreenshotCarousel.tsx
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-76x76@2x.png
+  - apps/mobile/android/app/src/main/res/values-night/styles.xml
+  - apps/mobile/lib/data/services/whats_new_data_source.dart
+  - apps/mobile/.claude/skills/store-assets/SKILL.md
+  - apps/mobile/assets/samples/sample_photo_03.jpg
+  - apps/mobile/ios/RunnerTests/PhotoFileInfoTests.swift
+  - .agents/skills/spectra-commit/SKILL.md
+  - apps/mobile/.claude/skills/spectra-audit/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-20x20@3x.png
+  - apps/mobile/lib/l10n/app_localizations_ko.dart
   - apps/web/src/pages/intro/IntroWebPage.tsx
+  - apps/mobile/ios/Runner/Applications/AppDelegate.swift
+  - apps/mobile/ios/Runner/Applications/Channels/Features/GalleryChannel.swift
+  - apps/mobile/ios/Runner/Features/Base.lproj/LaunchScreen.storyboard
+  - apps/mobile/lib/data/services/auth_service.dart
+  - apps/mobile/lib/ui/photo_gallery/widgets/photo_gallery_view.dart
+  - apps/mobile/lib/app.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/channels/features/GalleryChannel.kt
+  - apps/web/public/intro/mobile/setting_view_ios_snapshot.png
+  - apps/mobile/.claude/skills/spectra-debug/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-20x20@2x.png
+  - apps/mobile/lib/config/whats_new_icon_resolver.dart
+  - apps/mobile/lib/data/services/photo_viewer_service.dart
+  - apps/mobile/lib/data/repositories/cache_repository.dart
+  - apps/mobile/CLAUDE.md
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/MainActivity.kt
+  - apps/mobile/lib/data/services/api_service.dart
+  - apps/web/public/intro/mobile/setting_view_android_snapshot.png
+  - apps/web/src/pages/GalleryPage.tsx
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/viewmodel/PhotoViewerViewModel.kt
+  - apps/mobile/lib/ui/core/naver_url_validator.dart
+  - apps/mobile/ios/Runner/Applications/Channels/Features/AppIconChannel.swift
+  - apps/mobile/assets/store/google-play-feature-graphic.png
+  - apps/mobile/lib/ui/photo_gallery/view_model/photo_gallery_view_model.dart
+  - apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-1024x1024.png
+  - apps/mobile/lib/l10n/app_localizations.dart
+  - apps/mobile/android/app/build.gradle.kts
+  - apps/mobile/lib/screenshot/app_runtime_mode.dart
+  - apps/web/src/components/intro/DownloadBadge.tsx
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/LaunchImage.png
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/FileInfoContent.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-40x40@3x.png
+  - apps/mobile/lib/ui/core/view_model/app_settings_view_model.dart
+  - apps/web/src/lib/config/privacy-policy.ts
+  - apps/mobile/android/app/src/main/res/drawable/launch_background.xml
+  - apps/mobile/ios/Runner.xcodeproj/project.pbxproj
+  - apps/mobile/lib/ui/settings/widgets/settings_view.dart
+  - apps/mobile/lib/l10n/app_zh_TW.arb
+  - apps/mobile/lib/config/app_config.dart
+  - apps/mobile/lib/routing/app_router.dart
+  - apps/mobile/lib/screenshot/screenshot_config.dart
+  - apps/mobile/ios/Runner/GoogleService-Info.plist
+  - apps/mobile/scripts/generate_maestro_matrix.dart
+  - apps/mobile/ios/Runner/Headers/Runner-Bridging-Header.h
+  - .agents/skills/spectra-apply/SKILL.md
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+  - apps/web/src/pages/PrivacyPolicyPage.tsx
+  - README.md
+  - apps/mobile/scripts/run_ios_screenshot_matrix.sh
+  - AGENTS.md
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/AsyncButton.swift
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-60x60@3x.png
+  - apps/mobile/lib/data/services/crashlytics_service.dart
+  - apps/mobile/lib/data/services/local_storage_service.dart
+  - apps/mobile/.claude/skills/spectra-ingest/SKILL.md
+  - apps/mobile/lib/data/models/dtos/whats_new_request.dart
+  - apps/mobile/assets/screenshots/store_listings.json
+  - apps/mobile/assets/samples/sample_photo_06.jpg
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/PhotoViewerNavigationBar.swift
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/services/PhotoService.kt
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/PhotoViewerView.swift
+  - .agents/skills/spectra-ingest/SKILL.md
+  - apps/mobile/.claude/skills/store-assets/.python-version
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-1024x1024.png
+  - apps/mobile/lib/data/models/blog_cache_metadata.dart
+  - apps/mobile/lib/screenshot/widgets/screenshot_scaffold.dart
+  - apps/mobile/lib/ui/photo_gallery/widgets/photo_card.dart
+  - apps/mobile/lib/ui/whats_new/widgets/whats_new_dialog.dart
+  - apps/mobile/assets/samples/sample_photo_04.jpg
   - apps/web/public/intro/mobile/photo_gallery_view_ios_snapshot.png
+  - apps/web/public/intro/mobile/blog_input_view_ios_snapshot.png
+  - apps/mobile/lib/ui/photo_detail/view_model/photo_detail_view_model.dart
+  - apps/mobile/.claude/skills/spectra-ask/SKILL.md
+  - apps/mobile/lib/data/models/download_batch_result.dart
+  - apps/mobile/lib/l10n/app_en.arb
+  - .agents/skills/spectra-discuss/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/Contents.json
+  - apps/mobile/lib/screenshot/screenshot_app.dart
+  - apps/mobile/lib/utils/constants.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+  - apps/mobile/.maestro/screenshot_matrix.yaml
+  - apps/mobile/lib/ui/whats_new/widgets/whats_new_view.dart
+  - apps/mobile/.claude/skills/screenshot-workflow/SKILL.md
+  - apps/mobile/devtools_options.yaml
+  - apps/mobile/scripts/screenshot_common.sh
+  - apps/mobile/lib/data/services/log_service.dart
+  - apps/web/src/components/layout/PublicLayout.tsx
+  - apps/mobile/ios/Runner/Features/PhotoViewer/Model/PhotoFileInfo.swift
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/PhotoViewerActivity.kt
+  - apps/mobile/scripts/run_android_screenshot_matrix.sh
+  - apps/mobile/ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme
+  - apps/mobile/pubspec.yaml
+  - CLAUDE.md
+  - apps/mobile/assets/samples/sample_photo_09.jpg
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/Contents.json
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-60x60@2x.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-76x76@2x.png
+  - apps/web/CLAUDE.md
+  - apps/mobile/lib/data/repositories/photo_repository.dart
+  - apps/web/public/intro/mobile/photo_gallery_view_android_snapshot.png
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/channels/features/PhotoViewerChannel.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-83.5x83.5@2x.png
+  - apps/web/src/components/layout/AppLayout.tsx
+  - apps/mobile/.claude/skills/spectra-propose/SKILL.md
+  - apps/mobile/ios/Runner/Features/Base.lproj/Main.storyboard
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-38x38@3x.png
+  - apps/mobile/ios/Runner/Features/PhotoViewer/ViewModel/PhotoViewerViewModel.swift
+  - apps/mobile/analysis_options.yaml
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png
+  - apps/mobile/android/app/src/main/AndroidManifest.xml
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-29x29@2x.png
+  - apps/mobile/.claude/skills/spectra-apply/SKILL.md
+  - apps/mobile/android/app/src/main/res/drawable-v21/launch_background.xml
+  - apps/mobile/ios/Flutter/Debug.xcconfig
+  - .agents/skills/spectra-propose/SKILL.md
+  - apps/web/src/pages/intro/IntroRootPage.tsx
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-76x76.png
+  - apps/mobile/lib/ui/blog_input/view_model/blog_input_view_model.dart
+  - apps/mobile/lib/config/whats_new_registry.dart
+  - apps/mobile/ios/Podfile.lock
+  - .github/workflows/mobile-ci.yml
+  - apps/mobile/assets/samples/sample_photo_02.jpg
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-38x38@2x.png
+  - apps/mobile/android/app/src/main/res/mipmap-hdpi/ic_launcher_new.png
+  - apps/mobile/lib/data/repositories/log_repository.dart
+  - apps/mobile/lib/l10n/app_ja.arb
+  - apps/mobile/android/app/google-services.json
+  - apps/mobile/lib/data/models/dtos/whats_new_response.dart
+  - apps/mobile/lib/ui/download/widgets/download_view.dart
+  - apps/web/public/intro/mobile/blog_input_view_android_snapshot.png
+  - apps/web/public/intro/mobile/photo_detail_view_android_snapshot.png
+  - apps/mobile/android/app/src/profile/AndroidManifest.xml
+  - apps/mobile/android/build.gradle.kts
+  - apps/mobile/lib/data/models/dtos/photo_download_request.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher_new.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-20x20@2x.png
+  - apps/web/src/components/intro/IntroNav.tsx
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/Contents.json
+  - apps/mobile/lib/screenshot/screenshot_mock_data.dart
+  - apps/mobile/lib/data/models/photo_entity.dart
+  - apps/mobile/.claude/skills/store-assets/pyproject.toml
+  - apps/mobile/assets/icons/icon_default.png
+  - apps/mobile/lib/data/services/app_icon_service.dart
+  - apps/web/src/pages/intro/IntroMobilePage.tsx
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/Contents.json
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/CapsuleBottomBar.swift
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-29x29@3x.png
+  - apps/web/src/pages/NotFoundPage.tsx
+  - apps/mobile/lib/data/services/file_download_service.dart
+  - apps/mobile/ios/Runner/Services/PhotoSaveable.swift
+  - apps/web/public/intro/mobile/photo_detail_view_ios_snapshot.png
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/CapsuleBottomBar.kt
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - .agents/skills/spectra-archive/SKILL.md
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-40x40.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/LaunchImage.imageset/README.md
+  - apps/mobile/lib/config/app_settings_keys.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/PhotoFileInfo.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-40x40@2x.png
+  - apps/mobile/lib/utils/extensions.dart
+  - apps/mobile/ios/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+  - apps/mobile/ios/Runner/Applications/SceneDelegate.swift
+  - apps/mobile/assets/samples/sample_photo_08.jpg
+  - apps/mobile/.claude/skills/spectra-discuss/SKILL.md
+  - apps/mobile/lib/config/privacy_policy_url.dart
+  - apps/mobile/.claude/skills/spectra-archive/SKILL.md
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/ZoomableImage.kt
+  - apps/web/src/pages/LandingPage.tsx
+  - apps/mobile/lib/data/models/whats_new_item.dart
+  - apps/mobile/lib/ui/blog_input/widgets/blog_input_view.dart
+  - apps/mobile/.claude/skills/store-assets/uv.lock
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-20x20.png
+  - apps/mobile/scripts/sync_scenarios.dart
+  - apps/web/package.json
+  - apps/mobile/lib/l10n/app_localizations_ja.dart
+  - apps/mobile/lib/data/models/dtos/job_status_response.dart
+  - apps/mobile/.metadata
+  - apps/mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_new.png
+  - apps/mobile/assets/icons/icon_new.png
+  - apps/mobile/lib/ui/settings/view_model/settings_view_model.dart
+  - apps/mobile/pubspec.lock
+  - apps/mobile/lib/l10n/app_localizations_zh.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/ThemeColors.kt
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/services/PhotoSaveable.kt
+  - apps/mobile/.maestro/take_screenshot.yaml
+  - apps/mobile/lib/data/repositories/settings_repository.dart
+  - apps/mobile/.claude/skills/store-assets/config.json
+  - apps/mobile/ios/Flutter/Release.xcconfig
+  - apps/mobile/ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+  - apps/mobile/assets/samples/sample_photo_05.jpg
+  - apps/mobile/lib/data/models/fetch_result.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+  - apps/mobile/assets/samples/sample_photo_01.jpg
+  - apps/mobile/assets/samples/sample_photo_07.jpg
+  - apps/mobile/.claude/skills/store-assets/generate.py
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/FileInfoSheet.swift
+  - apps/mobile/lib/config/app_icon.dart
+  - apps/mobile/android/app/src/debug/AndroidManifest.xml
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-29x29@3x.png
+  - apps/mobile/lib/ui/whats_new/view_model/whats_new_view_model.dart
+  - apps/mobile/android/app/src/main/res/mipmap-mdpi/ic_launcher_new.png
+  - apps/mobile/android/app/src/main/res/mipmap-xxhdpi/ic_launcher_new.png
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-20x20@3x.png
+  - apps/mobile/lib/ui/download/view_model/download_view_model.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/applications/channels/features/AppIconChannel.kt
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-29x29.png
+  - apps/mobile/lib/config/supported_locale.dart
+  - apps/mobile/android/app/src/main/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/view/PhotoViewerScreen.kt
+  - apps/mobile/.claude/skills/store-assets/fonts/.gitkeep
+  - apps/mobile/lib/l10n/app_localizations_en.dart
+  - apps/mobile/android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+  - apps/mobile/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved
+  - apps/mobile/android/settings.gradle.kts
+  - apps/mobile/ios/Flutter/AppFrameworkInfo.plist
+  - apps/mobile/ios/RunnerTests/ThemeColorsTests.swift
+  - apps/mobile/lib/screenshot/screenshot_scenario_definitions.dart
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/NewAppIcon.appiconset/ic_appicon_new-40x40@3x.png
+  - apps/mobile/ios/RunnerTests/PhotoViewerViewModelTests.swift
+  - apps/mobile/android/app/src/main/res/values/styles.xml
+  - apps/mobile/lib/l10n/app_ko.arb
+  - apps/mobile/lib/main.dart
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-60x60@3x.png
+  - apps/mobile/ios/Runner.xcworkspace/contents.xcworkspacedata
   - apps/web/src/lib/config/public-navigation.ts
+  - apps/mobile/ios/Runner/Applications/Channels/Features/PhotoViewerChannel.swift
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/PhotoViewerController.swift
+  - apps/mobile/lib/config/bottom_sheet_animation.dart
+  - apps/mobile/ios/Runner/Features/PhotoViewer/View/ZoomableScrollView.swift
+  - apps/mobile/lib/config/theme.dart
+  - apps/mobile/ios/Runner/Resources/Assets.xcassets/AppIcon.appiconset/ic_appicon-83.5x83.5@2x.png
+  - apps/mobile/ios/Runner/Features/PhotoViewer/Model/ThemeColors.swift
+  - apps/mobile/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+  - apps/mobile/lib/l10n/app_zh.arb
+  - apps/mobile/android/gradle/wrapper/gradle-wrapper.properties
+  - apps/web/src/components/intro/StepCard.tsx
 tests:
-  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
-  - apps/web/src/__tests__/pages/HomePage.test.tsx
-  - apps/web/src/__tests__/routes.test.tsx
-  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
-  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
   - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/mobile/android/app/src/test/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/viewmodel/PhotoViewerViewModelTest.kt
+  - apps/mobile/test/widget_test.dart
+  - apps/mobile/test/ui/blog_input/blog_input_view_model_test.dart
+  - apps/mobile/android/app/src/test/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/ThemeColorsTest.kt
+  - apps/web/src/__tests__/lib/i18n/intro-parity.test.ts
+  - apps/web/src/__tests__/pages/HomePage.test.tsx
+  - apps/mobile/test/ui/core/naver_url_validator_test.dart
+  - apps/web/src/__tests__/components/intro/DownloadBadge.test.tsx
+  - apps/mobile/test/data/services/api_service_test.dart
+  - apps/web/src/__tests__/pages/LandingPage.test.tsx
+  - apps/mobile/test/ui/photo_detail/photo_detail_view_model_test.dart
+  - apps/mobile/test/data/repositories/photo_repository_test.dart
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/mobile/test/ui/download/download_view_model_test.dart
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/mobile/test/config/privacy_policy_url_test.dart
+  - apps/mobile/android/app/src/test/kotlin/com/leoho/naverBlogImageDownloader/android/features/photoviewer/model/PhotoFileInfoTest.kt
+  - apps/mobile/test/data/repositories/cache_repository_test.dart
+  - apps/mobile/test/ui/photo_gallery/photo_gallery_view_model_test.dart
 -->
 
 ---

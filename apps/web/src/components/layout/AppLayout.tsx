@@ -10,7 +10,7 @@ export default function AppLayout() {
     <div className="bg-noise min-h-screen">
       <header className="animate-fade-in relative z-8 flex h-16 items-center gap-3 border-b border-[var(--color-outline-variant)]/60 px-5 sm:px-8">
         <Link
-          to="/app/web"
+          to="/app"
           className="mr-auto flex items-center gap-2.5"
           aria-label={t("appTitle")}
         >

@@ -9,4 +9,4 @@
  */
 
 /** 最近一次實質內容更新日期（ISO 8601 `YYYY-MM-DD` 字串）。 */
-export const PRIVACY_POLICY_LAST_UPDATED = "2026-04-18";
+export const PRIVACY_POLICY_LAST_UPDATED = "2026-08-31";

@@ -17,7 +17,7 @@ export default function HomePage() {
 
   useEffect(() => {
     if (fetchPhase === "completed" && fetchResult) {
-      navigate(`/app/web/gallery/${fetchResult.blogId}`, {
+      navigate(`/app/gallery/${fetchResult.blogId}`, {
         state: { fetchResult, jobId },
       });
       reset();

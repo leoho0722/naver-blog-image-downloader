@@ -62,67 +62,31 @@ async function renderAt(path: string) {
 }
 
 describe("routes.tsx 路由與 redirect 行為", () => {
-  it("/ 渲染 IntroRootPage（PublicLayout 底下）", async () => {
+  it("/ 渲染 LandingPage（PublicLayout 底下）", async () => {
     await renderAt("/");
     expect(await screen.findByText("intro.root.title")).toBeInTheDocument();
-  });
-
-  it("/intro/mobile 渲染 IntroMobilePage", async () => {
-    await renderAt("/intro/mobile");
+    // 主 CTA 直接把使用者送進 Web App
     expect(
-      await screen.findByText("intro.mobile.hero.title"),
-    ).toBeInTheDocument();
+      screen.getByRole("link", { name: "intro.root.cta" }),
+    ).toHaveAttribute("href", "/app");
   });
 
-  it("/intro/mobile 會透過正式 route config 顯示頁內 anchor nav", async () => {
-    await renderAt("/intro/mobile");
-    expect(
-      screen.getByRole("link", { name: "intro.mobile.nav.features" }),
-    ).toHaveAttribute("href", "#features");
-    expect(
-      screen.getByRole("link", { name: "intro.mobile.nav.howItWorks" }),
-    ).toHaveAttribute("href", "#how-it-works");
+  it("/ 不再出現任何指向舊 intro 路徑的連結", async () => {
+    await renderAt("/");
+    const hrefs = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.some((h) => h.startsWith("/intro"))).toBe(false);
   });
 
-  it("/intro/web 渲染 IntroWebPage", async () => {
-    await renderAt("/intro/web");
-    expect(await screen.findByText("intro.web.title")).toBeInTheDocument();
-  });
-
-  it("/app/web 渲染 HomePage（AppLayout 底下）", async () => {
-    await renderAt("/app/web");
+  it("/app 渲染 HomePage（AppLayout 底下）", async () => {
+    await renderAt("/app");
     expect(await screen.findByTestId("home-page")).toBeInTheDocument();
   });
 
-  it("/app/web/gallery/abc 渲染 GalleryPage", async () => {
-    await renderAt("/app/web/gallery/abc");
+  it("/app/gallery/abc 渲染 GalleryPage", async () => {
+    await renderAt("/app/gallery/abc");
     expect(await screen.findByTestId("gallery-page")).toBeInTheDocument();
-  });
-
-  it("/web redirect 到 /intro/web", async () => {
-    const router = await renderAt("/web");
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/intro/web"),
-    );
-  });
-
-  it("/web/app redirect 到 /app/web", async () => {
-    const router = await renderAt("/web/app");
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/app/web"),
-    );
-  });
-
-  it("/web/app/gallery/abc123 redirect 到 /app/web（不帶 blogId）", async () => {
-    const router = await renderAt("/web/app/gallery/abc123");
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/app/web"),
-    );
-  });
-
-  it("/nonexistent 渲染 NotFoundPage（含 notFound.title）", async () => {
-    await renderAt("/nonexistent");
-    expect(await screen.findByText("notFound.title")).toBeInTheDocument();
   });
 
   it("/privacy 渲染 PrivacyPolicyPage（PublicLayout 底下）", async () => {
@@ -134,5 +98,46 @@ describe("routes.tsx 路由與 redirect 行為", () => {
         name: "privacy.pageTitle",
       }),
     ).toBeInTheDocument();
+  });
+
+  it("/nonexistent 渲染 NotFoundPage（含 notFound.title）", async () => {
+    await renderAt("/nonexistent");
+    expect(await screen.findByText("notFound.title")).toBeInTheDocument();
+  });
+
+  it("NotFoundPage 只剩兩顆 CTA，且不含 App 介紹入口", async () => {
+    await renderAt("/nonexistent");
+    const hrefs = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs).toContain("/");
+    expect(hrefs).toContain("/app");
+    expect(hrefs).not.toContain("/intro/mobile");
+  });
+
+  // 舊 URL 相容：可冷啟入口 → 對應新路徑；依賴 SPA state 的深連結 → 退回 /app
+  describe.each([
+    ["/web", "/"],
+    ["/intro/web", "/"],
+    ["/intro/mobile", "/"],
+    ["/web/app", "/app"],
+    ["/app/web", "/app"],
+    ["/web/app/gallery/abc123def456", "/app"],
+    ["/app/web/gallery/abc123def456", "/app"],
+  ])("legacy redirect", (from, to) => {
+    it(`${from} redirect 到 ${to}`, async () => {
+      const router = await renderAt(from);
+      await waitFor(() => expect(router.state.location.pathname).toBe(to));
+    });
+  });
+
+  it("gallery 舊深連結不得把 blogId 帶進新路徑", async () => {
+    const router = await renderAt("/app/web/gallery/abc123def456");
+    await waitFor(() =>
+      expect(router.state.location.pathname).not.toBe(
+        "/app/gallery/abc123def456",
+      ),
+    );
+    expect(router.state.location.pathname).toBe("/app");
   });
 });

@@ -1,11 +1,11 @@
-import { Home, MapPinOff, Monitor, Smartphone } from "lucide-react";
+import { Home, MapPinOff, Monitor } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 /**
  * NotFoundPage——一等 404 頁面，套用 PublicLayout 視覺：
- * hero 大號 404 + icon + 主副標 + 三個 CTA（回首頁、前往 Web 版、看 App 介紹）。
+ * hero 大號 404 + icon + 主副標 + 兩個 CTA（回首頁、前往 Web App）。
  * 響應式：行動版 CTA 堆疊、桌面並排。
  */
 export default function NotFoundPage() {
@@ -51,18 +51,11 @@ export default function NotFoundPage() {
           {t("notFound.ctaHome")}
         </Link>
         <Link
-          to="/app/web"
+          to="/app"
           className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--color-outline-variant)] px-6 py-3 text-sm font-semibold text-[var(--color-on-surface)] transition-colors hover:bg-[var(--color-surface-container)]"
         >
           <Monitor size={18} />
           {t("notFound.ctaWebApp")}
-        </Link>
-        <Link
-          to="/intro/mobile"
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--color-outline-variant)] px-6 py-3 text-sm font-semibold text-[var(--color-on-surface)] transition-colors hover:bg-[var(--color-surface-container)]"
-        >
-          <Smartphone size={18} />
-          {t("notFound.ctaMobileIntro")}
         </Link>
       </div>
     </div>

@@ -2,19 +2,13 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-import type { AnchorLink } from "../../lib/config/public-navigation";
 import ThemeLocaleControls from "../layout/ThemeLocaleControls";
 
-interface Props {
-  /** 若提供，渲染在品牌旁邊的頁內錨點 */
-  anchorLinks?: AnchorLink[];
-}
-
-export default function IntroNav({ anchorLinks }: Props) {
+export default function IntroNav() {
   const { t } = useTranslation();
   const [scrolled, setScrolled] = useState(false);
 
-  // 捲動時加 shadow，與原 docs/mobile 視覺一致
+  // 捲動時加 shadow，讓 sticky header 與底下內容有層次區隔
   useEffect(() => {
     const onScroll = () => {
       setScrolled(window.scrollY > 8);
@@ -45,19 +39,6 @@ export default function IntroNav({ anchorLinks }: Props) {
           {t("appTitle")}
         </Link>
 
-        {anchorLinks && anchorLinks.length > 0 && (
-          <nav className="hidden items-center gap-1 md:flex">
-            {anchorLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                className="rounded-full px-3 py-1.5 text-sm text-[var(--color-on-surface-variant)] transition-colors hover:bg-[var(--color-surface-container)] hover:text-[var(--color-on-surface)]"
-              >
-                {t(link.labelKey)}
-              </a>
-            ))}
-          </nav>
-        )}
         <ThemeLocaleControls />
       </div>
     </header>
