@@ -46,14 +46,14 @@ describe("AppLayout", () => {
     expect(versionText).toBeInTheDocument();
   });
 
-  it("header brand link 指向 /app/web 而非 /", async () => {
+  it("header brand link 指向 /app 而非 /", async () => {
     const { default: AppLayout } =
       await import("../../../components/layout/AppLayout");
     render(<AppLayout />);
 
     const links = screen.getAllByRole("link");
-    const brand = links.find((a) => a.getAttribute("href") === "/app/web");
-    expect(brand, "brand link 必須指向 /app/web").toBeDefined();
+    const brand = links.find((a) => a.getAttribute("href") === "/app");
+    expect(brand, "brand link 必須指向 /app").toBeDefined();
   });
 
   it("theme toggle 使用 i18n label 與翻譯後 title", async () => {

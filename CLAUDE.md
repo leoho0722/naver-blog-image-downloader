@@ -29,11 +29,12 @@ Changes can be parked（暫存）— temporarily moved out of `openspec/changes/
 
 # Naver Blog Image Downloader — Monorepo Guidelines
 
-此 monorepo 包含三個元件：
+此 monorepo 包含兩個元件：
 
-- `apps/mobile/` — Flutter iOS/Android app（詳見 [apps/mobile/CLAUDE.md](apps/mobile/CLAUDE.md)）
 - `apps/backend/` — Python AWS Lambda（詳見 [apps/backend/CLAUDE.md](apps/backend/CLAUDE.md)）
 - `apps/web/` — Vite + React 19 + TypeScript Web app（詳見 [apps/web/CLAUDE.md](apps/web/CLAUDE.md)）
+
+行動版 App（Flutter iOS/Android）已停止維護並自 repo 移除，最後一版保存在 `mobile-v1.6.1` tag。
 
 ## 共用開發規範
 
@@ -48,17 +49,15 @@ Changes can be parked（暫存）— temporarily moved out of `openspec/changes/
 - **Minor**（`1.5.0 → 1.6.0`）：對使用者可見的新功能或行為變更。
 - **Patch**（`1.5.0 → 1.5.1`）：Bug 修正、開發者工具、自動化腳本、CI/CD 等不影響正式使用者的改動。
 - **Major**：API 破壞性變更。
-- **buildNumber** (`+1`)：僅 mobile 使用，代表內部 build 版本，無特別聲明則不需進行 bump。
 
-例如 screenshot 自動化、Spectra 工具腳本、lint/format 規則調整皆屬 patch；新畫面、新 API、行為調整則屬 minor。
+例如 Spectra 工具腳本、lint/format 規則調整皆屬 patch；新畫面、新 API、行為調整則屬 minor。
 
 | 元件    | version 檔案                  | Tag 格式             | 未 bump 時的 CD 行為 |
 |---------|-------------------------------|----------------------|----------------------|
-| mobile  | `apps/mobile/pubspec.yaml`    | `mobile-v<version>`  | Skip（notice）         |
 | backend | `apps/backend/pyproject.toml` | `backend-v<version>` | Fail                 |
 | web     | `apps/web/package.json`       | `web-v<version>`     | Skip（notice）         |
 
-`<version>` 只取 semver 三段（mobile 自動去掉 `+buildNumber` 後綴）。CD workflow 會依此產生對應 tag 與 GitHub Release。
+`<version>` 為 semver 三段。CD workflow 會依此產生對應 tag 與 GitHub Release。
 
 ### Commit 風格
 
@@ -69,16 +68,11 @@ Changes can be parked（暫存）— temporarily moved out of `openspec/changes/
 description（body）使用列點格式，例如：
 
 ```text
-refactor(settings-view): 設定頁面 Cupertino → Material 3 重構
+refactor(web): 路由扁平化，landing 頁移至根路徑
 
-- 移除所有 Cupertino 元件
-- 統一採用 Material 3 Card.filled + ListTile 呈現
+- 移除 /intro/* 中介層，/ 直接呈現產品介紹
+- SPA 入口由 /app/web 簡化為 /app
 ```
-
-### Screenshot / test-only 程式碼界線
-
-- `apps/mobile/lib/screenshot/screenshot_mock_data.dart` 內的假資料（URL、時間戳、Blog ID）**僅供 screenshot mode 使用**，正式功能程式碼（`lib/data/`、`lib/ui/` 等）**禁止 import**。
-- screenshot mode 只在 `kDebugMode` 才啟用，且以 launch arguments 為權威開關；release build 完全看不到這些 mock。
 
 ### 鐵的紀律：Spectra SDD 工作流
 

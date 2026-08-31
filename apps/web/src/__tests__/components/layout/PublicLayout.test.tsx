@@ -10,18 +10,6 @@ vi.mock("react-i18next", () => ({
 
 vi.mock("react-router-dom", () => ({
   Outlet: () => <div data-testid="outlet">outlet</div>,
-  useMatches: () => [
-    {
-      handle: {
-        anchorLinks: [
-          {
-            href: "#features",
-            labelKey: "intro.mobile.nav.features",
-          },
-        ],
-      },
-    },
-  ],
   Link: ({
     children,
     to,
@@ -57,16 +45,25 @@ describe("PublicLayout", () => {
     // Outlet 顯示子頁面
     expect(screen.getByTestId("outlet")).toBeInTheDocument();
 
-    // IntroNav 會渲染 brand link 連到 "/" 與頁內 anchor link
+    // IntroNav 會渲染 brand link 連到 "/"
     const links = screen.getAllByRole("link");
     expect(links.some((a) => a.getAttribute("href") === "/")).toBe(true);
-    expect(
-      screen.getByRole("link", { name: "intro.mobile.nav.features" }),
-    ).toHaveAttribute("href", "#features");
 
     // IntroFooter 會渲染 GitHub 連結
     expect(
       screen.getByText(/GitHub/i) || screen.getByText(/intro\.footer\.github/i),
     ).toBeInTheDocument();
+  });
+
+  it("header 不再渲染頁內錨點導覽", async () => {
+    const { default: PublicLayout } =
+      await import("../../../components/layout/PublicLayout");
+    render(<PublicLayout />);
+
+    // 錨點機制隨行動版介紹頁一起移除，header 只剩品牌連結與主題／語系控制項
+    const hrefs = screen
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href") ?? "");
+    expect(hrefs.some((h) => h.startsWith("#"))).toBe(false);
   });
 });

@@ -8,7 +8,7 @@ import zhTW from "../../../lib/i18n/messages/zh-TW.json";
 /**
  * Intro 與 NotFound 多語系 key 對齊檢查
  *
- * 目的：landing / intro 頁在四語系之間必須 key 結構一致，
+ * 目的：landing 頁在四語系之間必須 key 結構一致，
  * 任何一個語系缺 key 都會讓使用者看到 raw key 或 fallback 語系文字。
  */
 
@@ -64,24 +64,4 @@ describe("i18n intro / notFound 四語系 key 對齊", () => {
       }
     });
   }
-
-  it("intro.mobile.screenshots 的 tab 鍵完整（iOS / Android）", () => {
-    for (const [locale, content] of Object.entries(locales)) {
-      const keys = new Set(
-        keysUnder(content, "intro.mobile.screenshots.tabIos"),
-      );
-      expect(
-        keys.has("intro.mobile.screenshots.tabIos"),
-        `locale "${locale}" 缺少 tabIos`,
-      ).toBe(true);
-
-      const androidKeys = new Set(
-        keysUnder(content, "intro.mobile.screenshots.tabAndroid"),
-      );
-      expect(
-        androidKeys.has("intro.mobile.screenshots.tabAndroid"),
-        `locale "${locale}" 缺少 tabAndroid`,
-      ).toBe(true);
-    }
-  });
 });

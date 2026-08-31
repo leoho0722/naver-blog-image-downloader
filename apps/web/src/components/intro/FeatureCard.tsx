@@ -7,8 +7,7 @@ interface Props {
 }
 
 /**
- * FeatureCard——feature 區塊的單張卡片。
- * 在 IntroRootPage、IntroMobilePage、IntroWebPage 共用，
+ * FeatureCard——feature 區塊的單張卡片，目前由 LandingPage 使用。
  * 外觀為 M3 filled card：icon + 標題 + 描述。
  */
 export default function FeatureCard({ icon, title, desc }: Props) {
