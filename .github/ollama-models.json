@@ -1,8 +1,5 @@
 {
     "models": [
-        "gemma4:31b-cloud",
-        "minimax-m2.7:cloud",
-        "deepseek-v4-pro:cloud",
-        "minimax-m3:cloud"
+        "gemma4:31b-cloud"
     ]
 }
