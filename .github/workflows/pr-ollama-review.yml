@@ -36,7 +36,7 @@ jobs:
         uses: ./.github/actions/select-ollama-model
 
       - name: Set model env
-        run: echo "OLLAMA_MODEL=${{ steps.ollama_model.outputs.model }}" >> "$GITHUB_ENV"
+        run: echo "OLLAMA_MODELS=${{ steps.ollama_model.outputs.models }}" >> "$GITHUB_ENV"
 
       - name: Fetch PR diff and request Ollama review
         run: |
@@ -113,63 +113,97 @@ jobs:
           PR 變更內容：
           INSTRUCTIONS_EOF
 
-          jq -n \
-            --arg model "$OLLAMA_MODEL" \
-            --rawfile instructions /tmp/instructions.txt \
-            --rawfile diff /tmp/pr_diff.txt \
-            '{model: $model, messages: [{role: "user", content: ($instructions + "\n" + $diff)}], stream: false}' \
-            > /tmp/ollama_request.json
-
-          RESPONSE=""
-          if RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "https://ollama.com/api/chat" \
-            -H "Authorization: Bearer $OLLAMA_API_KEY" \
-            -H "Content-Type: application/json" \
-            --data-binary @/tmp/ollama_request.json); then
-            CURL_EXIT_CODE=0
-          else
-            CURL_EXIT_CODE=$?
-          fi
-
-          HTTP_STATUS=$(printf '%s\n' "$RESPONSE" | tail -1 | sed 's/HTTP_STATUS://')
-          RESPONSE_BODY=$(printf '%s\n' "$RESPONSE" | sed '$d')
-          echo "Ollama curl exit code: $CURL_EXIT_CODE"
-          echo "Ollama HTTP Status: $HTTP_STATUS"
-
+          # 依隨機順序逐一嘗試模型。帳號對部分 cloud model 沒有使用權限（402 需訂閱、
+          # 403 無權限），隨機挑到就紅燈跟程式碼品質無關，因此換下一個再試。
+          # 其他狀況（連線失敗、5xx、回應格式不對）仍視為真實故障，維持紅燈不放水。
+          REVIEW=""
+          USED_MODEL=""
+          SKIPPED=""
           review_failed=false
           response_parse_failed=false
-          REVIEW=""
-          if ! REVIEW=$(printf '%s' "$RESPONSE_BODY" | jq -r '.message.content // empty' 2>/dev/null); then
-            response_parse_failed=true
-            review_failed=true
-          fi
+          CURL_EXIT_CODE=0
+          HTTP_STATUS=""
+          RESPONSE_BODY=""
 
-          # curl transport failure 與 HTTP 非 2xx 都視為失敗，避免 workflow 誤報綠燈。
-          if [ "$CURL_EXIT_CODE" -ne 0 ]; then
-            review_failed=true
-          fi
-          # HTTP 非 2xx 或回應缺 review content 都視為失敗，避免 workflow 誤報綠燈。
-          # 先檢查 HTTP_STATUS 是否為純數字，防止 curl 完全失敗時 shell 噴出數值比較警告。
-          if ! [[ "$HTTP_STATUS" =~ ^[0-9]+$ ]]; then
-            review_failed=true
-          elif [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            review_failed=true
-          fi
-          if [ "$response_parse_failed" = true ]; then
-            echo "API Response is not valid JSON."
-          fi
-          if [ -z "$REVIEW" ] || [ "$REVIEW" = "null" ]; then
-            if [ "$CURL_EXIT_CODE" -ne 0 ]; then
-              REVIEW="❌ Ollama review 失敗（curl exit ${CURL_EXIT_CODE}，HTTP ${HTTP_STATUS}），請檢查網路連線、OLLAMA_API_KEY 與 model 名稱 $OLLAMA_MODEL 是否正確。"
-            elif [ "$response_parse_failed" = true ]; then
-              REVIEW="❌ Ollama review 失敗（HTTP ${HTTP_STATUS}，回應不是合法 JSON），請檢查 Ollama API 回傳內容與 model 名稱 $OLLAMA_MODEL 是否正確。"
+          for MODEL in $OLLAMA_MODELS; do
+            jq -n \
+              --arg model "$MODEL" \
+              --rawfile instructions /tmp/instructions.txt \
+              --rawfile diff /tmp/pr_diff.txt \
+              '{model: $model, messages: [{role: "user", content: ($instructions + "\n" + $diff)}], stream: false}' \
+              > /tmp/ollama_request.json
+
+            RESPONSE=""
+            if RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" "https://ollama.com/api/chat" \
+              -H "Authorization: Bearer $OLLAMA_API_KEY" \
+              -H "Content-Type: application/json" \
+              --data-binary @/tmp/ollama_request.json); then
+              CURL_EXIT_CODE=0
             else
-              REVIEW="❌ Ollama review 失敗（HTTP ${HTTP_STATUS}），請檢查 OLLAMA_API_KEY 與 model 名稱 $OLLAMA_MODEL 是否正確。"
+              CURL_EXIT_CODE=$?
             fi
-            echo "API Response: $RESPONSE_BODY"
-            review_failed=true
+
+            HTTP_STATUS=$(printf '%s\n' "$RESPONSE" | tail -1 | sed 's/HTTP_STATUS://')
+            RESPONSE_BODY=$(printf '%s\n' "$RESPONSE" | sed '$d')
+            echo "[${MODEL}] curl exit=${CURL_EXIT_CODE} HTTP=${HTTP_STATUS}"
+
+            if [ "$CURL_EXIT_CODE" -eq 0 ] && { [ "$HTTP_STATUS" = "402" ] || [ "$HTTP_STATUS" = "403" ]; }; then
+              echo "::notice::${MODEL} 無使用權限（HTTP ${HTTP_STATUS}），改試下一個模型"
+              SKIPPED="${SKIPPED}${MODEL} (HTTP ${HTTP_STATUS}), "
+              continue
+            fi
+
+            # 不是權限問題就採用這次結果，後續交給統一的驗證邏輯判斷成功或失敗
+            USED_MODEL="$MODEL"
+            break
+          done
+
+          if [ -n "$SKIPPED" ]; then
+            echo "已略過的模型：${SKIPPED%, }"
           fi
 
-          printf '### 🤖 Ollama Cloud Review (%s)\n\n' "$OLLAMA_MODEL" > /tmp/ollama_review.md
+          if [ -z "$USED_MODEL" ]; then
+            # 清單裡每一個模型都回報無使用權限，代表帳號設定有問題，不是單一模型的偶發狀況
+            REVIEW="❌ Ollama review 失敗：清單中所有模型都回報無使用權限（${SKIPPED%, }）。請確認 OLLAMA_API_KEY 對應帳號的訂閱與權限，或調整 .github/ollama-models.json 的模型清單。"
+            review_failed=true
+          else
+            REVIEW=""
+            if ! REVIEW=$(printf '%s' "$RESPONSE_BODY" | jq -r '.message.content // empty' 2>/dev/null); then
+              response_parse_failed=true
+              review_failed=true
+            fi
+
+            # curl transport failure 與 HTTP 非 2xx 都視為失敗，避免 workflow 誤報綠燈。
+            if [ "$CURL_EXIT_CODE" -ne 0 ]; then
+              review_failed=true
+            fi
+            # HTTP 非 2xx 或回應缺 review content 都視為失敗，避免 workflow 誤報綠燈。
+            # 先檢查 HTTP_STATUS 是否為純數字，防止 curl 完全失敗時 shell 噴出數值比較警告。
+            if ! [[ "$HTTP_STATUS" =~ ^[0-9]+$ ]]; then
+              review_failed=true
+            elif [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+              review_failed=true
+            fi
+            if [ "$response_parse_failed" = true ]; then
+              echo "API Response is not valid JSON."
+            fi
+            if [ -z "$REVIEW" ] || [ "$REVIEW" = "null" ]; then
+              if [ "$CURL_EXIT_CODE" -ne 0 ]; then
+                REVIEW="❌ Ollama review 失敗（curl exit ${CURL_EXIT_CODE}，HTTP ${HTTP_STATUS}），請檢查網路連線、OLLAMA_API_KEY 與 model 名稱 ${USED_MODEL} 是否正確。"
+              elif [ "$response_parse_failed" = true ]; then
+                REVIEW="❌ Ollama review 失敗（HTTP ${HTTP_STATUS}，回應不是合法 JSON），請檢查 Ollama API 回傳內容與 model 名稱 ${USED_MODEL} 是否正確。"
+              else
+                REVIEW="❌ Ollama review 失敗（HTTP ${HTTP_STATUS}），請檢查 OLLAMA_API_KEY 與 model 名稱 ${USED_MODEL} 是否正確。"
+              fi
+              echo "API Response: $RESPONSE_BODY"
+              review_failed=true
+            fi
+          fi
+
+          printf '### 🤖 Ollama Cloud Review (%s)\n\n' "${USED_MODEL:-無可用模型}" > /tmp/ollama_review.md
+          if [ -n "$SKIPPED" ]; then
+            printf '> ℹ️ 已略過無使用權限的模型：%s\n\n' "${SKIPPED%, }" >> /tmp/ollama_review.md
+          fi
           if [ -n "$DIFF_NOTE" ]; then
             printf '> ⚠️ %s\n\n' "$DIFF_NOTE" >> /tmp/ollama_review.md
           fi
@@ -177,6 +211,6 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/ollama_review.md
 
           if [ "$review_failed" = true ]; then
-            echo "::error::Ollama review 呼叫失敗（curl exit ${CURL_EXIT_CODE}，HTTP ${HTTP_STATUS}，model ${OLLAMA_MODEL}），workflow 判定為 failed"
+            echo "::error::Ollama review 呼叫失敗（curl exit ${CURL_EXIT_CODE}，HTTP ${HTTP_STATUS}，model ${USED_MODEL:-無}），workflow 判定為 failed"
             exit 1
           fi
