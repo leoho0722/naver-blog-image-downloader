@@ -18,6 +18,12 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       REPO: ${{ github.repository }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      # 送進模型的 patch 行數上限。超大 PR（例如整個元件下架）的 diff 動輒數萬行，
+      # 全塞進去會超出 model context 而失敗。超過上限時會先省略純刪除檔案、
+      # 再視情況截斷，並把降階結果標註在 PR 留言裡。
+      MAX_DIFF_LINES: "6000"
     steps:
       - name: Checkout PR
         uses: actions/checkout@v6
@@ -34,7 +40,56 @@ jobs:
 
       - name: Fetch PR diff and request Ollama review
         run: |
-          gh pr diff "$PR_NUMBER" --repo "$REPO" > /tmp/pr_diff.txt
+          # 用本地 clone 產生 diff，不走 `gh pr diff`。
+          # `gh pr diff` 打的是 GitHub API，超過 300 個檔案會回 HTTP 406 而整步中止，
+          # 大型重構（例如把一整個元件從 monorepo 下架）必定踩到這個上限。
+          # Checkout 步驟已帶 fetch-depth: 0，本地 git diff 沒有檔案數限制。
+          git fetch --no-tags --quiet origin "$BASE_SHA" 2>/dev/null || true
+
+          # 取不到 merge base 時（例如 base 分支被 force push）退回兩點 diff
+          RANGE="$BASE_SHA...$HEAD_SHA"
+          git merge-base "$BASE_SHA" "$HEAD_SHA" >/dev/null 2>&1 || RANGE="$BASE_SHA $HEAD_SHA"
+
+          # shellcheck disable=SC2086
+          git diff --stat $RANGE > /tmp/pr_stat.txt
+          # shellcheck disable=SC2086
+          git diff $RANGE > /tmp/pr_patch.txt
+          FULL_LINES=$(wc -l < /tmp/pr_patch.txt | tr -d ' ')
+          echo "完整 patch 行數：${FULL_LINES}（上限 ${MAX_DIFF_LINES}）"
+
+          # 超過上限時分兩段降階，盡量把額度留給值得審的內容：
+          #   1. 先排除純刪除的檔案——被刪掉的程式碼不會有 bug，佔掉額度只是浪費
+          #   2. 仍超過就直接截斷行數
+          # 無論降到哪一階，檔案總覽都完整附上，模型才知道自己沒看到什麼。
+          DIFF_NOTE=""
+          if [ "$FULL_LINES" -le "$MAX_DIFF_LINES" ]; then
+            cp /tmp/pr_patch.txt /tmp/pr_body.txt
+          else
+            # shellcheck disable=SC2086
+            git diff --diff-filter=d $RANGE > /tmp/pr_patch_nodel.txt
+            NODEL_LINES=$(wc -l < /tmp/pr_patch_nodel.txt | tr -d ' ')
+            echo "排除純刪除檔後行數：$NODEL_LINES"
+            if [ "$NODEL_LINES" -le "$MAX_DIFF_LINES" ]; then
+              cp /tmp/pr_patch_nodel.txt /tmp/pr_body.txt
+              DIFF_NOTE=$(printf 'patch 共 %s 行超過 %s 行上限，已省略純刪除檔案的內容（新增與修改的部分完整保留）。' \
+                "$FULL_LINES" "$MAX_DIFF_LINES")
+            else
+              head -n "$MAX_DIFF_LINES" /tmp/pr_patch_nodel.txt > /tmp/pr_body.txt
+              DIFF_NOTE=$(printf 'patch 共 %s 行超過 %s 行上限，已省略純刪除檔案並截斷至前 %s 行。' \
+                "$FULL_LINES" "$MAX_DIFF_LINES" "$MAX_DIFF_LINES")
+            fi
+          fi
+
+          {
+            printf '## 變更檔案總覽（git diff --stat，完整）\n\n'
+            cat /tmp/pr_stat.txt
+            printf '\n\n## Patch\n\n'
+            if [ -n "$DIFF_NOTE" ]; then
+              printf '[注意：%s未列出的檔案請以上方總覽判斷變更範圍。]\n\n' "$DIFF_NOTE"
+            fi
+            cat /tmp/pr_body.txt
+          } > /tmp/pr_diff.txt
+          echo "送審 patch 行數：$(wc -l < /tmp/pr_diff.txt | tr -d ' ')"
 
           cat <<'INSTRUCTIONS_EOF' > /tmp/instructions.txt
           你是本 monorepo 的資深 code reviewer。請審查下方 PR 的所有變更，涵蓋：
@@ -51,7 +106,11 @@ jobs:
           - 涉及特定檔案/行數的問題用 file:line 格式標記
           - 最後一句最終結論
 
-          PR Diff：
+          下方內容分兩段：先是完整的變更檔案總覽（git diff --stat），再是 patch 內容。
+          若 patch 結尾標示被截斷，代表這是超大 PR、只附上前段；此時請以檔案總覽判斷整體
+          變更範圍，並在總評中說明你只看到部分 patch，不要對未列出的檔案下結論。
+
+          PR 變更內容：
           INSTRUCTIONS_EOF
 
           jq -n \
@@ -100,20 +159,24 @@ jobs:
           fi
           if [ -z "$REVIEW" ] || [ "$REVIEW" = "null" ]; then
             if [ "$CURL_EXIT_CODE" -ne 0 ]; then
-              REVIEW="❌ Ollama review 失敗（curl exit $CURL_EXIT_CODE，HTTP $HTTP_STATUS），請檢查網路連線、OLLAMA_API_KEY 與 model 名稱 $OLLAMA_MODEL 是否正確。"
+              REVIEW="❌ Ollama review 失敗（curl exit ${CURL_EXIT_CODE}，HTTP ${HTTP_STATUS}），請檢查網路連線、OLLAMA_API_KEY 與 model 名稱 $OLLAMA_MODEL 是否正確。"
             elif [ "$response_parse_failed" = true ]; then
-              REVIEW="❌ Ollama review 失敗（HTTP $HTTP_STATUS，回應不是合法 JSON），請檢查 Ollama API 回傳內容與 model 名稱 $OLLAMA_MODEL 是否正確。"
+              REVIEW="❌ Ollama review 失敗（HTTP ${HTTP_STATUS}，回應不是合法 JSON），請檢查 Ollama API 回傳內容與 model 名稱 $OLLAMA_MODEL 是否正確。"
             else
-              REVIEW="❌ Ollama review 失敗（HTTP $HTTP_STATUS），請檢查 OLLAMA_API_KEY 與 model 名稱 $OLLAMA_MODEL 是否正確。"
+              REVIEW="❌ Ollama review 失敗（HTTP ${HTTP_STATUS}），請檢查 OLLAMA_API_KEY 與 model 名稱 $OLLAMA_MODEL 是否正確。"
             fi
             echo "API Response: $RESPONSE_BODY"
             review_failed=true
           fi
 
-          printf '### 🤖 Ollama Cloud Review (%s)\n\n%s\n' "$OLLAMA_MODEL" "$REVIEW" > /tmp/ollama_review.md
+          printf '### 🤖 Ollama Cloud Review (%s)\n\n' "$OLLAMA_MODEL" > /tmp/ollama_review.md
+          if [ -n "$DIFF_NOTE" ]; then
+            printf '> ⚠️ %s\n\n' "$DIFF_NOTE" >> /tmp/ollama_review.md
+          fi
+          printf '%s\n' "$REVIEW" >> /tmp/ollama_review.md
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/ollama_review.md
 
           if [ "$review_failed" = true ]; then
-            echo "::error::Ollama review 呼叫失敗（curl exit $CURL_EXIT_CODE，HTTP $HTTP_STATUS，model $OLLAMA_MODEL），workflow 判定為 failed"
+            echo "::error::Ollama review 呼叫失敗（curl exit ${CURL_EXIT_CODE}，HTTP ${HTTP_STATUS}，model ${OLLAMA_MODEL}），workflow 判定為 failed"
             exit 1
           fi
