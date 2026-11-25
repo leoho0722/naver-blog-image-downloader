@@ -22,3 +22,11 @@ node_modules/
 
 # Spectra 向量索引 cache
 .spectra/
+
+# archify 產生的架構圖輸出：中間檔（瀏覽器檢查報告、重複副本、打包檔）只留在本機，
+# 其中含本機絕對路徑；只把最終架構圖放進版控
+.archify/*
+!.archify/architecture-naver-system-20261024-120117/
+.archify/architecture-naver-system-20261024-120117/*
+!.archify/architecture-naver-system-20261024-120117/naver-system.html
+!.archify/architecture-naver-system-20261024-120117/naver-delivery.html
