@@ -252,11 +252,11 @@ S3 路徑格式：`whatsnew/<version>/whats_new_<locale>.json`
   4. 更新 AWS Lambda 函數程式碼與設定（memory=2048MB、timeout=120s）
   5. 更新 IAM Policy（S3 jobs/whatsNew/packages 權限 + Lambda 自我呼叫權限）
   6. 取得自上次 tag 以來的 commit 記錄
-  7. 透過 Ollama Cloud API（gemma4:31b-cloud）生成正體中文 Release Notes（fallback: 原始 commit log）
+  7. 在 macOS runner 以 LKAIKit 的 `lkai`（供應商與模型設定於 `.github/lkai.json`）生成正體中文 Release Notes（fallback: 原始 commit log）
   8. 建立 git tag `backend-v<semver>` 並 push
   9. 發布 GitHub Release（title = `Backend v<semver>`）
 
-**GitHub Secrets**（需手動設定於 monorepo）：`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION`、`AWS_ECR_REPOSITORY_URI`、`AWS_LAMBDA_FUNCTION_NAME`、`S3_BUCKET_NAME`、`OLLAMA_API_KEY`
+**GitHub Secrets**（需手動設定於 monorepo）：`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION`、`AWS_ECR_REPOSITORY_URI`、`AWS_LAMBDA_FUNCTION_NAME`、`S3_BUCKET_NAME`、`LKAI_ANTHROPIC_API_KEY`
 
 **發版流程**：修改 `apps/backend/pyproject.toml` 的 `project.version` → 經 PR merge 到 main → Backend CI 綠 → Backend CD 自動觸發並建立 `backend-v<version>` release。
 

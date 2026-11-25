@@ -79,7 +79,7 @@ pnpm dev      # 開發伺服器 http://localhost:5173
 
 ## CI/CD（GitHub Actions）
 
-各元件皆有獨立的 CI/CD workflow，CI 成功後自動觸發 CD。Release Notes 統一透過 Ollama Cloud API（`gemma4:31b-cloud`）生成正體中文內容，AI 失敗時 fallback 至原始 commit log。
+各元件皆有獨立的 CI/CD workflow，CI 成功後自動觸發 CD。Release Notes 與 PR 審查統一透過 [LKAIKit](https://github.com/leoho0722/LKAIKit) 的 `lkai` CLI 呼叫 AI（供應商與模型設定於 `.github/lkai.json`，目前為 Anthropic `claude-sonnet-5-5`；`lkai` 只能在 macOS runner 執行），生成正體中文內容，Release Notes 在 AI 失敗時 fallback 至原始 commit log。
 
 | Workflow | 觸發條件 | 說明 |
 |----------|----------|------|
@@ -87,6 +87,7 @@ pnpm dev      # 開發伺服器 http://localhost:5173
 | Backend CD | Backend CI 成功 | Docker build → ECR push → Lambda 更新 → git tag + Release |
 | Web CI | `apps/web/**` 變動 | TypeScript 檢查 + Vitest 測試 + Vite build + Prettier 格式檢查 |
 | Web CD | Web CI 成功 | 建立 git tag + GitHub Release（僅版號管理，不部署） |
+| PR AI Review | PR 開啟／更新 | 以 LKAIKit 審查 PR diff，並將正體中文審查意見留言至 PR |
 | Deploy Pages | `apps/web/**` 變動 | Build web app（含 landing 頁與 SPA） → 產出 `apps/web/dist/` → 複製為 Pages artifact（附 404.html SPA fallback）→ 部署至 GitHub Pages |
 
 ## 開發規範與共用準則

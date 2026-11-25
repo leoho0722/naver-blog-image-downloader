@@ -1,0 +1,57 @@
+# Setup lkai：建置 LKAIKit 的 lkai 命令列工具並加進 PATH，同時讀出 .github/lkai.json 的供應商與模型。
+#
+# - lkai 只能在 macOS runner 執行（LKAIKit 依賴 Linux 沒有的 URLSession.bytes(for:)），
+#   呼叫端的 job 要用 macOS runner（目前用 xcode-27，需要 macOS 26 以上、Swift 6.2 以上）。
+# - LKAIKit 以完整的 commit SHA 固定版本：tag 可以被改指向其他 commit，SHA 不行。
+#   要升級 LKAIKit 時，把下面 uses 的 SHA 與後面註解的版號一起換成新 tag 指向的 commit。
+# - 要換供應商或模型時只改 .github/lkai.json；API 金鑰由呼叫端以環境變數交給 lkai
+#   （anthropic：LKAI_ANTHROPIC_API_KEY、openai：LKAI_OPENAI_API_KEY、google：LKAI_GEMINI_API_KEY）。
+name: Setup lkai
+description: 建置 LKAIKit 的 lkai 並加進 PATH，輸出 .github/lkai.json 設定的供應商與模型
+
+outputs:
+  provider:
+    description: lkai --provider 要用的供應商（anthropic、openai 或 google）
+    value: ${{ steps.config.outputs.provider }}
+  model:
+    description: lkai --model 要用的模型識別碼
+    value: ${{ steps.config.outputs.model }}
+  version:
+    description: 建置出的 lkai 版號
+    value: ${{ steps.lkai.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    # 先讀設定再建置：設定有問題時不必等建置（約 1 分鐘）就能失敗
+    - name: 讀取 lkai 設定
+      id: config
+      shell: bash
+      run: |
+        CONFIG="$GITHUB_WORKSPACE/.github/lkai.json"
+        if [ ! -f "$CONFIG" ]; then
+          echo "::error::找不到 lkai 設定檔：${CONFIG}"
+          exit 1
+        fi
+
+        PROVIDER=$(jq -r '.provider // empty' "$CONFIG")
+        MODEL=$(jq -r '.model // empty' "$CONFIG")
+        case "$PROVIDER" in
+          anthropic | openai | google) ;;
+          *)
+            echo "::error::.github/lkai.json 的 provider 只能是 anthropic、openai 或 google，目前是「${PROVIDER}」"
+            exit 1
+            ;;
+        esac
+        if [ -z "$MODEL" ]; then
+          echo "::error::.github/lkai.json 沒有設定 model"
+          exit 1
+        fi
+
+        echo "provider=$PROVIDER" >> "$GITHUB_OUTPUT"
+        echo "model=$MODEL" >> "$GITHUB_OUTPUT"
+        echo "使用的供應商：${PROVIDER}，模型：${MODEL}"
+
+    - name: 建置 lkai
+      id: lkai
+      uses: leoho0722/LKAIKit@037f9238385904d001d1e15d86d93d44baf024a8 # 0.1.1
