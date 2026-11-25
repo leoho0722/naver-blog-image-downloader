@@ -188,10 +188,10 @@ S3 路徑格式：`whatsnew/<version>/whats_new_<locale>.json`
   2. 更新 AWS Lambda 函數程式碼與設定
   3. 更新 IAM Policy（S3 + Lambda 自我呼叫權限）
   4. 建立 git tag（`vYYMMDD.RUN_NUMBER`）
-  5. 透過 Ollama Cloud API 生成正體中文 Release Notes
+  5. 在 macOS runner 以 LKAIKit 的 `lkai`（供應商與模型設定於 `.github/lkai.json`）生成正體中文 Release Notes
   6. 發布 GitHub Release
 
-**GitHub Secrets**（需手動設定）：`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION`、`AWS_ECR_REPOSITORY_URI`、`AWS_LAMBDA_FUNCTION_NAME`、`S3_BUCKET_NAME`、`OLLAMA_API_KEY`
+**GitHub Secrets**（需手動設定）：`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_REGION`、`AWS_ECR_REPOSITORY_URI`、`AWS_LAMBDA_FUNCTION_NAME`、`S3_BUCKET_NAME`、`LKAI_ANTHROPIC_API_KEY`
 
 ## Lambda 函數設定建議
 

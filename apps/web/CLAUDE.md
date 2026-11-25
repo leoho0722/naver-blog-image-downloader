@@ -70,7 +70,7 @@ pnpm format:check # 檢查格式是否正確（CI 用）
   1. 從 `apps/web/package.json` 讀取 `version`，組成 `web-v<semver>` tag
   2. 若該 tag 已存在即跳過（版號未更新）
   3. 取得自上次 tag 以來的 commit 記錄
-  4. 透過 Ollama Cloud API（gemma4:31b-cloud）生成正體中文 Release Notes（fallback: 原始 commit log）
+  4. 在 macOS runner 以 LKAIKit 的 `lkai`（供應商與模型設定於 `.github/lkai.json`）生成正體中文 Release Notes（fallback: 原始 commit log）
   5. 建立 git tag `web-v<semver>` 並 push
   6. 發布 GitHub Release（title = `Web v<semver>`）
 - **Deploy Pages**（`.github/workflows/deploy-pages.yml`）：當 `apps/web/**` 有變動時觸發，負責 build + 部署：
@@ -78,7 +78,7 @@ pnpm format:check # 檢查格式是否正確（CI 用）
   2. `apps/web/dist/` 整個複製為 `pages-artifact/`，並把 `index.html` 複製為 `404.html` 作為 SPA routing fallback（舊 URL 的 redirect 也靠這條路徑生效）
   3. 上傳 `pages-artifact/` 並部署至 GitHub Pages（build artifacts 不進 git）
 
-**GitHub Secrets**（需手動設定於 monorepo）：`VITE_API_BASE_URL`、`VITE_API_STAGE`、`OLLAMA_API_KEY`
+**GitHub Secrets**（需手動設定於 monorepo）：`VITE_API_BASE_URL`、`VITE_API_STAGE`、`LKAI_ANTHROPIC_API_KEY`
 
 **發版流程**：修改 `apps/web/package.json` 的 `version` → 經 PR merge 到 main → Web CI 綠 → Web CD 建立 tag + release；同時 Deploy Pages 自動 build + 部署。
 

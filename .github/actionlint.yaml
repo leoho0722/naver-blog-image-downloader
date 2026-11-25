@@ -1,0 +1,7 @@
+# actionlint 的設定。
+#
+# xcode-27 是 GitHub-hosted 的 macOS runner 標籤（lkai 需要它），actionlint 1.7.12 內建的清單還沒有收錄，
+# 直接執行會誤報為不認得的標籤；在這裡宣告後就不會再報。actionlint 收錄 xcode-27 之後，可以拿掉這個設定。
+self-hosted-runner:
+  labels:
+    - xcode-27

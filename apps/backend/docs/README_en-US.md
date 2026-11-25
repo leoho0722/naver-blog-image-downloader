@@ -188,10 +188,10 @@ Response (HTTP 200):
   2. Update AWS Lambda function code and configuration
   3. Update IAM Policy (S3 + Lambda self-invoke permissions)
   4. Create git tag (`vYYMMDD.RUN_NUMBER`)
-  5. Generate release notes via Ollama Cloud API
+  5. Generate release notes with LKAIKit's `lkai` CLI on a macOS runner (provider and model configured in `.github/lkai.json`)
   6. Publish GitHub Release
 
-**GitHub Secrets** (manual setup required): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_ECR_REPOSITORY_URI`, `AWS_LAMBDA_FUNCTION_NAME`, `S3_BUCKET_NAME`, `OLLAMA_API_KEY`
+**GitHub Secrets** (manual setup required): `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_ECR_REPOSITORY_URI`, `AWS_LAMBDA_FUNCTION_NAME`, `S3_BUCKET_NAME`, `LKAI_ANTHROPIC_API_KEY`
 
 ## Lambda Function Configuration
 

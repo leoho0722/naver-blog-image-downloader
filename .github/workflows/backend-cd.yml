@@ -20,6 +20,9 @@ jobs:
     name: Build & Deploy to AWS Lambda
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.image_tag.outputs.tag }}
+      version: ${{ steps.image_tag.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -223,29 +226,44 @@ jobs:
             --output table \
             --query 'Configuration.{FunctionName: FunctionName, PackageType: PackageType, CodeSize: CodeSize, LastModified: LastModified, State: State, LastUpdateStatus: LastUpdateStatus}'
 
+  # Release Notes 由 LKAIKit 的 lkai 撰寫，而 lkai 只能在 macOS runner 執行，所以和部署分成兩個 job。
+  # 兩個 job 的 checkout 都不指定 ref，取的是這次 run 的 github.sha，tag 會建在已部署的那個 commit 上。
+  release:
+    name: Release Notes & GitHub Release
+    needs: deploy
+    runs-on: xcode-27
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
       - name: Get commits since last backend tag
-        id: changelog
+        env:
+          TAG: ${{ needs.deploy.outputs.tag }}
         run: |
-          TAG="${{ steps.image_tag.outputs.tag }}"
+          git fetch --tags --force
           PREVIOUS_TAG=$(git tag --list "backend-v*" --sort=-version:refname | grep -v "^${TAG}$" | head -n 1 || echo "")
           if [ -z "$PREVIOUS_TAG" ]; then
             COMMITS=$(git log --pretty=format:"- %s (%h)" -- apps/backend)
           else
             COMMITS=$(git log --pretty=format:"- %s (%h)" "${PREVIOUS_TAG}..HEAD" -- apps/backend)
           fi
-          echo "$COMMITS" > /tmp/commits.txt
+          echo "$COMMITS" > "$RUNNER_TEMP/commits.txt"
 
       - name: Generate release notes
         uses: ./.github/actions/generate-release-notes
         with:
-          tag: ${{ steps.image_tag.outputs.tag }}
-          commits_file: /tmp/commits.txt
-          output_file: /tmp/release_notes.md
-          ollama_api_key: ${{ secrets.OLLAMA_API_KEY }}
+          tag: ${{ needs.deploy.outputs.tag }}
+          commits_file: ${{ runner.temp }}/commits.txt
+          output_file: ${{ runner.temp }}/release_notes.md
+          anthropic_api_key: ${{ secrets.LKAI_ANTHROPIC_API_KEY }}
+          openai_api_key: ${{ secrets.LKAI_OPENAI_API_KEY }}
+          gemini_api_key: ${{ secrets.LKAI_GEMINI_API_KEY }}
 
       - name: Create release
         uses: ./.github/actions/create-release
         with:
-          tag: ${{ steps.image_tag.outputs.tag }}
-          title: "Backend v${{ steps.image_tag.outputs.version }}"
-          notes_file: /tmp/release_notes.md
+          tag: ${{ needs.deploy.outputs.tag }}
+          title: "Backend v${{ needs.deploy.outputs.version }}"
+          notes_file: ${{ runner.temp }}/release_notes.md
