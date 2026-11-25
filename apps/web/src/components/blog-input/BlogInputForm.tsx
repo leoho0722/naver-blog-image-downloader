@@ -1,4 +1,10 @@
-import { useCallback, useState, type DragEvent, type FormEvent } from "react";
+import {
+  useCallback,
+  useId,
+  useState,
+  type DragEvent,
+  type FormEvent,
+} from "react";
 import { useTranslation } from "react-i18next";
 
 import { isValid } from "../../lib/services/url-validator";
@@ -10,6 +16,8 @@ export default function BlogInputForm() {
     useBlogInputStore();
   const [isDragOver, setIsDragOver] = useState(false);
   const isLoading = fetchPhase === "submitting" || fetchPhase === "processing";
+  const inputId = useId();
+  const errorId = useId();
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -59,9 +67,15 @@ export default function BlogInputForm() {
   const errorMessage = error
     ? (error.message ?? t(ERROR_KEYS[error.type] ?? "errorGeneric"))
     : null;
+  // 只有「沒填」與「格式不對」是輸入框本身的問題；網路或伺服器錯誤不標成輸入錯誤
+  const isInputInvalid =
+    error?.type === "emptyUrl" || error?.type === "invalidUrl";
 
   return (
     <form
+      // 關掉瀏覽器內建的網址格式檢查：不然輸入少了 https:// 的網址時，
+      // 會先跳出瀏覽器自己的提示泡泡，而不是 App 的多語系錯誤訊息
+      noValidate
       onSubmit={handleSubmit}
       onDrop={handleDrop}
       onDragOver={handleDragOver}
@@ -76,20 +90,34 @@ export default function BlogInputForm() {
         }`}
         style={{ boxShadow: "var(--shadow-elevated)" }}
       >
+        {/* 視覺上隱藏、但螢幕報讀器會唸的欄位名稱；placeholder 只是格式提示，打字後就消失了 */}
+        <label htmlFor={inputId} className="sr-only">
+          {t("blogInputUrlLabel")}
+        </label>
         <input
+          id={inputId}
+          name="blogUrl"
           type="url"
+          required
           value={blogUrl}
           onChange={(e) => setUrl(e.target.value)}
           placeholder={t("blogInputUrlHint")}
           disabled={isLoading}
-          className="min-w-0 flex-1 bg-transparent px-[18px] py-[13px] text-[15px] outline-none placeholder:text-[var(--color-outline)]"
+          // 網址不是一般文字：關掉自動大寫、自動校正與拼字檢查；手機鍵盤的 Enter 顯示「前往」
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="go"
+          aria-invalid={isInputInvalid || undefined}
+          aria-describedby={errorMessage ? errorId : undefined}
+          // 字級至少 16px，iOS Safari 聚焦輸入框時才不會自動放大整個畫面
+          className="min-w-0 flex-1 bg-transparent px-[18px] py-[13px] text-base outline-none placeholder:text-[var(--color-outline)]"
         />
         <button
           type="button"
           onClick={handlePaste}
           disabled={isLoading}
           className="shrink-0 rounded-full px-3 text-[13.5px] font-semibold text-[var(--color-primary)] transition-all duration-200 hover:bg-[var(--color-primary-container)]/60 disabled:opacity-40"
-          aria-label={t("blogInputPaste")}
         >
           {t("blogInputPaste")}
         </button>
@@ -107,7 +135,12 @@ export default function BlogInputForm() {
         </button>
       </div>
       {errorMessage && (
-        <p className="animate-fade-in mt-4 text-center text-[13.5px] text-[var(--color-error)]">
+        // role="alert"：錯誤一出現就主動唸給螢幕報讀器使用者聽；輸入框也透過 aria-describedby 連到這段文字
+        <p
+          id={errorId}
+          role="alert"
+          className="animate-fade-in mt-4 text-center text-[13.5px] text-[var(--color-error)]"
+        >
           {errorMessage}
         </p>
       )}

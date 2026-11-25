@@ -2,6 +2,23 @@
 <html lang="zh-TW">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      宣告頁面支援亮色與暗色兩種配色；內容 "light dark" 代表「跟著系統設定走」。
+      使用者在 App 裡手動選了亮色或暗色時，會把這裡改成 "light" 或 "dark"。
+    -->
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // 在畫面第一次畫出來之前，先套用使用者上次選的主題，避免重新整理時先閃一下錯的顏色。
+      // 只認得 "light" 與 "dark" 兩個值，其他內容一律當作「跟著系統」；
+      // 瀏覽器封鎖網站資料時讀取會丟錯，這時安靜略過、維持跟著系統。
+      try {
+        var storedTheme = localStorage.getItem("theme");
+        if (storedTheme === "light" || storedTheme === "dark") {
+          document.querySelector('meta[name="color-scheme"]').content =
+            storedTheme;
+        }
+      } catch (error) {}
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <!-- iOS 加到主畫面的圖示：iOS 不吃 SVG，必須提供 PNG -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -13,6 +30,22 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="theme-color" content="#7f9c70" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!--
+      字型：先跟字型伺服器建立連線，再直接從 HTML 載入字型樣式表，
+      讓瀏覽器一解析到這裡就同時開始下載（不必等 App 的 CSS 下載完才發現）。
+      crossorigin 用於字型檔本身（字型一律以 CORS 模式下載）。
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
     <title>Naver Blog 照片下載器</title>
   </head>
   <body>

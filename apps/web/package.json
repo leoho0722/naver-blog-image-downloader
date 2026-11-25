@@ -1,7 +1,7 @@
 {
   "name": "web",
   "private": true,
-  "version": "1.5.1",
+  "version": "1.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -27,6 +27,7 @@
     "vitest": "^4.1.4"
   },
   "dependencies": {
+    "@oddbird/popover-polyfill": "^0.7.3",
     "@tailwindcss/vite": "^4.2.2",
     "i18next": "^26.0.4",
     "lucide-react": "^1.8.0",

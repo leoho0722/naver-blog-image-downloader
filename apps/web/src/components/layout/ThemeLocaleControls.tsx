@@ -1,18 +1,21 @@
 import { useTranslation } from "react-i18next";
 
 import {
-  getNextTheme,
+  getQuickToggleTheme,
   LOCALES,
   LOCALE_LABELS,
+  QUICK_TOGGLE_LABEL_KEYS,
   THEME_ICONS,
-  THEME_LABEL_KEYS,
 } from "../../lib/config/ui-controls";
+import { useColorScheme } from "../../lib/hooks/use-color-scheme";
 import { useSettingsStore } from "../../lib/stores/use-settings-store";
 
 export default function ThemeLocaleControls() {
   const { t } = useTranslation();
-  const { theme, locale, updateTheme, updateLocale } = useSettingsStore();
-  const currentThemeLabel = t(THEME_LABEL_KEYS[theme]);
+  const { locale, updateTheme, updateLocale } = useSettingsStore();
+  const { resolvedScheme, systemScheme } = useColorScheme();
+  // 兩段式主題鈕：名稱描述按下去的動作，圖示顯示目前畫面的配色
+  const quickToggleLabel = t(QUICK_TOGGLE_LABEL_KEYS[resolvedScheme]);
 
   return (
     <>
@@ -39,12 +42,14 @@ export default function ThemeLocaleControls() {
 
       <button
         type="button"
-        onClick={() => updateTheme(getNextTheme(theme))}
+        onClick={() =>
+          updateTheme(getQuickToggleTheme(resolvedScheme, systemScheme))
+        }
         className="flex h-8 w-8 items-center justify-center rounded-full text-base transition-all duration-200 text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-container)] hover:text-[var(--color-on-surface)]"
-        aria-label={t("settingsThemeToggle", { theme: currentThemeLabel })}
-        title={currentThemeLabel}
+        aria-label={quickToggleLabel}
+        title={quickToggleLabel}
       >
-        {THEME_ICONS[theme]}
+        {THEME_ICONS[resolvedScheme]}
       </button>
     </>
   );

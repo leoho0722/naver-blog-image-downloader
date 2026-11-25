@@ -52,10 +52,12 @@ export default function PhotoGrid({ onViewPhoto }: PhotoGridProps) {
         isSelectMode ? "select-mode" : ""
       }`}
     >
-      {photos.map((photo) => (
+      {photos.map((photo, index) => (
         <PhotoCard
           key={photo.id}
           photo={photo}
+          index={index}
+          isSelectMode={isSelectMode}
           isSelected={selectedIds.has(photo.id)}
           onToggleSelection={stableToggle}
           onView={handleView}
