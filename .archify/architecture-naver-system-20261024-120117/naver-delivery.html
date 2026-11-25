@@ -5687,7 +5687,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>共用發版工具與開發規格</h3>
         </div>
         <ul>
-          <li>generate-release-notes 共用 action 將 commit log 交給 Ollama Cloud 產生正體中文發版說明，失敗時回退原始 commit log；create-release 建立 tag 並發布 GitHub Release。</li>
+          <li>generate-release-notes 共用 action 在 macOS runner 以 LKAIKit 的 lkai 將 commit log 交給 AI（模型設定於 .github/lkai.json）產生正體中文發版說明，失敗時回退原始 commit log；create-release 建立 tag 並發布 GitHub Release。</li>
           <li>Web 與 Backend 各自管理 semver 與 tag；Web 版號未更新則略過發版，Backend 版號未更新則部署失敗。</li>
           <li>openspec/specs/ 與 openspec/changes/ 存放開發規格與變更提案；不參與下載器的線上執行。執行架構另見 naver-system.html。</li>
         </ul>
