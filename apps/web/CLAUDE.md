@@ -7,7 +7,7 @@
 - **框架**：Vite + React 19 + TypeScript
 - **路由**：React Router v7（`createBrowserRouter`，手動定義）
 - **狀態管理**：Zustand（store + actions 模式）
-- **樣式**：Tailwind CSS 4 + CSS custom properties（M3 色彩系統）
+- **樣式**：Tailwind CSS 4 + CSS custom properties（M3 色彩系統，`light-dark()` 定義亮暗兩組色值，主題由 `<meta name="color-scheme">` 控制）
 - **i18n**：react-i18next（4 語系：zh-TW / en / ja / ko）
 - **測試**：Vitest + React Testing Library + MSW
 - **格式化**：Prettier
@@ -26,7 +26,8 @@ src/
 │   ├── api/                — API client + 型別定義
 │   ├── stores/             — Zustand stores
 │   ├── services/           — 純函式服務（url-validator、blog-id）
-│   ├── hooks/              — React hooks（use-polling、use-clipboard）
+│   ├── hooks/              — React hooks（use-polling、use-clipboard、use-page-meta、use-modal-dialog、use-color-scheme）
+│   ├── polyfills/          — 依功能偵測按需載入的 polyfill（popover）
 │   ├── i18n/               — react-i18next 設定 + 四語系 JSON（含 intro.*、notFound.*、privacy.* namespace）
 │   └── config/             — 環境設定（API URL、隱私政策、footer 連結）
 └── __tests__/              — 單元測試（鏡射 src/ 結構）
@@ -88,3 +89,5 @@ pnpm format:check # 檢查格式是否正確（CI 用）
 2. **API 整合**：所有 API 呼叫透過 `lib/api/client.ts` 的 `apiPost()` 封裝，內建 timeout、retry、雙層 JSON 解析。
 3. **CORS 注意**：Naver 圖片 URL 僅可用 `<img>` 顯示，不可用 `fetch()` 下載。圖片下載一律透過後端打包服務（`action: "package"`）。
 4. **測試檔案**：放在 `src/__tests__/` 下，鏡射 `src/` 目錄結構，命名 `{module}.test.ts` / `{Component}.test.tsx`。
+5. **浮層**：阻擋式對話框一律用原生 `<dialog>` + `useModalDialog()`（`showModal()` 開啟、關閉按鈕呼叫回傳的 `close()`），不要再用 `createPortal` + `role="dialog"` 手刻焦點與 Esc；非阻擋式下拉面板用原生 `popover`。
+6. **主題**：不要在 `<html>` 加 `.dark` class；需要分亮暗的非色彩樣式用 Tailwind `dark:` 變體（已改為以 `--color-scheme` style query 判斷）。

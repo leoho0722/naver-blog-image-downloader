@@ -2,10 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) =>
-      key === "settingsThemeToggle" ? `${key}:${String(options?.theme)}` : key,
-  }),
+  useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 vi.mock("react-router-dom", () => ({
@@ -56,14 +53,15 @@ describe("AppLayout", () => {
     expect(brand, "brand link 必須指向 /app").toBeDefined();
   });
 
-  it("theme toggle 使用 i18n label 與翻譯後 title", async () => {
+  // spectra-scenario: web-settings / Accessible name describes the action
+  it("主題鈕的名稱描述按下去的動作（系統為亮色時：切換為暗色）", async () => {
     const { default: AppLayout } =
       await import("../../../components/layout/AppLayout");
     render(<AppLayout />);
 
     const themeButton = screen.getByRole("button", {
-      name: "settingsThemeToggle:settingsThemeSystem",
+      name: "settingsSwitchToDark",
     });
-    expect(themeButton).toHaveAttribute("title", "settingsThemeSystem");
+    expect(themeButton).toHaveAttribute("title", "settingsSwitchToDark");
   });
 });

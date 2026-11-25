@@ -8,16 +8,16 @@ import {
 } from "lucide-react";
 import {
   useCallback,
-  useEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent,
 } from "react";
-import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import type { PhotoEntity } from "../../lib/api/types";
+import { useModalDialog } from "../../lib/hooks/use-modal-dialog";
 
 interface ImageViewerProps {
   photos: PhotoEntity[];
@@ -30,6 +30,12 @@ const MIN_SCALE = 1;
 const MAX_SCALE = 5;
 const ZOOM_STEP = 0.5;
 
+/**
+ * 全螢幕圖片檢視器。
+ *
+ * 以原生 <dialog> 強制回應模式打開：背後的相簿不能點、Tab 只在檢視器內循環，
+ * Esc 或手機返回手勢可關閉，關閉後焦點回到原本點開的那張照片。
+ */
 export default function ImageViewer({
   photos,
   initialIndex,
@@ -37,6 +43,7 @@ export default function ImageViewer({
   onDownload,
 }: ImageViewerProps) {
   const { t } = useTranslation();
+  const { dialogRef, close } = useModalDialog({ onClose });
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
@@ -46,7 +53,6 @@ export default function ImageViewer({
     startTx: number;
     startTy: number;
   } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const photo = photos[currentIndex];
 
@@ -79,30 +85,25 @@ export default function ImageViewer({
     setScale((prev) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, prev + delta)));
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case "Escape":
-          onClose();
-          break;
-        case "ArrowLeft":
-          goTo(-1);
-          break;
-        case "ArrowRight":
-          goTo(1);
-          break;
-        case "+":
-        case "=":
-          zoom(ZOOM_STEP);
-          break;
-        case "-":
-          zoom(-ZOOM_STEP);
-          break;
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, goTo, zoom]);
+  // 鍵盤操作掛在對話框上：焦點一定在檢視器內，按鍵事件會一路冒泡到這裡，
+  // 不論焦點停在哪顆按鈕都能用方向鍵與 +／- 操作。Esc 交給瀏覽器原生的關閉流程。
+  const handleKeyDown = (e: ReactKeyboardEvent<HTMLDialogElement>) => {
+    switch (e.key) {
+      case "ArrowLeft":
+        goTo(-1);
+        break;
+      case "ArrowRight":
+        goTo(1);
+        break;
+      case "+":
+      case "=":
+        zoom(ZOOM_STEP);
+        break;
+      case "-":
+        zoom(-ZOOM_STEP);
+        break;
+    }
+  };
 
   const handleWheel = (e: WheelEvent) => {
     e.preventDefault();
@@ -162,14 +163,15 @@ export default function ImageViewer({
   const roundBtn =
     "flex items-center justify-center rounded-full bg-white/[0.12] text-[#f3ede4] transition-colors duration-200 hover:bg-white/20 disabled:opacity-30 disabled:hover:bg-white/[0.12]";
 
-  return createPortal(
-    <div
-      ref={containerRef}
-      className="animate-fade-in fixed inset-0 z-50 flex flex-col text-[#f3ede4]"
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-label={t("viewerLabel")}
+      onKeyDown={handleKeyDown}
+      // 鋪滿整個畫面：重設瀏覽器給 <dialog> 的預設寬高上限、外框與內距；
+      // 只在打開時才設成 flex，關閉狀態保留瀏覽器原本的隱藏行為
+      className="animate-fade-in fixed inset-0 m-0 h-full max-h-none w-full max-w-none flex-col overflow-hidden border-0 p-0 text-[#f3ede4] backdrop:bg-transparent open:flex"
       style={{ background: "rgba(26, 21, 15, 0.96)" }}
-      role="dialog"
-      aria-modal="true"
-      aria-label="圖片檢視器"
     >
       {/* 頂部列：檔名 · 尺寸 + 關閉 */}
       <div className="flex items-center gap-3 px-5 py-4">
@@ -179,7 +181,7 @@ export default function ImageViewer({
         </span>
         <button
           type="button"
-          onClick={onClose}
+          onClick={close}
           className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.12] px-[18px] py-[9px] text-[13px] font-semibold text-[#f3ede4] transition-colors hover:bg-white/20"
         >
           <X size={13} strokeWidth={2.5} />
@@ -197,12 +199,19 @@ export default function ImageViewer({
         onPointerUp={handlePointerUp}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        style={{ cursor: scale > 1 ? "grab" : "default", touchAction: "none" }}
+        style={{
+          cursor: scale > 1 ? "grab" : "default",
+          // 未放大時只保留瀏覽器的垂直手勢，左右滑動交給上面的切換照片處理；
+          // 放大後要拖曳移動圖片，才完全接手所有觸控手勢
+          touchAction: scale > 1 ? "none" : "pan-y",
+        }}
       >
         <img
           src={photo.url}
           alt={photo.filename}
           referrerPolicy="no-referrer"
+          // 檢視器裡最重要的就是這張大圖，請瀏覽器優先下載
+          fetchPriority="high"
           className="max-h-full max-w-full rounded-xl object-contain"
           style={{
             transform: `scale(${scale}) translate(${translate.x / scale}px, ${translate.y / scale}px)`,
@@ -238,7 +247,7 @@ export default function ImageViewer({
             type="button"
             onClick={() => zoom(-ZOOM_STEP)}
             className={`h-[34px] w-[34px] ${roundBtn}`}
-            aria-label="縮小"
+            aria-label={t("viewerZoomOut")}
           >
             <Minus size={14} />
           </button>
@@ -249,7 +258,7 @@ export default function ImageViewer({
             type="button"
             onClick={() => zoom(ZOOM_STEP)}
             className={`h-[34px] w-[34px] ${roundBtn}`}
-            aria-label="放大"
+            aria-label={t("viewerZoomIn")}
           >
             <Plus size={14} />
           </button>
@@ -265,32 +274,43 @@ export default function ImageViewer({
           )}
         </div>
 
-        {/* 縮圖列 */}
+        {/* 縮圖列：每張縮圖都是按鈕，鍵盤也能跳到指定照片 */}
         <div className="flex max-w-[90%] gap-1.5 overflow-x-auto px-1 py-0.5">
-          {photos.map((thumb, i) => (
-            <img
-              key={thumb.id}
-              src={thumb.url}
-              alt=""
-              referrerPolicy="no-referrer"
-              onClick={() => jumpTo(i)}
-              className="h-12 w-12 shrink-0 cursor-pointer rounded-lg object-cover transition-opacity duration-200"
-              style={{
-                opacity: i === currentIndex ? 1 : 0.45,
-                boxShadow:
-                  i === currentIndex
-                    ? "0 0 0 2px var(--color-primary)"
-                    : "none",
-              }}
-            />
-          ))}
+          {photos.map((thumb, i) => {
+            const isCurrent = i === currentIndex;
+            return (
+              <button
+                key={thumb.id}
+                type="button"
+                onClick={() => jumpTo(i)}
+                aria-label={t("viewerThumbnail", { index: i + 1 })}
+                aria-current={isCurrent ? "true" : undefined}
+                className="shrink-0 cursor-pointer rounded-lg"
+              >
+                <img
+                  src={thumb.url}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  // 縮圖可能有上百張：只下載捲到附近的，且讓位給上面的大圖
+                  loading="lazy"
+                  fetchPriority="low"
+                  className="h-12 w-12 rounded-lg object-cover transition-opacity duration-200"
+                  style={{
+                    opacity: isCurrent ? 1 : 0.45,
+                    boxShadow: isCurrent
+                      ? "0 0 0 2px var(--color-primary)"
+                      : "none",
+                  }}
+                />
+              </button>
+            );
+          })}
         </div>
 
         <span className="text-[11.5px] text-[#f3ede4]/35">
           {t("viewerHint")}
         </span>
       </div>
-    </div>,
-    document.body,
+    </dialog>
   );
 }

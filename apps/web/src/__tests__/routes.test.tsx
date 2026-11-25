@@ -21,9 +21,6 @@ vi.mock("react-i18next", () => ({
         }
         return {};
       }
-      if (key === "settingsThemeToggle") {
-        return `${key}:${String(options?.theme)}`;
-      }
       return key;
     },
   }),

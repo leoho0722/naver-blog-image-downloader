@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import OnboardingCard from "../../../components/onboarding/OnboardingCard";
+import { pressEscapeOn } from "../../test-utils/dialog";
 
 const mockDismissOnboarding = vi.fn();
 
@@ -32,24 +33,43 @@ describe("OnboardingCard", () => {
     expect(screen.getByText("onboardingStep3")).toBeInTheDocument();
   });
 
-  it("clicking start button calls dismissOnboarding", async () => {
+  it("按「開始使用」會關閉對話框並只記錄一次看過", async () => {
     render(<OnboardingCard />);
+    const dialog = screen.getByRole("dialog");
 
     await userEvent.click(screen.getByText("onboardingStart"));
+
+    expect(dialog).not.toHaveAttribute("open");
     expect(mockDismissOnboarding).toHaveBeenCalledTimes(1);
   });
 
-  it("pressing Escape calls dismissOnboarding", () => {
+  // spectra-scenario: web-app-foundation / Escape closes through the native close request
+  it("按 Esc 透過原生關閉流程關閉，並只記錄一次看過", () => {
     render(<OnboardingCard />);
 
-    fireEvent.keyDown(window, { key: "Escape" });
+    pressEscapeOn(screen.getByRole("dialog") as HTMLDialogElement);
+
     expect(mockDismissOnboarding).toHaveBeenCalledTimes(1);
   });
 
-  it("renders with dialog role and aria-modal", () => {
+  it("以原生 <dialog> 強制回應開啟，不再手動加 role／aria-modal", () => {
     render(<OnboardingCard />);
 
     const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog.tagName).toBe("DIALOG");
+    expect(dialog).toHaveAttribute("open");
+    expect(dialog).not.toHaveAttribute("role");
+    expect(dialog).not.toHaveAttribute("aria-modal");
+  });
+
+  // spectra-scenario: web-app-foundation / Onboarding card focus and heading
+  it("打開時焦點在卡片本身，並以 h1 標題命名", () => {
+    render(<OnboardingCard />);
+
+    const dialog = screen.getByRole("dialog", { name: "onboardingTitle" });
+    expect(dialog).toHaveFocus();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "onboardingTitle" }),
+    ).toBeInTheDocument();
   });
 });

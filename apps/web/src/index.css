@@ -1,90 +1,95 @@
-/* 字型 @import 必須排在所有規則之前（含 tailwindcss import），否則會被 Lightning CSS 丟棄，導致正式環境載不到字型 */
-@import url("https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap");
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+/*
+ * 字型（Gowun Dodum、Pretendard）改由 index.html 的 <link> 載入：
+ * 在 CSS 裡 @import 會變成「先下載這支 CSS → 才知道要下載字型 CSS → 再下載字型檔」的一層等一層。
+ */
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+/*
+ * 暗色變體：與 <meta name="color-scheme"> 同步（見下方 :root 的 --color-scheme）。
+ * 日後寫 Tailwind 的 dark: 工具類時，會跟著使用者選的主題，而不是只看系統設定。
+ */
+@custom-variant dark (@container style(--color-scheme: dark));
 
 /*
  * 色彩系統：C 溫潤版（warm）
  * 以陶土橘（terracotta）為主色、暖米白為底、鼠尾草綠為輔色，
  * 讓整體視覺帶著溫潤、手作、安心的氣質。
  * 沿用 M3 token 命名，讓所有元件（bg-[var(--color-...)]）自動套用。
+ *
+ * 每個顏色都用 light-dark(亮色值, 暗色值) 寫在同一行，
+ * 瀏覽器會依目前的 color-scheme 自動挑選，不再需要 .dark class。
  */
 :root {
+  /*
+   * 預設跟著系統的亮／暗設定；使用者在 App 裡手動選了主題時，
+   * index.html 的 <meta name="color-scheme"> 會被改成 "light" 或 "dark"，這裡跟著切換。
+   * 捲軸、輸入框等瀏覽器內建元件也會一起換成對應的配色。
+   */
+  color-scheme: light dark;
+
+  /*
+   * --color-scheme 記錄「目前實際是亮色還是暗色」，
+   * 給顏色以外、需要分亮暗的樣式使用（例如背景紋理的透明度）。
+   */
+  --color-scheme: light;
+
+  @media (prefers-color-scheme: dark) {
+    --color-scheme: dark;
+  }
+
+  &:has(> head > meta[name="color-scheme"][content="dark"]) {
+    color-scheme: dark;
+    --color-scheme: dark;
+  }
+
+  &:has(> head > meta[name="color-scheme"][content="light"]) {
+    color-scheme: light;
+    --color-scheme: light;
+  }
+
   /* 主色：陶土橘 */
-  --color-primary: #c17a56;
-  --color-on-primary: #ffffff;
-  --color-primary-container: #f6e7db;
-  --color-on-primary-container: #6f3d20;
+  --color-primary: light-dark(#c17a56, #dba283);
+  --color-on-primary: light-dark(#ffffff, #33200f);
+  --color-primary-container: light-dark(#f6e7db, #463628);
+  --color-on-primary-container: light-dark(#6f3d20, #f7d9c6);
   /* 輔色：鼠尾草綠 */
-  --color-secondary: #8aa37b;
-  --color-on-secondary: #ffffff;
-  --color-secondary-container: #dfe7d5;
-  /* 表面：暖米白 → 暖白卡片 */
-  --color-surface: #f7f3ec;
-  --color-on-surface: #42392f;
-  --color-surface-variant: #efe6d6;
-  --color-on-surface-variant: #8c8172;
-  --color-surface-container: #fffdf8;
-  --color-surface-container-high: #f2ead9;
-  --color-outline: #b6a992;
-  --color-outline-variant: #e9e1d2;
+  --color-secondary: light-dark(#8aa37b, #9db08d);
+  --color-on-secondary: light-dark(#ffffff, #26301f);
+  --color-secondary-container: light-dark(#dfe7d5, #3b4632);
+  /* 表面：暖米白 → 暖白卡片（暗色時為深咖啡） */
+  --color-surface: light-dark(#f7f3ec, #221e18);
+  --color-on-surface: light-dark(#42392f, #ede6da);
+  --color-surface-variant: light-dark(#efe6d6, #332d24);
+  --color-on-surface-variant: light-dark(#8c8172, #a19684);
+  --color-surface-container: light-dark(#fffdf8, #2b261f);
+  --color-surface-container-high: light-dark(#f2ead9, #373026);
+  --color-outline: light-dark(#b6a992, #6f6656);
+  --color-outline-variant: light-dark(#e9e1d2, #3c352a);
   /* 錯誤：暖磚紅 */
-  --color-error: #bf5f4d;
-  --color-on-error: #ffffff;
-  --color-error-container: #f7ddd6;
+  --color-error: light-dark(#bf5f4d, #e6907e);
+  --color-on-error: light-dark(#ffffff, #4a1a11);
+  --color-error-container: light-dark(#f7ddd6, #5c2c22);
 
   /* 遮罩（modal 背景）與主色光暈 */
-  --color-scrim: rgba(58, 48, 35, 0.42);
-  --color-primary-glow: rgba(193, 122, 86, 0.35);
+  --color-scrim: light-dark(rgba(58, 48, 35, 0.42), rgba(16, 13, 8, 0.55));
+  --color-primary-glow: light-dark(
+    rgba(193, 122, 86, 0.35),
+    rgba(219, 162, 131, 0.28)
+  );
 
   --font-display: "Gowun Dodum", sans-serif;
+  /* 陰影：只有顏色分亮暗，位移與模糊半徑兩邊相同 */
   --shadow-soft:
-    0 1px 3px rgba(96, 74, 44, 0.07), 0 4px 14px rgba(96, 74, 44, 0.08);
-  --shadow-elevated: 0 8px 28px rgba(96, 74, 44, 0.14);
-}
-
-.dark {
-  --color-primary: #dba283;
-  --color-on-primary: #33200f;
-  --color-primary-container: #463628;
-  --color-on-primary-container: #f7d9c6;
-  --color-secondary: #9db08d;
-  --color-on-secondary: #26301f;
-  --color-secondary-container: #3b4632;
-  --color-surface: #221e18;
-  --color-on-surface: #ede6da;
-  --color-surface-variant: #332d24;
-  --color-on-surface-variant: #a19684;
-  --color-surface-container: #2b261f;
-  --color-surface-container-high: #373026;
-  --color-outline: #6f6656;
-  --color-outline-variant: #3c352a;
-  --color-error: #e6907e;
-  --color-on-error: #4a1a11;
-  --color-error-container: #5c2c22;
-
-  --color-scrim: rgba(16, 13, 8, 0.55);
-  --color-primary-glow: rgba(219, 162, 131, 0.28);
-
-  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
-  --shadow-elevated: 0 8px 28px rgba(0, 0, 0, 0.35);
-}
-
-html {
-  color-scheme: light;
-}
-
-html.dark {
-  color-scheme: dark;
+    0 1px 3px light-dark(rgba(96, 74, 44, 0.07), rgba(0, 0, 0, 0.3)),
+    0 4px 14px light-dark(rgba(96, 74, 44, 0.08), rgba(0, 0, 0, 0.25));
+  --shadow-elevated: 0 8px 28px
+    light-dark(rgba(96, 74, 44, 0.14), rgba(0, 0, 0, 0.35));
 }
 
 /* 選取模式 checkbox overlay */
 .checkbox-overlay {
   opacity: 0;
   pointer-events: none;
-  will-change: opacity;
   transition: opacity 0.15s ease;
 }
 
@@ -140,26 +145,74 @@ html.dark {
   animation: pulse-dot 1s ease-in-out infinite;
 }
 
-/* 不確定進度條：後端無回傳百分比，改用來回滑動的進度段落表達「處理中」 */
-@keyframes indeterminate-bar {
-  0% {
-    left: -40%;
-    width: 40%;
-  }
-  50% {
-    width: 55%;
-  }
-  100% {
-    left: 100%;
-    width: 40%;
+/*
+ * 打包進度條：原生 <progress>，不給 value 就是「處理中、不確定還要多久」。
+ * 後端不回傳百分比，所以用一段來回滑動的品牌色表達「正在處理」；
+ * 螢幕報讀器會自動把它當成進度條唸出來。
+ */
+.packaging-progress {
+  /* 重設瀏覽器預設外觀，才能完全換成自己的樣式 */
+  appearance: none;
+  border: 0 solid;
+  overflow: clip;
+  display: block;
+  inline-size: 100%;
+  block-size: 0.5rem;
+  --progress-bar-radius: 1e5px;
+  border-radius: var(--progress-bar-radius);
+  background: var(--color-primary-container);
+  /* 讓滑動段落以「整條進度條的寬度」為單位移動（下方的 cqi） */
+  container-type: inline-size;
+  --progress-bar-indeterminate-size: 40%;
+  --progress-bar-indeterminate-animation-duration: 1.2s;
+
+  /*
+   * 使用者要求減少動態時改成慢慢滑；不能直接停掉動畫，
+   * 否則 Chrome 會把填色段落的寬度算成 0，整條進度條看起來就消失了。
+   */
+  @media (prefers-reduced-motion: reduce) {
+    --progress-bar-indeterminate-animation-duration: 10s;
   }
 }
 
-.animate-indeterminate-bar {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  animation: indeterminate-bar 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+.packaging-progress:indeterminate {
+  --progress-bar-animation: progress-bar-indeterminate
+    var(--progress-bar-indeterminate-animation-duration) infinite
+    cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Chrome／Safari：讓上面設定的底色透出來 */
+.packaging-progress::-webkit-progress-bar {
+  background: transparent;
+}
+
+/* Chrome／Safari 的填色段落（不可和 Firefox 的寫在同一條規則，否則整條規則會被瀏覽器丟掉） */
+.packaging-progress::-webkit-progress-value {
+  background: var(--color-primary);
+  border-radius: var(--progress-bar-radius);
+  animation: var(--progress-bar-animation, revert-rule);
+}
+
+/* Firefox 的填色段落 */
+.packaging-progress::-moz-progress-bar {
+  background: var(--color-primary);
+  border-radius: var(--progress-bar-radius);
+  animation: var(--progress-bar-animation, revert-rule);
+}
+
+/* 從左邊外側滑到右邊外側；用 translate 移動，動畫交給 GPU、也不受文字方向影響 */
+@keyframes progress-bar-indeterminate {
+  from,
+  to {
+    inline-size: var(--progress-bar-indeterminate-size);
+    margin-right: auto;
+  }
+  from {
+    translate: -100%;
+  }
+  to {
+    translate: 100cqi;
+  }
 }
 
 .animate-fade-in-up {
@@ -192,8 +245,64 @@ html.dark {
   .animate-fade-in,
   .animate-slide-in-right,
   .animate-pulse-dot,
-  .animate-indeterminate-bar {
+  .dialog-scrim::backdrop {
     animation: none;
+  }
+}
+
+/*
+ * 原生 <dialog>（強制回應對話框）共用設定：
+ * 在遮罩上或對話框裡捲動時，不要連帶捲動後面的頁面。
+ * 刻意不用「在 html／body 加 overflow: hidden」的舊作法——那會讓捲軸消失、版面左右跳動。
+ * （遮罩本身預設不是捲動容器，要先設 overflow: hidden，overscroll-behavior 才會生效）
+ */
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+/* 半透明暖色遮罩 + 輕微模糊（歡迎卡、打包進度共用），打開時淡入 */
+.dialog-scrim::backdrop {
+  /* 較舊的瀏覽器裡遮罩讀不到頁面上的色彩變數，改用亮色遮罩當備案 */
+  background-color: var(--color-scrim, rgba(58, 48, 35, 0.42));
+  /* iOS Safari 18 以前只認得 -webkit- 前綴，少了它模糊會被默默忽略 */
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: fade-in 0.3s ease both;
+}
+
+/*
+ * 頁首設定浮層（原生 popover）：瀏覽器會把它放到最上層，點外面或按 Esc 自動關閉。
+ * 位置用 CSS anchor positioning 綁在設定鈕正下方、右緣對齊；
+ * 不支援的瀏覽器改由 AppHeaderControls 在打開當下用 script 計算位置。
+ */
+.settings-trigger {
+  anchor-name: --app-settings-trigger;
+}
+
+.settings-popover {
+  /* 拿掉瀏覽器讓 popover 置中於畫面的預設位置 */
+  inset: auto;
+  margin: 0;
+
+  @supports (position-area: block-end) {
+    position-anchor: --app-settings-trigger;
+    /* 放在設定鈕下方，從設定鈕右緣往左展開 */
+    position-area: block-end span-inline-start;
+    margin-block-start: 0.5rem;
+    /* 下方空間不夠時改放上方 */
+    position-try-fallbacks: flip-block;
+  }
+}
+
+/* 不支援原生 popover 的舊瀏覽器：polyfill 載入前先把面板藏好，避免一打開頁面就露出來 */
+@supports not selector(:popover-open) {
+  [popover]:not(.\:popover-open) {
+    display: none;
   }
 }
 
@@ -207,14 +316,14 @@ html.dark {
   position: absolute;
   inset: 0;
   opacity: 0.015;
+  /* 暗色時紋理稍微明顯一點；瀏覽器不支援 style query 時維持亮色的淡紋理，不影響閱讀 */
+  @variant dark {
+    opacity: 0.03;
+  }
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 256px;
   pointer-events: none;
   z-index: 0;
-}
-
-.dark .bg-noise::before {
-  opacity: 0.03;
 }
 
 body {
