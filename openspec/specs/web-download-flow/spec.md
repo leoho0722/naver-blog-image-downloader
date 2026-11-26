@@ -287,96 +287,75 @@ tests:
 ---
 ### Requirement: Download progress dialog
 
-The DownloadProgress component SHALL display a modal dialog during the packaging process. It SHALL show "packaging..." text while processing. On completion, the download SHALL trigger automatically. On failure, an error message SHALL be displayed with a retry option.
+The DownloadProgress component SHALL display a native modal dialog while a packaging request is active. While packaging, the dialog SHALL show the localized packaging text and hint together with an indeterminate native `<progress>` element whose accessible name is the packaging text; under `prefers-reduced-motion: reduce` the indeterminate animation SHALL slow down instead of stopping. While packaging, Escape and other close requests SHALL NOT close the dialog. When packaging completes, the browser download SHALL be triggered automatically and the dialog SHALL show a success summary with the photo count and an OK button. When packaging fails, the dialog SHALL show the error message and a close button. The success and failure messages SHALL be rendered inside a `role="status"` region so that assistive technologies announce them. In the completed and failed states, activating the OK or close button, or pressing Escape, SHALL close the dialog and reset the download state to idle.
 
 #### Scenario: Show packaging progress
 
 - **WHEN** packaging is in progress
-- **THEN** a modal dialog displays "packaging..." with a loading indicator
+- **THEN** a modal dialog displays the packaging text with an indeterminate `<progress>` element named by that text
 
-#### Scenario: Show error with retry
+#### Scenario: Escape is ignored while packaging
+
+- **WHEN** packaging is in progress and the user presses Escape
+- **THEN** the dialog stays open and packaging continues
+
+#### Scenario: Completion triggers the download and shows a summary
+
+- **WHEN** the download URL is obtained for a package of 12 photos
+- **THEN** the browser navigates to the download URL and the dialog shows the success summary for 12 photos with an OK button inside a status region
+
+#### Scenario: Show error with close button
 
 - **WHEN** packaging fails
-- **THEN** the dialog shows an error message and a retry button
+- **THEN** the dialog shows the error message inside a status region and a close button
 
-#### Scenario: Dialog closes after download triggers
+#### Scenario: Escape closes after completion or failure
 
-- **WHEN** the download URL is obtained and navigation is triggered
-- **THEN** the dialog closes automatically
+- **WHEN** the dialog shows the success summary or the error message and the user presses Escape
+- **THEN** the dialog closes and the download phase returns to idle
 
 <!-- @trace
-source: web-app-with-backend-packaging
-updated: 2026-04-12
+source: web-modern-platform-refresh
+updated: 2026-11-26
 code:
-  - apps/web/src/pages/GalleryPage.tsx
-  - apps/web/tsconfig.tsbuildinfo
-  - apps/web/src/lib/i18n/messages/ja.json
-  - CLAUDE.md
-  - apps/web/src/lib/services/url-validator.ts
-  - apps/web/src/lib/services/blog-id.ts
   - apps/web/CLAUDE.md
-  - apps/web/src/lib/stores/use-blog-input-store.ts
   - apps/web/index.html
-  - apps/backend/src/data_models.py
-  - apps/web/src/components/blog-input/BlogInputForm.tsx
-  - apps/web/src/lib/i18n/messages/zh-TW.json
-  - apps/backend/src/routes/photos.py
   - apps/web/package.json
-  - apps/web/src/components/settings/LanguageSwitcher.tsx
-  - apps/web/src/lib/api/photos.ts
-  - apps/web/src/pages/NotFoundPage.tsx
-  - apps/web/public/icons.svg
-  - apps/web/src/components/gallery/ImageViewer.tsx
-  - apps/web/src/components/gallery/SelectionToolbar.tsx
-  - apps/backend/pyproject.toml
-  - apps/backend/src/response_builder.py
+  - apps/web/src/components/blog-input/BlogInputForm.tsx
   - apps/web/src/components/blog-input/FetchProgress.tsx
-  - apps/web/src/lib/api/types.ts
-  - apps/web/vite.config.ts
-  - apps/web/src/components/layout/RootLayout.tsx
-  - .github/workflows/web-ci.yml
-  - apps/web/src/lib/hooks/use-clipboard.ts
-  - apps/web/src/lib/api/client.ts
-  - apps/web/src/App.tsx
-  - apps/backend/README.md
-  - apps/web/src/components/settings/SettingsDrawer.tsx
-  - apps/backend/CLAUDE.md
-  - apps/web/src/index.css
-  - apps/web/src/components/settings/ThemeSwitcher.tsx
-  - apps/web/src/routes.tsx
-  - apps/web/src/lib/config/api.ts
-  - apps/web/src/lib/stores/use-settings-store.ts
-  - apps/web/tsconfig.json
-  - apps/backend/requirements.txt
-  - apps/web/.gitkeep
-  - apps/web/public/icons/icon_new.png
-  - README.md
-  - apps/web/src/lib/i18n/messages/en.json
-  - apps/backend/src/job_store/package.py
-  - apps/web/.env.example
-  - apps/web/public/icons/icon_default.png
-  - apps/web/src/main.tsx
-  - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/pages/HomePage.tsx
-  - apps/backend/.envExample
-  - apps/web/public/favicon.svg
-  - apps/web/src/lib/stores/use-gallery-store.ts
-  - apps/web/src/components/gallery/PhotoGrid.tsx
-  - apps/web/src/lib/i18n/config.ts
-  - apps/backend/src/app.py
-  - apps/web/src/lib/stores/use-download-store.ts
-  - apps/web/src/lib/hooks/use-polling.ts
-  - apps/backend/.env.example
-  - apps/backend/src/job_store/__init__.py
   - apps/web/src/components/download/DownloadProgress.tsx
+  - apps/web/src/components/gallery/ImageViewer.tsx
   - apps/web/src/components/gallery/PhotoCard.tsx
+  - apps/web/src/components/gallery/PhotoGrid.tsx
+  - apps/web/src/components/layout/AppHeaderControls.tsx
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - apps/web/src/components/onboarding/OnboardingCard.tsx
+  - apps/web/src/index.css
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/lib/hooks/use-color-scheme.ts
+  - apps/web/src/lib/hooks/use-modal-dialog.ts
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/lib/polyfills/popover.ts
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/main.tsx
 tests:
+  - apps/web/src/__tests__/components/blog-input/BlogInputForm.test.tsx
+  - apps/web/src/__tests__/components/download/DownloadProgress.test.tsx
+  - apps/web/src/__tests__/components/gallery/ImageViewer.test.tsx
   - apps/web/src/__tests__/components/gallery/PhotoCard.test.tsx
-  - apps/web/src/__tests__/lib/services/blog-id.test.ts
-  - apps/backend/tests/api.http
-  - apps/web/src/__tests__/lib/hooks/use-polling.test.ts
-  - apps/web/src/__tests__/lib/services/url-validator.test.ts
-  - apps/web/src/__tests__/lib/stores/use-gallery-store.test.ts
-  - apps/web/src/__tests__/lib/api/client.test.ts
+  - apps/web/src/__tests__/components/layout/AppHeaderControls.test.tsx
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/web/src/__tests__/components/onboarding/OnboardingCard.test.tsx
+  - apps/web/src/__tests__/lib/config/ui-controls.test.ts
+  - apps/web/src/__tests__/lib/hooks/use-color-scheme.test.tsx
+  - apps/web/src/__tests__/lib/hooks/use-modal-dialog.test.tsx
+  - apps/web/src/__tests__/lib/polyfills/popover.test.ts
+  - apps/web/src/__tests__/lib/stores/use-settings-store.test.ts
+  - apps/web/src/__tests__/routes.test.tsx
   - apps/web/src/__tests__/setup.ts
+  - apps/web/src/__tests__/test-utils/dialog.ts
 -->

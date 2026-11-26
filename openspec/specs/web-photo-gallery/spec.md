@@ -8,22 +8,30 @@ Web 版照片牆——響應式圖片 Grid、選取模式（個別/全選）、�
 
 ### Requirement: Responsive photo grid layout
 
-The PhotoGrid SHALL display photos in a responsive CSS grid: 3 columns on mobile (<640px), 4 columns on tablet (640–1024px), and 5–6 columns on desktop (>1024px). Images SHALL use `<img>` tags with Naver CDN URLs directly, `loading="lazy"` for performance, and `referrerPolicy="no-referrer"` to prevent the browser from sending a `Referer` header that would cause Naver CDN to reject the image request.
+The PhotoGrid SHALL display photos in a responsive CSS grid: 2 columns below 640px, 3 columns from 640px, and 4 columns from 768px. Images SHALL use `<img>` tags with Naver CDN URLs directly and `referrerPolicy="no-referrer"` to prevent the browser from sending a `Referer` header that would cause Naver CDN to reject the image request. The first 4 photos in the grid SHALL NOT be lazy-loaded, and the first photo SHALL use `fetchpriority="high"`; every later photo SHALL use `loading="lazy"`.
 
-#### Scenario: Mobile viewport displays 3 columns
+#### Scenario: Mobile viewport displays 2 columns
 
 - **WHEN** the viewport width is 375px and 10 photos are loaded
-- **THEN** the grid renders with 3 columns
+- **THEN** the grid renders with 2 columns
 
-#### Scenario: Desktop viewport displays 5+ columns
+#### Scenario: Desktop viewport displays 4 columns
 
 - **WHEN** the viewport width is 1440px and 10 photos are loaded
-- **THEN** the grid renders with 5 or 6 columns
+- **THEN** the grid renders with 4 columns
 
 #### Scenario: Lazy loading of images
 
 - **WHEN** the gallery page loads with 50 photos
 - **THEN** only visible images are loaded initially; off-screen images load as the user scrolls
+
+##### Example: loading attributes by grid position
+
+| Photo position (1-based) | `loading` | `fetchpriority` |
+| ------------------------ | --------- | --------------- |
+| 1                        | absent    | `high`          |
+| 2–4                      | absent    | absent          |
+| 5 and later              | `lazy`    | absent          |
 
 #### Scenario: Cross-origin image loading with no referrer
 
@@ -32,17 +40,49 @@ The PhotoGrid SHALL display photos in a responsive CSS grid: 3 columns on mobile
 
 
 <!-- @trace
-source: web-fix-state-reset-image-display
-updated: 2026-04-16
+source: web-modern-platform-refresh
+updated: 2026-11-26
 code:
-  - apps/web/src/components/gallery/PhotoCard.tsx
-  - apps/web/src/lib/stores/use-blog-input-store.ts
-  - apps/web/tsconfig.tsbuildinfo
+  - apps/web/CLAUDE.md
+  - apps/web/index.html
   - apps/web/package.json
-  - apps/web/src/pages/HomePage.tsx
+  - apps/web/src/components/blog-input/BlogInputForm.tsx
+  - apps/web/src/components/blog-input/FetchProgress.tsx
+  - apps/web/src/components/download/DownloadProgress.tsx
   - apps/web/src/components/gallery/ImageViewer.tsx
+  - apps/web/src/components/gallery/PhotoCard.tsx
+  - apps/web/src/components/gallery/PhotoGrid.tsx
+  - apps/web/src/components/layout/AppHeaderControls.tsx
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - apps/web/src/components/onboarding/OnboardingCard.tsx
+  - apps/web/src/index.css
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/lib/hooks/use-color-scheme.ts
+  - apps/web/src/lib/hooks/use-modal-dialog.ts
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/lib/polyfills/popover.ts
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/main.tsx
 tests:
-  - apps/web/src/__tests__/pages/HomePage.test.tsx
+  - apps/web/src/__tests__/components/blog-input/BlogInputForm.test.tsx
+  - apps/web/src/__tests__/components/download/DownloadProgress.test.tsx
+  - apps/web/src/__tests__/components/gallery/ImageViewer.test.tsx
+  - apps/web/src/__tests__/components/gallery/PhotoCard.test.tsx
+  - apps/web/src/__tests__/components/layout/AppHeaderControls.test.tsx
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/web/src/__tests__/components/onboarding/OnboardingCard.test.tsx
+  - apps/web/src/__tests__/lib/config/ui-controls.test.ts
+  - apps/web/src/__tests__/lib/hooks/use-color-scheme.test.tsx
+  - apps/web/src/__tests__/lib/hooks/use-modal-dialog.test.tsx
+  - apps/web/src/__tests__/lib/polyfills/popover.test.ts
+  - apps/web/src/__tests__/lib/stores/use-settings-store.test.ts
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/setup.ts
+  - apps/web/src/__tests__/test-utils/dialog.ts
 -->
 
 ---
@@ -331,4 +371,65 @@ tests:
   - apps/web/src/__tests__/lib/stores/use-gallery-store.test.ts
   - apps/web/src/__tests__/lib/api/client.test.ts
   - apps/web/src/__tests__/setup.ts
+-->
+
+---
+### Requirement: Selection state exposed to assistive technologies
+
+In selection mode, each photo card button SHALL expose `aria-pressed` reflecting whether that photo is selected. Outside selection mode, the photo card button SHALL NOT expose `aria-pressed`, because activating it opens the image viewer instead of toggling a state.
+
+#### Scenario: Selected card reports pressed state
+
+- **WHEN** selection mode is on and the user selects the second photo
+- **THEN** the second photo card button has `aria-pressed="true"` and the other cards have `aria-pressed="false"`
+
+#### Scenario: No pressed state outside selection mode
+
+- **WHEN** selection mode is off
+- **THEN** no photo card button has an `aria-pressed` attribute
+
+<!-- @trace
+source: web-modern-platform-refresh
+updated: 2026-11-26
+code:
+  - apps/web/CLAUDE.md
+  - apps/web/index.html
+  - apps/web/package.json
+  - apps/web/src/components/blog-input/BlogInputForm.tsx
+  - apps/web/src/components/blog-input/FetchProgress.tsx
+  - apps/web/src/components/download/DownloadProgress.tsx
+  - apps/web/src/components/gallery/ImageViewer.tsx
+  - apps/web/src/components/gallery/PhotoCard.tsx
+  - apps/web/src/components/gallery/PhotoGrid.tsx
+  - apps/web/src/components/layout/AppHeaderControls.tsx
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - apps/web/src/components/onboarding/OnboardingCard.tsx
+  - apps/web/src/index.css
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/lib/hooks/use-color-scheme.ts
+  - apps/web/src/lib/hooks/use-modal-dialog.ts
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/lib/polyfills/popover.ts
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/main.tsx
+tests:
+  - apps/web/src/__tests__/components/blog-input/BlogInputForm.test.tsx
+  - apps/web/src/__tests__/components/download/DownloadProgress.test.tsx
+  - apps/web/src/__tests__/components/gallery/ImageViewer.test.tsx
+  - apps/web/src/__tests__/components/gallery/PhotoCard.test.tsx
+  - apps/web/src/__tests__/components/layout/AppHeaderControls.test.tsx
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/web/src/__tests__/components/onboarding/OnboardingCard.test.tsx
+  - apps/web/src/__tests__/lib/config/ui-controls.test.ts
+  - apps/web/src/__tests__/lib/hooks/use-color-scheme.test.tsx
+  - apps/web/src/__tests__/lib/hooks/use-modal-dialog.test.tsx
+  - apps/web/src/__tests__/lib/polyfills/popover.test.ts
+  - apps/web/src/__tests__/lib/stores/use-settings-store.test.ts
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/setup.ts
+  - apps/web/src/__tests__/test-utils/dialog.ts
 -->
