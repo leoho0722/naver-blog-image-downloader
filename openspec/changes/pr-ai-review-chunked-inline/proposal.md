@@ -6,7 +6,7 @@ PR AI 審查目前把整份 diff 依檔名排序後，截斷在前 6000 行送�
 
 - 新增 repo 根目錄的 `.gitattributes`，以 `linguist-generated` 標記自動產生的檔案（Spectra 產生的 skill、archify 輸出、lockfile）。
   - 審查時排除這些檔案的內容，只在檔案總覽中列為「已略過」；GitHub 的 PR 頁面也會因此預設摺疊它們。
-  - 判斷依據是 base commit 的 `.gitattributes`，PR 無法藉由修改這個檔案讓自己的程式碼跳過審查；PR 有修改它時，review 本文會提示。取不到 base commit 時整個審查判定為失敗，不會猜測。
+  - 判斷依據是 base commit 的 `.gitattributes`，PR 無法藉由修改這個檔案讓自己的程式碼跳過審查（同 repo 的 PR 仍能直接修改審查 script，見 design 的 Risks）；PR 有修改它時，review 本文會提示。取不到 base commit 時整個審查判定為失敗，不會猜測。
 - 排除後的 patch 若超過每段的行數上限，依元件區域與功能相關性切成多段送審。
   - 同一元件、同一功能的檔案放在同一段，原始碼與對應的測試排在一起。
   - **所有段落都會送審，不會跳過任何檔案**。同時送出的請求數有上限，分批執行。

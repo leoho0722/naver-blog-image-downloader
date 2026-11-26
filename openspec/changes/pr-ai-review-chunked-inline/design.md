@@ -247,7 +247,7 @@ concurrency 可能在「發布之後、resolve 之前」取消舊的執行，留
 2. **規劃時分類**：`plan --threads threads.json` 先從第一則留言開頭的標籤讀出嚴重程度（讀不出來時視為 🟡）。🟢 的討論串分類為 **可選優化**（`nit`），不交給模型判斷（見「依嚴重程度決定意見是否擋合併」）；其餘依所在檔案在這次 diff 中的狀態分類，檔案被更名時也以更名前的路徑比對：
    - **交給模型判斷**（`ask`）：檔案屬於某一段、而且沒有被截斷。討論串以 `P1`、`P2`… 的代號、路徑、行號與留言內容，放進那一段提示詞的「上一輪仍未解決的意見」區塊。
    - **已沒有變更**（`no-longer-changed`）：檔案已不在這次 diff 內（例如改動被還原）。
-   - **已刪除**（`deleted`）：檔案在這次 diff 中被刪除。
+   - **已刪除**（`deleted`）：檔案在這次 diff 中被刪除，而且第一則留言建立時（`threads.json` 的 `commit`）檔案還存在：留言講的是現在已不存在的程式碼。若當時檔案已經是刪除狀態，留言講的就是這個刪除本身（例如「整個測試檔被移除」），分類為保留；那個 commit 已不在本機（例如 force push）而無法判斷時，也分類為保留。只看「現在被刪除」就收掉，會讓針對刪除的 🔴／🟡 只擋住一個 commit（PR #36 最後一輪審查指出）。
    - **保留**（`keep`）：檔案被截斷、是自動產生或二進位檔案。
 3. **模型判斷**：提示詞請模型逐一判斷列出的問題在本段的程式碼中是否已經修正，結果寫在 JSON 的 `previousThreads`（`ref`、`fixed`、`note`）；仍然存在的問題不要再列進 `findings`，避免重複。
 4. **發布成功後才回覆並 resolve**：新一輪 review 發布成功（inline 版或只有本文的版本）之後，對每個要收掉的討論串先回覆一則說明，再呼叫 `resolveReviewThread`：
@@ -322,7 +322,7 @@ workflow 另外加上三項設定：
   - 在 `<dir>` 寫出 `plan.json`，以及各段的提示詞 `chunk-<n>.md`（含審查指示、精簡的檔案總覽、該段標註後的 patch）
   - base commit 不存在於本機時，以非 0 退出碼結束，不寫出任何檔案
   - 有 `--threads` 時，`plan.json` 另有 `previousThreads: [{ "ref": "P1", "id", "path", "filePath": <這次 diff 中對應的路徑|null>, "line", "comment", "severity": "blocker|warning|nit", "chunk": <n|null>, "disposition": "ask|no-longer-changed|deleted|keep|nit" }]`，`ask` 的討論串放進對應段落的提示詞
-  - `threads.json`（`run-review.sh collect` 產生）的格式：`[{ "id", "path", "line", "comment" }]`，`line` 已依「`line`，過時則用 `originalLine`」取得
+  - `threads.json`（`run-review.sh collect` 產生）的格式：`[{ "id", "path", "line", "comment", "commit" }]`，`line` 已依「`line`，過時則用 `originalLine`」取得，`commit` 是第一則留言建立時的 commit（GraphQL 的 `originalCommit`，取不到時為 null）
   - `plan.json` 的格式：`{ "baseSha", "headSha", "gitattributesChanged": <bool>, "files": [{ "path", "status": "added|modified|renamed|deleted", "category": "reviewed|generated|deleted|binary", "lines", "chunk": <n|null>, "truncated": <bool> }], "chunks": [{ "index", "files": [<path>], "lines" }], "commentable": { "<path>": [[<起始行>, <結束行>], ...] } }`
 - 每段模型輸出的 JSON：`{ "summary": <字串>, "verdict": "blocker|changes_suggested|no_concerns", "findings": [{ "path": <字串>, "line": <整數|null>, "severity": "blocker|warning|nit", "title": <字串>, "body": <字串> }], "previousThreads": [{ "ref": <字串>, "fixed": <布林>, "note": <字串> }] }`；`previousThreads` 只在提示詞列出上一輪的討論串時需要，沒有時視為全部沒有判斷
 - `node .github/scripts/ai-review/ai-review.mjs synthesis-prompt --plan <plan.json> --results <dir> --out <檔案>`：產出彙整用的提示詞，內含 script 計算的整體結論；彙整的模型輸出為 `{ "summary": <字串>, "conclusion": <字串> }`
@@ -391,7 +391,7 @@ workflow 另外加上三項設定：
 - **模型仍把未修正的舊問題列成新意見，造成重複**
   - 緩解：提示詞明確要求不要重複；即使重複，也只是多一則討論串，不影響正確性。
 - **這個機制防的是誤標，不防惡意修改審查流程**
-  - workflow 執行的是 PR head 的 script 與 action，同 repo 的 PR 可以直接修改審查 script 讓自己跳過審查；放進自動產生路徑（例如 `.archify/`）或取名為 lockfile 的檔案也會被略過。
+  - workflow 執行的是 PR head 的 script 與 action，同 repo 的 PR 可以直接修改審查 script 讓自己跳過審查，也能用改過的 script 拿 `contents: write` 的 token 寫入 repo；放進自動產生路徑（例如 `.archify/`）或取名為 lockfile 的檔案也會被略過。「以 base commit 的 `.gitattributes` 判斷」只防止藉由修改 `.gitattributes` 略過，README、`.gitattributes` 與 `plan.mjs` 的說明都要照實寫明這一點（PR #36 最後一輪審查指出原本的說法太絕對）。
   - 取捨：同 repo 的 PR 只有具寫入權限的協作者能開，fork 的 PR 拿不到 secret；要防止惡意修改，需要改從 base commit 取出 script 執行，這也會讓修改審查流程的 PR 無法用自己的新 script 自測，不在這次範圍內。
 - **整個 job 逾時時沒有任何部分結果**
   - 緩解：`timeout-minutes: 60` 依估計可容納 40 段以上；逾時時重跑即可，舊討論串不會被收掉。
