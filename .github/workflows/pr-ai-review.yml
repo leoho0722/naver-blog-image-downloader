@@ -32,10 +32,12 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
 
-      # 建置 lkai 並讀出 .github/lkai.json 的供應商與模型；要換模型只改那個檔案
+      # 建置 lkai 並讀出 .github/lkai.json 中 review 設定的供應商與模型；要換審查用的模型只改那個設定
       - name: Setup lkai
         id: lkai
         uses: ./.github/actions/setup-lkai
+        with:
+          profile: review
 
       - name: Fetch PR diff and request AI review
         env:

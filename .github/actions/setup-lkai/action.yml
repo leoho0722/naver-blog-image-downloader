@@ -4,10 +4,19 @@
 #   呼叫端的 job 要用 macOS runner（目前用 xcode-27，需要 macOS 26 以上、Swift 6.2 以上）。
 # - LKAIKit 以完整的 commit SHA 固定版本：tag 可以被改指向其他 commit，SHA 不行。
 #   要升級 LKAIKit 時，把下面 uses 的 SHA 與後面註解的版號一起換成新 tag 指向的 commit。
-# - 要換供應商或模型時只改 .github/lkai.json；API 金鑰由呼叫端以環境變數交給 lkai
+# - .github/lkai.json 以「default 設定 + 各用途的覆寫」組成：呼叫端以 profile 輸入選擇用途，
+#   讀出的值以 default 為底，再套上該 profile 有寫的欄位。沒有指定 profile 時只用 default。
+#   要換某個用途的模型時只改那個 profile；要換所有用途的預設模型時改 default。
+# - API 金鑰由呼叫端以環境變數交給 lkai
 #   （anthropic：LKAI_ANTHROPIC_API_KEY、openai：LKAI_OPENAI_API_KEY、google：LKAI_GEMINI_API_KEY）。
 name: Setup lkai
-description: 建置 LKAIKit 的 lkai 並加進 PATH，輸出 .github/lkai.json 設定的供應商與模型
+description: 建置 LKAIKit 的 lkai 並加進 PATH，輸出 .github/lkai.json 中指定用途的供應商與模型
+
+inputs:
+  profile:
+    description: .github/lkai.json 中要使用的設定名稱（例如 review）；不指定時使用 default
+    required: false
+    default: default
 
 outputs:
   provider:
@@ -27,30 +36,37 @@ runs:
     - name: 讀取 lkai 設定
       id: config
       shell: bash
+      env:
+        PROFILE: ${{ inputs.profile }}
       run: |
         CONFIG="$GITHUB_WORKSPACE/.github/lkai.json"
         if [ ! -f "$CONFIG" ]; then
           echo "::error::找不到 lkai 設定檔：${CONFIG}"
           exit 1
         fi
+        if ! jq -e --arg p "$PROFILE" 'has($p)' "$CONFIG" >/dev/null; then
+          echo "::error::.github/lkai.json 沒有名為「${PROFILE}」的設定"
+          exit 1
+        fi
 
-        PROVIDER=$(jq -r '.provider // empty' "$CONFIG")
-        MODEL=$(jq -r '.model // empty' "$CONFIG")
+        # 以 default 為底，再套上指定 profile 的欄位（profile 是 default 時就是 default 本身）
+        PROVIDER=$(jq -r --arg p "$PROFILE" '((.default // {}) + .[$p]).provider // empty' "$CONFIG")
+        MODEL=$(jq -r --arg p "$PROFILE" '((.default // {}) + .[$p]).model // empty' "$CONFIG")
         case "$PROVIDER" in
           anthropic | openai | google) ;;
           *)
-            echo "::error::.github/lkai.json 的 provider 只能是 anthropic、openai 或 google，目前是「${PROVIDER}」"
+            echo "::error::.github/lkai.json 的「${PROFILE}」設定中，provider 只能是 anthropic、openai 或 google，目前是「${PROVIDER}」"
             exit 1
             ;;
         esac
         if [ -z "$MODEL" ]; then
-          echo "::error::.github/lkai.json 沒有設定 model"
+          echo "::error::.github/lkai.json 的「${PROFILE}」設定沒有 model"
           exit 1
         fi
 
         echo "provider=$PROVIDER" >> "$GITHUB_OUTPUT"
         echo "model=$MODEL" >> "$GITHUB_OUTPUT"
-        echo "使用的供應商：${PROVIDER}，模型：${MODEL}"
+        echo "使用的設定：${PROFILE}，供應商：${PROVIDER}，模型：${MODEL}"
 
     - name: 建置 lkai
       id: lkai
