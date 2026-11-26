@@ -296,7 +296,7 @@ diff 解析、行號標註、裝箱、文字清理與 JSON 驗證，都放在 `.
 
 原則是「審查內容有缺漏才算失敗，只是呈現方式降級只發出警告」：
 
-- **workflow 失敗**：任一段送審失敗、回答不完整、JSON 無法解讀；review 完全發布不了；檔案層級留言重試後仍發布不了（這則 🔴／🟡 沒能擋住合併）；base commit 取不到；判斷自動產生檔的 `git check-attr` 無法執行；`build-review` 的 head SHA 與 `plan.json` 不一致；`plan.json` 無法解讀。第一種情況仍要發布已經取得的部分，並列出失敗的段落。
+- **workflow 失敗**：任一段送審失敗、回答不完整、JSON 無法解讀；review 完全發布不了；檔案層級留言重試後仍發布不了（這則 🔴／🟡 沒能擋住合併）；base commit 取不到；補抓完整歷史後仍取不到 base 與 head 的共同祖先；判斷自動產生檔的 `git check-attr` 無法執行；`build-review` 的 head SHA 與 `plan.json` 不一致；`plan.json` 無法解讀。第一種情況仍要發布已經取得的部分，並列出失敗的段落。
 - **只發出警告**：彙整請求失敗（改為依段落順序列出各段總評）、inline 版本被拒而改發只有本文的版本、回覆或 resolve 舊討論串失敗、段數超過 `WARN_CHUNKS`、本文超過長度而被截斷。
 - **整體結論**：依序判斷，有 🔴 意見或這一輪沒有收掉的上一輪 🔴 討論串時為「有阻擋合併的問題」；否則有段落失敗時為「審查不完整」；否則有 🟡 意見或這一輪沒有收掉的上一輪 🟡 討論串時為「有建議修正的問題」；否則為「沒有擋合併的問題」（可以有 🟢）。意見的嚴重程度不影響 workflow 的成敗。
 - **不送審**：沒有任何可審查的檔案（全部是自動產生、已刪除或二進位）時，不送出模型請求，發布一則說明沒有可審查內容的 review，workflow 成功。
@@ -322,7 +322,7 @@ workflow 另外加上三項設定：
 
 - `node .github/scripts/ai-review/ai-review.mjs plan --base <sha> --head <sha> --out <dir> [--max-chunk-lines <n>] [--threads <threads.json>]`
   - 在 `<dir>` 寫出 `plan.json`，以及各段的提示詞 `chunk-<n>.md`（含審查指示、精簡的檔案總覽、該段標註後的 patch）
-  - base commit 不存在於本機時，以非 0 退出碼結束，不寫出任何檔案
+  - base commit 不存在於本機，或 base 與 head 沒有共同祖先時，以非 0 退出碼結束，不寫出任何檔案；diff 一律以共同祖先為起點（`<base>...<head>`），不退回兩點 diff
   - 有 `--threads` 時，`plan.json` 另有 `previousThreads: [{ "ref": "P1", "id", "path", "filePath": <這次 diff 中對應的路徑|null>, "line", "comment", "severity": "blocker|warning|nit", "chunk": <n|null>, "disposition": "ask|no-longer-changed|deleted|keep|nit" }]`，`ask` 的討論串放進對應段落的提示詞
   - `threads.json`（`run-review.sh collect` 產生）的格式：`[{ "id", "path", "line", "comment", "commit" }]`，`line` 已依「`line`，過時則用 `originalLine`」取得，`commit` 是第一則留言建立時的 commit（GraphQL 的 `originalCommit`，取不到時為 null）
   - `plan.json` 的格式：`{ "baseSha", "headSha", "gitattributesChanged": <bool>, "files": [{ "path", "status": "added|modified|renamed|deleted", "category": "reviewed|generated|deleted|binary", "lines", "chunk": <n|null>, "truncated": <bool> }], "chunks": [{ "index", "files": [<path>], "lines" }], "commentable": { "<path>": [[<起始行>, <結束行>], ...] } }`
@@ -373,8 +373,9 @@ workflow 另外加上三項設定：
   - 緩解：提示詞說明只有確實需要修正的問題才標 warning；誤標時可以手動 resolve。
 - **手動 resolve（決定不修）的 🔴／🟡，下一輪可能被重新提出**
   - 取捨：收集步驟只收未 resolve 的討論串，模型不知道已經討論過；重新提出時再手動 resolve 即可。要避免需要把已 resolve 的討論串也交給模型，不在這次範圍內。
-- **base 分支被 force push、取不到共同祖先時，退回兩點 diff**
-  - 取捨：兩點 diff 可能混入 base 分支自己的變更，hunk 範圍與行號也可能和 PR 頁面的 diff 不一致。這時 GitHub 若拒絕 inline comment，依「以單一 PR review 發布 inline comment」改發只有本文的版本，路徑在 diff 內的 🔴／🟡 改發檔案層級留言，仍然擋合併；不另外處理。
+- **取不到共同祖先時規劃失敗，不退回兩點 diff**
+  - 原本取不到共同祖先時會退回兩點 diff（`<base>..<head>`），但兩點 diff 會混入 base 分支在分岔之後的變更，看起來像 PR 把它們反向改掉：模型會審到 PR 沒動過的檔案、檔案分類出錯，「已沒有變更」「已刪除」的討論串也可能被誤收（PR #36 第十七輪審查指出）。這是在算不出 PR 變更範圍時的猜測，與「取不到 base commit 時判定為失敗，不會猜測」的原則不一致，所以改為：checkout 是 shallow 時先補抓完整歷史；補抓後仍取不到共同祖先，代表 PR 分支與 base 分支沒有共同的歷史（例如 base 被改寫過），規劃以建議 rebase 的訊息失敗，不送審、不發布、不動任何討論串（使用者選擇根本解）。
+  - 取捨：這種情況下那一輪沒有審查結果；但 PR 頁面的 diff 此時本身也不可信，rebase 後重新執行即可。
 - **模型沒有照格式輸出 JSON**
   - 緩解：提示詞明確要求，取最後一個 ```json 區塊解析；解析失敗時該段視為失敗，原始回答放進摺疊區塊，不會悄悄遺失。
 - **模型給的行號不在 diff 內**

@@ -6,7 +6,7 @@ The PR AI review reviews every pull request's diff with an AI model through LKAI
 
 ### Requirement: Generated, deleted, and binary files are excluded from review content
 
-The review SHALL NOT send the patch content of a file when the file is marked `linguist-generated` by the `.gitattributes` of the pull request's base commit, when the file is deleted in the pull request, or when the file is binary. The review SHALL evaluate `linguist-generated` against the base commit, so a pull request that changes `.gitattributes` SHALL NOT exclude its own files by doing so. When the pull request changes `.gitattributes`, the published review SHALL state that generated files were determined by the base commit's rules. Each excluded file SHALL still appear in the published review, labelled with the reason it was skipped, and SHALL be represented in the file overview given to the model as defined by the overview rules. The workflow SHALL fetch the base commit before planning, and when the base commit is not available locally, or when the generated-file check against the base commit cannot run (for example because the installed Git is older than 2.40), planning SHALL fail with a message that states the cause, without classifying any file, and the run SHALL NOT send any model request, publish any review, or resolve any thread.
+The review SHALL NOT send the patch content of a file when the file is marked `linguist-generated` by the `.gitattributes` of the pull request's base commit, when the file is deleted in the pull request, or when the file is binary. The review SHALL evaluate `linguist-generated` against the base commit, so a pull request that changes `.gitattributes` SHALL NOT exclude its own files by doing so. When the pull request changes `.gitattributes`, the published review SHALL state that generated files were determined by the base commit's rules. Each excluded file SHALL still appear in the published review, labelled with the reason it was skipped, and SHALL be represented in the file overview given to the model as defined by the overview rules. The workflow SHALL fetch the base commit before planning and SHALL fetch the complete history when the checkout is shallow. The review SHALL produce the diff as `<base>...<head>` from the merge base and SHALL NOT fall back to any other comparison. When the base commit is not available locally, when the base commit and the head commit have no merge base, or when the generated-file check against the base commit cannot run (for example because the installed Git is older than 2.40), planning SHALL fail with a message that states the cause, without classifying any file, and the run SHALL NOT send any model request, publish any review, or resolve any thread.
 
 #### Scenario: Files are classified before chunking
 
@@ -35,6 +35,16 @@ The review SHALL NOT send the patch content of a file when the file is marked `l
 
 - **WHEN** the base commit of the pull request cannot be found locally after fetching
 - **THEN** planning fails, no model request is sent, no review is published, no thread is resolved, and the workflow fails
+
+#### Scenario: Missing merge base stops planning
+
+- **WHEN** the base commit and the head commit have no merge base after the complete history is fetched, for example because the base branch was rewritten
+- **THEN** planning fails with a message that suggests rebasing the pull request onto the latest base branch, no model request is sent, no review is published, no thread is resolved, and the workflow fails
+
+#### Scenario: Shallow checkout is deepened before planning
+
+- **WHEN** the checkout is shallow and does not contain the merge base
+- **THEN** the workflow fetches the complete history before planning and the plan is produced from the merge base
 
 #### Scenario: Nothing is reviewable
 
