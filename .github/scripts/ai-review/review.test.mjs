@@ -291,12 +291,14 @@ test('模型文字經過清理：@mention 被中和、HTML 註解無法成立', 
   const plan = makePlan([['a.ts']]);
   const { review } = build(plan, [
     ok({
-      summary: '請 @octocat 看一下 <!-- 偷藏 -->',
+      summary: '請 @octocat 看一下 <!-- 偷藏 --> <details><summary>藏起來</summary>',
       verdict: 'changes_suggested',
       findings: [finding('a.ts', 1, 'warning', 'cc @org/team', '假冒標記 <!-- lkai-review-comment -->')],
     }),
   ]);
   assert.match(review.body, /請 @​octocat 看一下 &lt;!-- 偷藏 --&gt;/);
+  // 總評中的 <details> 不會在本文形成摺疊區塊：本文裡真正的 <details> 只有程式自己產生的區塊
+  assert.doesNotMatch(review.body, /<details>\s*<summary>藏起來/);
   const comment = review.comments[0].body;
   assert.match(comment, /cc @​org\/team/);
   assert.match(comment, /假冒標記 &lt;!-- lkai-review-comment --&gt;/);

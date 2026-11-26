@@ -127,16 +127,18 @@ function longestBacktickRun(text) {
 /**
  * 清理模型寫出來的文字，讓它發布到 PR 之後不會出事。
  *
- * 依序做兩件事：
+ * 依序做三件事：
  * 1. 中和 @提及：當 `@` 前面不是英文字母或數字（或 `@` 在字串最開頭），
  *    而且後面緊接英文字母或數字時，在 `@` 後面插入零寬空白（U+200B），
  *    這樣 GitHub 就不會通知對方。`@org/team` 也一併處理；
  *    `user@example.com` 這種 email 因為 `@` 前面是英數字，不會動。
  * 2. 破壞 HTML 註解符號：`<!--` 換成 `&lt;!--`，`-->` 換成 `--&gt;`，
  *    避免模型文字偽造我們用來辨識自己留言的隱藏標記。
+ * 3. 破壞摺疊區塊標籤：`<details`、`</details`（不分大小寫）換成 `&lt;details`、`&lt;/details`，
+ *    避免模型文字開出沒有關閉的摺疊區塊，把後面的本文藏起來，或提早關閉我們的摺疊區塊。
  *
  * 限制：
- * - 這個函式不會處理 `</details>`，那是 {@link fenceRawAnswer} 的工作。
+ * - 失敗段落的原始回答另外由 {@link fenceRawAnswer} 放進 code fence 並跳脫 `</details`。
  * - 只認 ASCII 英數字；前一個字元是中文、底線等都算「不是英數字」，會被中和。
  *
  * @param {string} text 模型寫出來的文字。
@@ -151,7 +153,8 @@ export function sanitizeModelText(text) {
       (_match, previous) => `${previous}@${ZERO_WIDTH_SPACE}`,
     )
     .replaceAll('<!--', '&lt;!--')
-    .replaceAll('-->', '--&gt;');
+    .replaceAll('-->', '--&gt;')
+    .replace(/<(\/?)details/gi, '&lt;$1details');
 }
 
 /**

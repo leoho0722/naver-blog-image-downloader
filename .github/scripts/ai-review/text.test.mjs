@@ -52,7 +52,7 @@ function makeParts(overrides = {}) {
 
 describe('sanitizeModelText', () => {
   // spectra-scenario: pr-ai-review / Model text is sanitized / sanitizing
-  it('spec 範例五列：提及、email、HTML 註解、反引號 fence、</details> 都符合預期', () => {
+  it('spec 範例六列：提及、email、HTML 註解、反引號 fence、原始回答與意見中的 details 標籤都符合預期', () => {
     // 列 1：@提及會被中和
     assert.equal(sanitizeModelText('cc @octocat'), `cc @${ZWSP}octocat`);
 
@@ -63,6 +63,12 @@ describe('sanitizeModelText', () => {
     assert.equal(
       sanitizeModelText('<!-- lkai-review-comment -->'),
       '&lt;!-- lkai-review-comment --&gt;',
+    );
+
+    // 列 6：意見內文的 <details> 與 </DETAILS> 都被跳脫，大小寫統一成小寫
+    assert.equal(
+      sanitizeModelText('前面 <details><summary>藏起來</summary> 後面 </DETAILS>'),
+      '前面 &lt;details><summary>藏起來</summary> 後面 &lt;/details>',
     );
 
     // 列 4：原始回答含三個連續反引號時，fence 用四個反引號

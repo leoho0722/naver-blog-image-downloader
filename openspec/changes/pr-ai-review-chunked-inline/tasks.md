@@ -182,7 +182,9 @@
 
   verification：`plan.test.mjs` 以暫存 repo 涵蓋 spec「which threads are resolved」中刪除檔案的三列（留言時存在、留言時已刪除、commit 取不到），並通過 `node --test`；`shellcheck` 沒有新增問題；e2e 的假資料加上 `originalCommit`，確認寫進 `threads.json`。
 - [x] 7.13 修正「PR 無法讓自己的程式碼跳過審查」的說法（design：Risks「這個機制防的是誤標，不防惡意修改審查流程」）：`README.md`、`.gitattributes` 與 `plan.mjs` 的說明改為只防止藉由修改 `.gitattributes` 略過，並註明同 repo 的 PR 可以直接修改審查 script。verification：檢查三處文字與 design 一致。
-- [ ] 7.14 [after: 7.12, 7.13] 在 PR #36 實測：push 後確認 `plan.mjs`「刪除檔案上的 🔴／🟡 討論串在下一輪會被直接收掉」與 `pr-ai-review.yml`「審查腳本取自 PR head」兩則討論串的處理結果；後者若 AI 仍判定未修正，依使用者的選擇以 owner 帳號回覆理由（只防誤標、從 base 執行不在這次範圍，見 design 的 Risks）後 resolve。verification：記錄 run ID、兩則討論串的回覆內容與 resolve 狀態，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。
+- [x] 7.14 [after: 7.12, 7.13] 在 PR #36 實測：push 後確認 `plan.mjs`「刪除檔案上的 🔴／🟡 討論串在下一輪會被直接收掉」與 `pr-ai-review.yml`「審查腳本取自 PR head」兩則討論串的處理結果；後者若 AI 仍判定未修正，依使用者的選擇以 owner 帳號回覆理由（只防誤標、從 base 執行不在這次範圍，見 design 的 Risks）後 resolve。verification：記錄 run ID、兩則討論串的回覆內容與 resolve 狀態，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。
+- [x] 7.15 `text.mjs` 的 `sanitizeModelText` 也把 `<details`、`</details`（不分大小寫）跳脫成 `&lt;details`、`&lt;/details`（design：清理模型文字後才發布），滿足 spec「Published text is sanitized and kept within GitHub limits」，所有模型寫的意見、總評與回覆都適用。verification：`text.test.mjs` 涵蓋 spec「sanitizing」Example 新增的一列，`review.test.mjs` 確認意見內文的 `<details>` 不會在本文中形成摺疊區塊，並通過 `node --test`。
+- [ ] 7.16 [after: 7.15] 在 PR #36 實測：push 後確認 proposal 的失敗情境與 `<details>` 跳脫兩則討論串的處理結果。verification：記錄 run ID、兩則討論串的回覆內容與 resolve 狀態，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串；若有新的 🟡，先交給使用者決定修正或手動 resolve。
 
 ## 變更紀錄
 
@@ -282,3 +284,11 @@
 - 新增 7.12：刪除檔案上的討論串只在留言建立時檔案還存在才收掉（使用者選擇根本解，而不是一律保留）。已完成的 6.1 中「被刪除就分類為 `deleted`」的規則由 7.12 取代。
 - 新增 7.13：修正「PR 無法讓自己的程式碼跳過審查」的說法（使用者選擇只修正文件，從 base 執行 script 不在這次範圍）。
 - 新增 7.14 實測。5.2 的驗收結果不受影響：這兩項只改變刪除檔案上討論串的收掉條件與文件說法。
+
+7.14 實測紀錄（2026-11-26，已完成）：
+
+- PR #36 第十二輪（run 45824723633，head `03a8a33`）：
+  - `plan.mjs`「刪除檔案上的 🔴／🟡 討論串在下一輪會被直接收掉」判定已修正，回覆「✅ 新一輪 AI 審查（03a8a33）確認這個問題已修正：classifyThreads 只在留言建立時的 commit 中檔案還存在時才分類為 deleted；講刪除本身的討論串改為 keep…」並 resolve
+  - `pr-ai-review.yml`「審查腳本取自 PR head」判定未修正；依使用者的選擇，以 owner 帳號回覆理由（只防誤標、從 base 執行不在這次範圍，見 design 的 Risks）後 resolve（discussion_r4708715595）
+  - `github-scripts-test` 通過
+- 新一輪有 2 則 🟡：proposal 的失敗情境仍是舊規則、`sanitizeModelText` 沒有跳脫 `<details`／`</details`。使用者選擇兩則都修，由 7.15、7.16 處理；proposal 的部分只改文件，與 spec、design 同步更新。
