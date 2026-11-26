@@ -109,7 +109,7 @@
   - 自動產生檔的略過，在另開的測試 PR 上驗證：這個 change 的 PR 的 base（main）還沒有 `.gitattributes`，無法在自己的 PR 上驗證，所以從 `features/pr-ai-review-chunked-inline` 開一個測試分支，同時修改 `.agents/skills/` 底下的檔案與一個一般檔案，發 PR 到 `features/pr-ai-review-chunked-inline`。確認前者列在「已略過」、後者被審查，驗證後關閉測試 PR 並刪除分支
 
   若 `resolveReviewThread` 因權限被拒，記錄實際的錯誤，並依 design 的 Risks 更新 spec 與 design。verification：記錄 review ID、討論串的 resolve 狀態與 workflow 執行結果。
-- [ ] 5.2 [after: 5.1, 6.7, 7.6, 7.9, 7.11] Owner 在 PR 頁面檢視 AI review；verification：五項皆符合：
+- [x] 5.2 [after: 5.1, 6.7, 7.6, 7.9, 7.11] Owner 在 PR 頁面檢視 AI review；verification：五項皆符合：
   - inline comment 標在正確的程式碼行上
   - review 本文的總評與結論可以讀懂
   - 在 5.1 的測試 PR 上，自動產生的檔案列在「已略過」清單
@@ -261,3 +261,11 @@
 - 新一輪有 1 則 🟡 inline comment：design「模型輸出 JSON，由 script 決定性地彙整意見」仍寫著舊的整體結論規則（7.1 改規則時漏改），維持未 resolve。已在本機修正該段 design，尚未 push。
 
 依 PR #36 第一次審查的一般留言（issuecomment-7182803638，舊版 workflow 在 apply 前審查 change 文件）逐項核對：11 項 🟡 中 10 項已修正；「diff 的 head 與 `commit_id` 必須是同一個 commit」的附帶建議（在 Risks 註明退回兩點 diff 的情況）當時沒有寫進文件，補在 design 的 Risks。
+
+5.2 驗收紀錄（2026-11-26，owner 確認，已完成）：
+
+- inline comment 標在正確的程式碼行上：以第十輪的 🟡（`design.md` 第 130 行）確認，該行正是留言所指的舊整體結論規則
+- review 本文的總評與結論可以讀懂
+- 測試 PR #37 上，自動產生的檔案列在「已略過」清單
+- 6.7 修正的 `diff.mjs`「內部狀態的 typedef 漏了 _raw」討論串附上確認回覆並 resolve（因為已修正、行號已變更，GitHub 把它標為過時並收合）；沒修正的維持未 resolve
+- 第七輪的 🟢 意見只出現在本文，🔴／🟡 以 inline comment 呈現
