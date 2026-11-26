@@ -289,8 +289,9 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
   }
 
   // job summary 放未截斷、含全部意見的版本
-  const fullBodyOnly = fitReviewBody(bodyOnlyParts, Number.MAX_SAFE_INTEGER).body;
-  const summaryMarkdown = truncateUtf8(fullBodyOnly).text;
+  // job summary 放未截斷、含全部意見的版本；不帶「inline comment 無法發布」的提示，那只適用於改發本文版的情況
+  const fullBody = fitReviewBody(assemble(findings, null), Number.MAX_SAFE_INTEGER).body;
+  const summaryMarkdown = truncateUtf8(fullBody).text;
 
   const review = {
     commit_id: plan.headSha,

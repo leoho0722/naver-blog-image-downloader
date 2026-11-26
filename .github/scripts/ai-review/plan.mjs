@@ -21,8 +21,9 @@ import { renderChunkPrompt, renderOverview } from './prompts.mjs';
 /** 每段預設的行數上限（估計值，見 design「依元件區域分組、原始碼與測試相鄰的分段裝箱規則」） */
 export const DEFAULT_MAX_CHUNK_LINES = 6000;
 
-// git 輸出可能很大（例如整個元件被刪除），預設的 1 MB 緩衝區不夠
-const GIT_MAX_BUFFER = 1024 * 1024 * 1024;
+// git 輸出可能很大（例如整個元件被刪除），預設的 1 MB 緩衝區不夠。
+// 上限取 256 MiB：再大的輸出轉成字串時會超過 V8 的字串長度上限，屆時 execFileSync 會丟出錯誤、規劃失敗
+const GIT_MAX_BUFFER = 256 * 1024 * 1024;
 
 /** 規劃失敗（例如找不到 base commit）。呼叫端應以非 0 退出碼結束，不送審、不發布。 */
 export class PlanError extends Error {

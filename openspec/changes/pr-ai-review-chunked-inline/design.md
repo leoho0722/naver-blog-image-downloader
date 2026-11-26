@@ -232,7 +232,7 @@ workflow 另外加上三項設定：
 - `concurrency`：`group: pr-ai-review-<PR 編號>`、`cancel-in-progress: true`，同一個 PR 有新的 push 時，取消還在執行的舊審查
 - `timeout-minutes: 60`
 - `permissions`：`contents: write` 與 `pull-requests: write`。不再發一般留言，所以移除 `issues: write`。建立 review 只需要 `pull-requests: write`，但 PR #36 實測，`GITHUB_TOKEN` 只有 `pull-requests: write` 時，`resolveReviewThread` 回 `Resource not accessible by integration`，加上 `contents: write` 後才能收掉討論串。為了縮小這個寫入權限的範圍：
-  - `GH_TOKEN` 只設定在「發布審查結果」這一步，建置 lkai、規劃與送審的步驟拿不到 token
+  - `GH_TOKEN` 只設定在「發布審查結果」這一步，建置 lkai、規劃與送審的 script 環境中沒有 token（action 仍可自行引用 `github.token`；這個 workflow 使用的 action 只有 `actions/checkout` 與以 SHA 固定的 LKAIKit）
   - checkout 設定 `persist-credentials: false`，token 不會寫進 `.git/config`；fetch base commit 走公開 repo 的匿名存取
 
 ## Implementation Contract

@@ -7,8 +7,9 @@ on:
 # - pull-requests: write：建立 review。不再發一般留言，所以不需要 issues: write。
 # - contents: write：GITHUB_TOKEN 收掉（resolve）上一輪的 AI 討論串需要它；只有 pull-requests: write 時，
 #   resolveReviewThread 會回 Resource not accessible by integration（PR #36 實測）。
-# 有寫入權限的 token 只交給「發布審查結果」這一步（GH_TOKEN 只設定在那一步），checkout 也不保留 git 憑證，
-# 建置 lkai、規劃與送審的步驟都拿不到它。
+# 有寫入權限的 token 只以 GH_TOKEN 交給「發布審查結果」這一步，checkout 也不保留 git 憑證，
+# 所以建置 lkai、規劃與送審的 script 環境中沒有 token（action 仍可自行引用 github.token，
+# 這裡使用的 action 只有 actions/checkout 與以 SHA 固定的 LKAIKit）。
 permissions:
   contents: write
   pull-requests: write

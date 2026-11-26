@@ -307,6 +307,8 @@ test('本文超過長度上限時截斷並記錄警告，summary.md 保有全部
   assert.match(review.body, /另有 \d+ 項意見因長度上限未列出/);
   assert.ok(outcome.warnings.some((warning) => warning.includes('長度上限')));
   assert.match(summaryMarkdown, /意見 399/);
+  // job summary 不帶「inline comment 無法發布」的提示
+  assert.doesNotMatch(summaryMarkdown, /inline comment 無法發布/);
 });
 
 test('PR 修改 .gitattributes 時本文會提示；截斷、自動產生、二進位檔案上的舊討論串保留，刪除的不保留', () => {
