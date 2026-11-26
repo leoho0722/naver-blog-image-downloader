@@ -169,7 +169,7 @@
 
 - [x] 7.7 在 `prompts.mjs` 與 `plan.mjs` 改為每段只附精簡的檔案總覽（design：精簡每段的檔案總覽），滿足 spec「Patches are annotated with new-file line numbers and findings are structured」的總覽規則：本段檔案全部列出；刪除、二進位、其他段的檔案依序最多 100 筆，超過時加一行依段落與分類列出沒有列出的數量；自動產生的檔案只寫數量；審查指示中對總覽的說明同步更新。同時讓 `plan` 印出的討論串統計加上 🟢 直接收掉的數量，並修正第七輪的兩項 🟢（`bodyItem` 的 JSDoc 缺少 `unattached`、`review.mjs` 重複的註解行）。verification：`plan.test.mjs` 涵蓋 spec「overview of chunk 1」Example 的兩列，並通過 `node --test`。
 - [x] 7.8 在 `run-review.sh` 的 `collect` 查詢討論串的 `subjectType`，檔案層級的討論串寫成 `line: null`，滿足 spec「Previous AI review threads are resolved after a new review is published」的收集規則。verification：`shellcheck` 沒有新增問題；e2e 情境的假資料加上 `subjectType: FILE`、`line: 1` 的討論串，確認提示詞中沒有行號。
-- [ ] 7.9 [after: 7.7, 7.8] 在 PR #36 實測：push 後確認 `plan.mjs:216`「檔案總覽沒有計入每段行數上限」的討論串由 AI 確認已修正、附上回覆並 resolve，並記錄各段提示詞的實際行數。verification：記錄 run ID、該討論串的回覆內容、各段提示詞行數，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。
+- [x] 7.9 [after: 7.7, 7.8] 在 PR #36 實測：push 後確認 `plan.mjs:216`「檔案總覽沒有計入每段行數上限」的討論串由 AI 確認已修正、附上回覆並 resolve，並記錄各段提示詞的實際行數。verification：記錄 run ID、該討論串的回覆內容、各段提示詞行數，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。
 
 ## 變更紀錄
 
@@ -234,3 +234,11 @@
 - 新增 7.7：每段只附精簡的檔案總覽，見 design「精簡每段的檔案總覽」；spec 中「每段提示詞含所有檔案的總覽」與「略過的檔案列在總覽」的規則同步改寫。已完成的 1.4 中「所有檔案的總覽」的描述保留原文作為歷史，由 7.7 取代。
 - 新增 7.8：7.6 實測發現檔案層級討論串的 `line` 回傳 1，收集時改寫成 null。
 - 新增 7.9 實測；5.2 改為等 7.9 完成後進行。
+
+7.9 實測紀錄（2026-11-26，已完成）：
+
+- PR #36 第八輪（run 45814714658，head `8e93554`）：收集到上一輪仍未 resolve 的 AI 討論串 1 個，交給模型判斷；`plan.mjs`「檔案總覽沒有計入每段行數上限」判定已修正，回覆「✅ 新一輪 AI 審查（8e93554）確認這個問題已修正：renderOverview 改成只完整列出本段的檔案；其他檔案依序列出刪除、二進位與其他段的檔案，最多 OVERVIEW_OTHER_LIMIT…」並 resolve。
+- 各段的 patch 行數為 5829、1041，提示詞實際行數為 5949、1122（含審查指示、精簡總覽與上一輪的討論串）。
+- 新一輪有 1 則 🟡 inline comment（`spec.md` 的清理規則沒有涵蓋檔案層級留言與討論串回覆），維持未 resolve；其餘 6 項為 🟢，只列在本文。`github-scripts-test` 通過。
+
+依 PR #36 第八輪審查：spec「Published text is sanitized and kept within GitHub limits」與 design「清理模型文字後才發布」補上清理範圍：檔案層級留言與討論串回覆。程式本來就會清理這兩者（檔案層級留言與 inline comment 共用 `commentBody`，回覆中模型的說明經 `sanitizeModelText` 並限制 1000 字元），只修改文件。
