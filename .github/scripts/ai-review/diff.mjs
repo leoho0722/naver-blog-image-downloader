@@ -160,7 +160,7 @@ export function parseDiff(text) {
 
   /** @type {FileDiff[]} */
   const files = [];
-  /** @type {(FileDiff & { _headerPath: string | null, _minus: string | null, _plus: string | null, _renameFrom: string | null, _renameTo: string | null }) | null} */
+  /** @type {(FileDiff & { _raw: string, _headerPath: string | null, _minus: string | null, _plus: string | null, _renameFrom: string | null, _renameTo: string | null }) | null} */
   let current = null;
   /** @type {Hunk | null} */
   let hunk = null;
