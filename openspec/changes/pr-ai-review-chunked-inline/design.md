@@ -50,7 +50,7 @@ job 在 `xcode-27` macOS runner 上執行（`lkai` 只能在 macOS 執行）。�
 
 base commit 必須存在於本機：workflow 在執行 `plan` 前先 `git fetch` base SHA，`plan` 再以 `git cat-file -e <base>^{commit}` 確認。取不到時 `plan` 以非 0 退出碼結束，整個 run 判定為失敗，不送審、不發布、不 resolve。這樣不會在拿不到規則的情況下，悄悄把所有檔案當成可審查或全部略過。
 
-標記為 `set` 或 `true` 的檔案不送內容，只在檔案總覽中列為「已略過（自動產生）」。
+標記為 `set` 或 `true` 的檔案不送內容，只在 review 本文列為「已略過的自動產生檔案」，給模型的總覽只寫數量（見「精簡每段的檔案總覽」）。
 
 純刪除的檔案也不送內容，只在總覽列為「已刪除」。這和現行做法不同：現行做法只在超過上限時才排除。理由是被刪除的內容已不在新版程式碼中，逐行審查的價值較低；總覽仍會列出被刪除的檔案，讓模型能指出可疑的刪除，例如整個測試檔或安全檢查被移除。修改中的檔案，其刪除的行照樣會出現在 hunk 內。二進位檔案同樣只列在總覽。
 
@@ -108,6 +108,20 @@ base commit 必須存在於本機：workflow 在執行 `plan` 前先 `git fetch`
 可以留 inline comment 的行（commentable lines），就是有行號的行。每個檔案以區間清單記錄這些行，供之後驗證意見的行號。被截斷的檔案，可留言行只包含實際送出的部分。
 
 替代方案：只附原始的 hunk 標頭（`@@ -10,3 +10,4 @@`），讓模型自己數行。不採用：模型數錯行號時，inline comment 會被 GitHub 拒絕，或標到錯的行。
+
+### 精簡每段的檔案總覽
+
+原本每段的提示詞都附上整個 PR 的檔案總覽，每個檔案一行，自動產生的檔案也算在內；檔案很多的 PR，每段的實際提示詞會超出每段的行數上限，而且每一段都重複一次（PR #36 第五輪審查指出，第七輪判定仍未修正）。改為每段只附精簡的總覽：
+
+- **本段的檔案**：全部列出，含變更類型與是否只附前段
+- **其他檔案**：依序列出刪除的檔案、二進位檔案、其他段落的檔案，各附分類與所在段落，最多 100 筆；超過時加一行，依段落與分類列出沒有列出的數量。刪除的檔案排在前面，讓模型仍能指出可疑的刪除
+- **自動產生的檔案**：只寫數量，完整清單在 review 本文的「已略過」區塊
+
+因此總覽的大小只隨本段的檔案數增加，其他檔案最多佔 100 行加上幾行說明。100 是估計值：這個 repo 一般的 PR 在 100 個檔案以內（例如 PR #36 有 25 個），總覽仍會完整列出；`plan` 印出的各段提示詞實際行數可用來核對。
+
+上一輪討論串也會放進提示詞，但只有本段檔案上仍未 resolve 的 🔴／🟡 討論串，每則留言最多 1500 個字元，數量由修正或 resolve 討論串控制，不另設上限。
+
+替代方案：把總覽計入每段的行數上限。不採用：總覽在每一段都相同，計入上限只會讓每段可放的 patch 變少，檔案很多時甚至放不下任何 patch。
 
 ### 模型輸出 JSON，由 script 決定性地彙整意見
 
@@ -227,7 +241,7 @@ concurrency 可能在「發布之後、resolve 之前」取消舊的執行，留
 
 流程分成四步，順序固定：
 
-1. **送審前先收集**：新增一個有 token 的步驟（`run-review.sh collect`），以 GraphQL 分頁查詢 `reviewThreads`，收集「還沒 resolve、第一則留言的作者是 `github-actions`、含有 `<!-- lkai-review-comment -->`」的討論串，連同路徑、行號（`line`，討論串已過時則用 `originalLine`）與第一則留言的內容寫進 `threads.json`。查詢失敗時只發出警告，這一輪不收掉任何討論串，審查照常進行。
+1. **送審前先收集**：新增一個有 token 的步驟（`run-review.sh collect`），以 GraphQL 分頁查詢 `reviewThreads`，收集「還沒 resolve、第一則留言的作者是 `github-actions`、含有 `<!-- lkai-review-comment -->`」的討論串，連同路徑、行號（`line`，討論串已過時則用 `originalLine`；檔案層級的討論串（`subjectType` 為 `FILE`）沒有行號，寫成 null，GraphQL 對它回傳的 `line` 是 1，PR #36 實測）與第一則留言的內容寫進 `threads.json`。查詢失敗時只發出警告，這一輪不收掉任何討論串，審查照常進行。
 2. **規劃時分類**：`plan --threads threads.json` 先從第一則留言開頭的標籤讀出嚴重程度（讀不出來時視為 🟡）。🟢 的討論串分類為 **可選優化**（`nit`），不交給模型判斷（見「依嚴重程度決定意見是否擋合併」）；其餘依所在檔案在這次 diff 中的狀態分類，檔案被更名時也以更名前的路徑比對：
    - **交給模型判斷**（`ask`）：檔案屬於某一段、而且沒有被截斷。討論串以 `P1`、`P2`… 的代號、路徑、行號與留言內容，放進那一段提示詞的「上一輪仍未解決的意見」區塊。
    - **已沒有變更**（`no-longer-changed`）：檔案已不在這次 diff 內（例如改動被還原）。
@@ -303,7 +317,7 @@ workflow 另外加上三項設定：
 **介面與資料格式：**
 
 - `node .github/scripts/ai-review/ai-review.mjs plan --base <sha> --head <sha> --out <dir> [--max-chunk-lines <n>] [--threads <threads.json>]`
-  - 在 `<dir>` 寫出 `plan.json`，以及各段的提示詞 `chunk-<n>.md`（含審查指示、完整檔案總覽、該段標註後的 patch）
+  - 在 `<dir>` 寫出 `plan.json`，以及各段的提示詞 `chunk-<n>.md`（含審查指示、精簡的檔案總覽、該段標註後的 patch）
   - base commit 不存在於本機時，以非 0 退出碼結束，不寫出任何檔案
   - 有 `--threads` 時，`plan.json` 另有 `previousThreads: [{ "ref": "P1", "id", "path", "filePath": <這次 diff 中對應的路徑|null>, "line", "comment", "severity": "blocker|warning|nit", "chunk": <n|null>, "disposition": "ask|no-longer-changed|deleted|keep|nit" }]`，`ask` 的討論串放進對應段落的提示詞
   - `threads.json`（`run-review.sh collect` 產生）的格式：`[{ "id", "path", "line", "comment" }]`，`line` 已依「`line`，過時則用 `originalLine`」取得
