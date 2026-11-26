@@ -145,13 +145,17 @@ export function buildPlan({ cwd, base, head, maxChunkLines = DEFAULT_MAX_CHUNK_L
   const baseSha = resolveCommit(cwd, base, 'base');
   const headSha = resolveCommit(cwd, head, 'head');
 
-  // 有共同祖先時用三點 diff（只看 PR 本身的變更）；取不到時（例如 base 分支被 force push）退回兩點 diff
-  let range = [`${baseSha}...${headSha}`];
+  // 一律以共同祖先為起點的三點 diff（只看 PR 本身的變更）。取不到共同祖先時不退回兩點 diff：
+  // 兩點 diff 會混入 base 分支在分岔之後的變更，審查範圍與討論串的分類都會出錯，等於猜測
+  // （見 design 的 Risks「取不到共同祖先時規劃失敗，不退回兩點 diff」）
   try {
     git(cwd, ['merge-base', baseSha, headSha]);
   } catch {
-    range = [baseSha, headSha];
+    throw new PlanError(
+      `找不到 base commit（${baseSha.slice(0, 7)}）與 head commit（${headSha.slice(0, 7)}）的共同祖先：PR 分支與 base 分支沒有共同的歷史（例如 base 分支被改寫過），無法判斷這個 PR 的變更範圍。請把 PR rebase 到最新的 base 分支後重新執行。`,
+    );
   }
+  const range = [`${baseSha}...${headSha}`];
   // 固定輸出格式：中文路徑不跳脫、不上色、不用外部 diff 工具、偵測更名，並固定 a/、b/ 前綴
   // （使用者或 runner 設定了 diff.noprefix、diff.mnemonicPrefix 時，前綴會不同，路徑就會解析錯誤）
   const diffText = git(cwd, [

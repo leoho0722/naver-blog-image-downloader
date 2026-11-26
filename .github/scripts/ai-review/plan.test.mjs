@@ -205,7 +205,8 @@ test('沒有可審查的檔案時沒有段落與提示詞', () => {
   });
 });
 
-test('取不到共同祖先時退回兩點 diff', () => {
+// spectra-scenario: pr-ai-review / Missing merge base stops planning
+test('取不到共同祖先時規劃失敗，不退回兩點 diff；命令列以 1 結束且不寫出任何檔案', () => {
   withRepo(({ dir, git, write, commit }) => {
     write('a.txt', 'a\n');
     const base = commit('base');
@@ -214,8 +215,14 @@ test('取不到共同祖先時退回兩點 diff', () => {
     write('b.txt', 'b\n');
     const head = commit('unrelated');
 
-    const { plan } = buildPlan({ cwd: dir, base, head });
-    assert.deepEqual(categories(plan), { 'a.txt': 'deleted', 'b.txt': 'reviewed' });
+    assert.throws(() => buildPlan({ cwd: dir, base, head }), (error) => error instanceof PlanError && /共同祖先/.test(error.message) && /rebase/.test(error.message));
+
+    const out = join(dir, 'out');
+    const result = spawnSync(process.execPath, [CLI, 'plan', '--base', base, '--head', head, '--out', out], { cwd: dir, encoding: 'utf8' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /找不到 base commit（[0-9a-f]{7}）與 head commit（[0-9a-f]{7}）的共同祖先/);
+    assert.doesNotMatch(result.stderr, /\n\s+at /);
+    assert.equal(existsSync(join(out, 'plan.json')), false);
   });
 });
 

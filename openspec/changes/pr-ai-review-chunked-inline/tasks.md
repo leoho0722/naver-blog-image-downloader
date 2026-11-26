@@ -198,7 +198,13 @@
   - `text.mjs` 的 `fitReviewBody` 在第三步截斷本文時，若截斷點落在摺疊區塊中間，補上 `</details>`，長度仍不超過上限
 
   verification：`review.test.mjs` 涵蓋 spec「Long file lists do not push findings out of the body」（3,000 個自動產生檔），`text.test.mjs` 涵蓋截斷點落在摺疊區塊中間的情況，並通過 `node --test`。
-- [ ] 7.21 [after: 7.20] 在 PR #36 實測：push 後確認「本文截斷只處理兩個區塊」的討論串處理結果，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。verification：記錄 run ID 與該討論串的回覆內容與 resolve 狀態；若有新的 🟡，先交給使用者決定。
+- [x] 7.21 [after: 7.20] 在 PR #36 實測：push 後確認「本文截斷只處理兩個區塊」的討論串處理結果，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。verification：記錄 run ID 與該討論串的回覆內容與 resolve 狀態；若有新的 🟡，先交給使用者決定。
+- [x] 7.22 取不到共同祖先時規劃失敗，不再退回兩點 diff（design：Risks「取不到共同祖先時規劃失敗，不退回兩點 diff」），取代已完成的 1.4 中「取不到 merge base 時退回兩點 diff」的規則，滿足 spec「Generated, deleted, and binary files are excluded from review content」：
+  - `run-review.sh` 的 `plan` 在 checkout 是 shallow 時，先以 `git fetch --unshallow` 補抓完整歷史
+  - `plan.mjs` 取不到 `git merge-base` 時丟出 `PlanError`，訊息說明 PR 分支與 base 分支沒有共同的歷史，並建議 rebase 到最新的 base 分支
+
+  verification：`plan.test.mjs` 把原本「取不到共同祖先時退回兩點 diff」的測試改為「沒有共同祖先時規劃失敗、命令列以 1 結束且不寫出任何檔案」；本機 e2e 新增情境：從 `file://` 的 origin 以 `--depth 1` clone 後執行 `plan`，確認會補抓完整歷史並正常規劃；`shellcheck` 沒有新增問題；並通過 `node --test`。
+- [ ] 7.23 [after: 7.22] 在 PR #36 實測：push 後確認「取不到 merge-base 時無聲地退回兩點 diff」的討論串處理結果。verification：記錄 run ID、該討論串的回覆內容與 resolve 狀態，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串；若有新的 🟡，先交給使用者決定。
 
 ## 變更紀錄
 
@@ -321,3 +327,10 @@
 依 PR #36 第十五輪審查（2026-11-26）：整體結論已是「🟢 沒有擋合併的問題」，使用者選擇再優化其中三項 🟢，由 7.19 處理。整理 README 時另外發現兩處與 spec 不一致（整體結論沒有列出「審查不完整」、刪除檔案上的討論串仍寫成一律收掉），一併修正。
 
 依 PR #36 第十六輪審查（2026-11-26，使用者選擇「清單設上限 + 文件補第三步」）：程式原本就有第三步（截斷本文前段），文件只寫了兩步；另外發現隨 PR 變大的檔案清單會在截斷時先把意見擠出本文，由 7.20 改為清單設上限，並在截斷時補上未關閉的摺疊區塊。
+
+7.21 實測紀錄（2026-11-26，已完成）：
+
+- PR #36 第十七輪（run 45834659314，head `e050ac7`）：「本文截斷只處理兩個區塊」的討論串判定已修正，回覆後 resolve；`github-scripts-test` 通過。
+- 新一輪有 2 則 🟡：
+  - `run-review.sh`「`${text//%/%25}` 的 `%` 會被當成結尾錨點」：以 runner 使用的 bash 3.2.57 實測可以正確跳脫所有 `%`（`50% done %x` → `50%25 done %25x`），說法不成立；依使用者的選擇，以 owner 帳號回覆實測結果後 resolve（discussion_r4709610583），不改程式。
+  - `plan.mjs`「取不到 merge-base 時無聲地退回兩點 diff」：使用者選擇根本解，由 7.22 改為規劃失敗、不再猜測，7.23 實測。已完成的 1.4 中「退回兩點 diff」的規則與 design 先前補在 Risks 的說明，由這個做法取代。

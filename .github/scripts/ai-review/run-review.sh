@@ -127,6 +127,15 @@ command_plan() {
   if ! git fetch --no-tags --quiet origin "$BASE_SHA" 2>/dev/null; then
     echo "fetch base commit 失敗，改用本機已有的資料"
   fi
+  # 只抓了部分歷史（shallow）時可能找不到共同祖先，先補抓完整歷史；
+  # 補抓失敗時仍交給 plan 判斷，找不到共同祖先會以說明原因的訊息失敗
+  if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = true ]; then
+    if git fetch --no-tags --quiet --unshallow origin 2>/dev/null; then
+      echo "checkout 只有部分歷史，已補抓完整歷史"
+    else
+      echo "checkout 只有部分歷史，補抓完整歷史失敗，改用本機已有的資料"
+    fi
+  fi
 
   local thread_args=()
   if [ -f "${work_dir}/threads.json" ]; then
