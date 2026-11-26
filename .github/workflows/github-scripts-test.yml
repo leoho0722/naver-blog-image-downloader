@@ -1,0 +1,35 @@
+name: GitHub Scripts Test
+
+# 執行 .github/scripts/ 底下 Node script 的單元測試（目前是 PR AI 審查用的 ai-review/）。
+# 只在這些 script 或這個 workflow 本身有變動時執行。
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/github-scripts-test.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/**'
+      - '.github/workflows/github-scripts-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node Script Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # 與 xcode-27 runner 內建的 Node 主版號一致，避免兩邊行為不同
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Run ai-review tests
+        run: node --test .github/scripts/ai-review/
