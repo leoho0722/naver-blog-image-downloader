@@ -140,3 +140,5 @@ Use the active conversation language for user-visible analysis, questions, label
    Completion line, only when every checkbox is complete: "All tasks complete! Run `$spectra-verify <change-name>` and `$spectra-review <change-name>` before archiving with `$spectra-archive`."
 
 **Guardrails**: use CLI paths/totals, keep edits scoped, update implementation checkboxes immediately after their completion checks, and continue authorized dependency-ready work until done, blocked or handed off to the owner.
+
+<!-- 測試：驗證 PR AI 審查會略過自動產生的檔案 -->
