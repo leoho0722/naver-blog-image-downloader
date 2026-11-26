@@ -259,3 +259,5 @@
 - PR #36 第十輪（run 45816901602，head `89fc39e`）：`run-review.sh`「檔案層級留言發布失敗時只發警告」的討論串判定已修正，回覆「✅ 新一輪 AI 審查（89fc39e）確認這個問題已修正：post_file_comments 在發布失敗時，會先確認留言是否其實已存在，沒有才重試一次；仍然失敗就累加 file_comment_f…」並 resolve；`github-scripts-test` 通過。
 - 各段提示詞實際行數為 5977、1146。
 - 新一輪有 1 則 🟡 inline comment：design「模型輸出 JSON，由 script 決定性地彙整意見」仍寫著舊的整體結論規則（7.1 改規則時漏改），維持未 resolve。已在本機修正該段 design，尚未 push。
+
+依 PR #36 第一次審查的一般留言（issuecomment-7182803638，舊版 workflow 在 apply 前審查 change 文件）逐項核對：11 項 🟡 中 10 項已修正；「diff 的 head 與 `commit_id` 必須是同一個 commit」的附帶建議（在 Risks 註明退回兩點 diff 的情況）當時沒有寫進文件，補在 design 的 Risks。
