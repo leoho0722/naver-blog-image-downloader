@@ -299,3 +299,8 @@
 
 - PR #36 第十三輪（run 45825750231，head `b96a961`）：`<details>` 跳脫的討論串判定已修正，回覆後 resolve；proposal 的討論串判定未修正（第 15 行「整體結論由 script 依各段結果計算」仍是舊說法，7.15 時漏改），維持未 resolve。`github-scripts-test` 通過。
 - 新一輪有 2 則 🟡：`git check-attr --source` 版本不符時是未處理的例外、spec「One chunk fails」情境漏了仍未收掉的上一輪 🔴 討論串。使用者選擇三則都修：proposal 與 spec 只改文件，check-attr（連同讀取 `plan.json` 失敗）由 7.17 處理，7.18 實測。
+
+7.18 實測紀錄（2026-11-26）：
+
+- PR #36 第十四輪（run 45826838730，head `509f707`）：`git check-attr` 與 spec「One chunk fails」兩則判定已修正，回覆後 resolve；這一輪沒有新的 🔴／🟡，9 項意見都是 🟢，只列在本文。`github-scripts-test` 通過。
+- proposal 的討論串仍判定未修正：留言的三項建議中，「把『review 完全發布不了』與『發布已取得的內容』拆成兩句」沒有做到。已拆成兩句，並依同一輪總評，在 spec「Review run outcome reflects missing review content」的失敗條件補上 `git check-attr` 無法執行與 `plan.json` 無法解讀（與 7.17 的實作一致），待下一輪確認。
