@@ -582,3 +582,31 @@ test('規劃檔不是合法的 JSON 時，命令列以 1 結束並印出可讀�
     }
   });
 });
+
+// spectra-scenario: pr-ai-review / Long file lists do not push findings out of the body
+// spectra-scenario: pr-ai-review / Oversized body is truncated
+test('自動產生檔很多時，本文的清單只列 100 個並註明數量，意見仍留在本文，job summary 列出完整清單', () => {
+  const generated = Array.from({ length: 3000 }, (_, i) => ({
+    path: `.agents/skills/very/long/generated/path/number-${String(i).padStart(4, '0')}/SKILL.md`,
+    oldPath: null,
+    status: 'modified',
+    category: 'generated',
+    lines: 0,
+    chunk: null,
+    truncated: false,
+  }));
+  const plan = makePlan([['a.ts']], generated);
+  const { review, summaryMarkdown, outcome } = build(plan, [
+    ok({ summary: 's', verdict: 'no_concerns', findings: [finding('a.ts', 2, 'nit', '仍然看得到的意見')] }),
+  ]);
+  assert.ok(review.body.length <= 60000, `本文長度 ${review.body.length}`);
+  assert.match(review.body, /已略過的自動產生檔案（3000 個）/);
+  assert.match(review.body, /number-0099\/SKILL\.md/);
+  assert.doesNotMatch(review.body, /number-0100\/SKILL\.md/);
+  assert.match(review.body, /- …另有 2900 個，完整清單在這次 workflow run 的 job summary/);
+  // 清單有上限後，本文不必截斷，意見也不會被擠掉
+  assert.match(review.body, /仍然看得到的意見/);
+  assert.ok(!outcome.warnings.some((warning) => warning.includes('長度上限')));
+  assert.match(summaryMarkdown, /number-2999\/SKILL\.md/);
+  assert.doesNotMatch(summaryMarkdown, /另有 2900 個/);
+});

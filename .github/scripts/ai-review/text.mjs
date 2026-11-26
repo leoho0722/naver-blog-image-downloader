@@ -287,9 +287,43 @@ export function fitReviewBody(parts, limit = BODY_LIMIT) {
       .map((sections) => joinSections(sections))
       .find((candidate) => candidate.length <= limit) ?? TRUNCATION_NOTE;
   const room = limit - rest.length - SECTION_SEPARATOR.length;
-  const clippedHead = clipText(head, room);
+  const clippedHead = clipHeadKeepingDetailsClosed(head, room);
   const body = clippedHead === '' ? rest : `${clippedHead}${SECTION_SEPARATOR}${rest}`;
   return { body, truncated: true };
+}
+
+/** 補在截斷處、關閉摺疊區塊用的標籤 */
+const CLOSE_DETAILS = '\n</details>';
+
+/**
+ * 計算文字中還沒關閉的 `<details>` 數量。模型寫的文字已由 sanitizeModelText 跳脫，
+ * 這裡數到的只會是程式自己產生的摺疊區塊。
+ *
+ * @param {string} text
+ * @returns {number}
+ */
+function openDetailsCount(text) {
+  const opened = text.split('<details>').length - 1;
+  const closed = text.split('</details>').length - 1;
+  return Math.max(0, opened - closed);
+}
+
+/**
+ * 把 head 截到 maxLength 以內。截斷點落在摺疊區塊（例如很長的「已略過」清單）中間時，
+ * 補上 `</details>`，避免後面的「已截斷」說明被收進摺疊區塊裡看不到；補上的標籤也算在 maxLength 內。
+ *
+ * @param {string} head
+ * @param {number} maxLength
+ * @returns {string}
+ */
+function clipHeadKeepingDetailsClosed(head, maxLength) {
+  const clipped = clipText(head, maxLength);
+  const open = openDetailsCount(clipped);
+  if (open === 0) {
+    return clipped;
+  }
+  const shorter = clipText(head, maxLength - CLOSE_DETAILS.length * open);
+  return `${shorter}${CLOSE_DETAILS.repeat(openDetailsCount(shorter))}`;
 }
 
 /**

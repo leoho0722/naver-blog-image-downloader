@@ -405,6 +405,26 @@ describe('fitReviewBody', () => {
     assert.equal(body, `${'H'.repeat(limit - TRUNCATION_NOTE.length - 2)}\n\n${TRUNCATION_NOTE}`);
   });
 
+  // spectra-scenario: pr-ai-review / Oversized body is truncated
+  it('降級 3：截斷點落在摺疊區塊中間時補上 </details>，說明文字不會被收進摺疊區塊，長度仍不超過上限', () => {
+    const list = Array.from({ length: 200 }, (_, index) => `- \`gen/${index}.yaml\``).join('\n');
+    const parts = makeParts({
+      head: `## 審查範圍\n\n<details>\n<summary>已略過的自動產生檔案（200 個）</summary>\n\n${list}\n\n</details>`,
+      nonInline: [],
+      rawAnswers: [],
+      tail: '',
+    });
+    for (const limit of [500, 1000, 2000]) {
+      const { body, truncated } = fitReviewBody(parts, limit);
+      assert.equal(truncated, true);
+      assert.ok(body.length <= limit, `limit ${limit}：長度 ${body.length}`);
+      assert.ok(body.endsWith(TRUNCATION_NOTE));
+      // 開啟與關閉的摺疊區塊數量相同，而且關閉標籤在說明文字之前
+      assert.equal(body.split('<details>').length, body.split('</details>').length);
+      assert.ok(body.lastIndexOf('</details>') < body.lastIndexOf(TRUNCATION_NOTE));
+    }
+  });
+
   it('各種上限下 body.length 一定不超過上限，截斷時一定以說明文字結尾且不切斷 emoji', () => {
     const parts = {
       head: `結論${'😀'.repeat(60)}`,

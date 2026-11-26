@@ -193,6 +193,12 @@
   - proposal 的整體結論列舉補上「審查不完整」
 
   verification：`node --test '.github/scripts/ai-review/*.test.mjs'` 通過；`grep` 確認 `<!-- lkai-review-comment -->` 在 `.github/scripts/ai-review/` 的 `.mjs` 中只定義一次；檢查 README 與 proposal 的文字和 spec 一致。
+- [x] 7.20 review 本文的檔案清單設上限，並把截斷的第三步寫進文件（design：清理模型文字後才發布），滿足 spec「Published text is sanitized and kept within GitHub limits」：
+  - `review.mjs` 的「已略過的自動產生檔案」「只列出、不審查內容的刪除或二進位檔案」清單在 review 本文各最多列 100 個，超過時註明另有幾個與完整清單在 job summary；job summary 列出完整清單
+  - `text.mjs` 的 `fitReviewBody` 在第三步截斷本文時，若截斷點落在摺疊區塊中間，補上 `</details>`，長度仍不超過上限
+
+  verification：`review.test.mjs` 涵蓋 spec「Long file lists do not push findings out of the body」（3,000 個自動產生檔），`text.test.mjs` 涵蓋截斷點落在摺疊區塊中間的情況，並通過 `node --test`。
+- [ ] 7.21 [after: 7.20] 在 PR #36 實測：push 後確認「本文截斷只處理兩個區塊」的討論串處理結果，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。verification：記錄 run ID 與該討論串的回覆內容與 resolve 狀態；若有新的 🟡，先交給使用者決定。
 
 ## 變更紀錄
 
@@ -313,3 +319,5 @@
 - PR #36 第十五輪（run 45827627638，head `284eff2`）：proposal 的討論串判定已修正，回覆「✅ 新一輪 AI 審查（284eff2）確認這個問題已修正：三項建議都已處理…」並 resolve。整體結論為「🟢 沒有擋合併的問題」，8 項意見都是 🟢；PR #36 沒有任何未 resolve 的討論串，`github-scripts-test` 通過。7.18 完成。
 
 依 PR #36 第十五輪審查（2026-11-26）：整體結論已是「🟢 沒有擋合併的問題」，使用者選擇再優化其中三項 🟢，由 7.19 處理。整理 README 時另外發現兩處與 spec 不一致（整體結論沒有列出「審查不完整」、刪除檔案上的討論串仍寫成一律收掉），一併修正。
+
+依 PR #36 第十六輪審查（2026-11-26，使用者選擇「清單設上限 + 文件補第三步」）：程式原本就有第三步（截斷本文前段），文件只寫了兩步；另外發現隨 PR 變大的檔案清單會在截斷時先把意見擠出本文，由 7.20 改為清單設上限，並在截斷時補上未關閉的摺疊區塊。

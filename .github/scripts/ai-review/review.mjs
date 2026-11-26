@@ -147,18 +147,28 @@ function commentBody(finding, extraMarker = '') {
   return `${truncateComment(content, COMMENT_LIMIT - suffix.length)}${suffix}`;
 }
 
+/** review 本文中每份檔案清單最多列出的路徑數；完整清單在 job summary（見 design「清理模型文字後才發布」） */
+export const BODY_FILE_LIST_LIMIT = 100;
+
 /**
  * 以檔案清單產生摺疊區塊；清單為空時回傳空字串。
+ * 超過 limit 時只列出前 limit 個，再註明另有幾個與完整清單的位置，
+ * 避免隨 PR 變大的清單（例如大量自動產生的檔案）把真正的意見擠出 review 本文。
  *
  * @param {string} title
  * @param {string[]} paths
+ * @param {number} [limit] 最多列出的路徑數；job summary 不設上限
  * @returns {string}
  */
-function fileListBlock(title, paths) {
+function fileListBlock(title, paths, limit = Number.POSITIVE_INFINITY) {
   if (paths.length === 0) {
     return '';
   }
-  return [`<details>`, `<summary>${title}（${paths.length} 個）</summary>`, '', ...paths.map((path) => `- ${toInlineCode(path)}`), '', `</details>`].join('\n');
+  const shown = paths.slice(0, limit).map((path) => `- ${toInlineCode(path)}`);
+  if (paths.length > limit) {
+    shown.push(`- …另有 ${paths.length - limit} 個，完整清單在這次 workflow run 的 job summary`);
+  }
+  return [`<details>`, `<summary>${title}（${paths.length} 個）</summary>`, '', ...shown, '', `</details>`].join('\n');
 }
 
 /**
@@ -275,18 +285,24 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
   if (truncatedFiles.length > 0) {
     scope.push(`以下檔案超過每段上限，只審查了前段：${truncatedFiles.map(toInlineCode).join('、')}`);
   }
-  headSections.push(
-    [`#### 審查範圍`, '', scope.join('\n'), fileListBlock('已略過的自動產生檔案', skipped), fileListBlock('只列出、不審查內容的刪除或二進位檔案', listed)]
+  // 「審查範圍」放在 head 的最後；review 本文的檔案清單有上限，job summary 列出完整清單
+  const scopeSection = (listLimit) =>
+    [
+      `#### 審查範圍`,
+      '',
+      scope.join('\n'),
+      fileListBlock('已略過的自動產生檔案', skipped, listLimit),
+      fileListBlock('只列出、不審查內容的刪除或二進位檔案', listed, listLimit),
+    ]
       .filter((part) => part !== '')
-      .join('\n\n'),
-  );
+      .join('\n\n');
 
   const rawAnswers = failed
     .filter((result) => result.raw.trim() !== '')
     .map((result) => fenceRawAnswer(result.raw, `第 ${result.index} 段的原始回答`));
 
-  const assemble = (nonInlineFindings, extraNote) => {
-    const head = headSections.slice();
+  const assemble = (nonInlineFindings, extraNote, listLimit = BODY_FILE_LIST_LIMIT) => {
+    const head = [...headSections, scopeSection(listLimit)];
     if (extraNote) {
       head.splice(1, 0, extraNote);
     }
@@ -309,7 +325,7 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
   }
 
   // job summary 放未截斷、含全部意見的版本；不帶「inline comment 無法發布」的提示，那只適用於改發本文版的情況
-  const fullBody = fitReviewBody(assemble(findings, null), Number.MAX_SAFE_INTEGER).body;
+  const fullBody = fitReviewBody(assemble(findings, null, Number.POSITIVE_INFINITY), Number.MAX_SAFE_INTEGER).body;
   const summaryMarkdown = truncateUtf8(fullBody).text;
 
   const review = {
