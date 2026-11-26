@@ -425,3 +425,130 @@ code:
 tests:
   - apps/web/src/__tests__/pages/HomePage.test.tsx
 -->
+
+---
+### Requirement: Accessible URL input field
+
+The BlogInputForm URL input SHALL be associated with a visually hidden `<label>` whose text comes from the localized key `blogInputUrlLabel`; the placeholder SHALL remain a format hint only. The input SHALL set `name="blogUrl"`, `required`, `autocapitalize="none"`, `autocorrect="off"`, `spellcheck="false"`, and `enterkeyhint="go"`, and its computed font size SHALL be at least 16px so that iOS Safari does not zoom the page when the input gains focus. The form SHALL set `noValidate` so that validation errors are always reported by the app's localized messages instead of the browser's native validation bubble. When an error message is shown, it SHALL be rendered with `role="alert"` and referenced by the input's `aria-describedby`; for the empty-URL and invalid-URL errors the input SHALL also set `aria-invalid="true"`. The paste button SHALL NOT carry an `aria-label` that duplicates its visible text.
+
+#### Scenario: Input has a programmatic label
+
+- **WHEN** the home page renders the blog input form
+- **THEN** the URL input's accessible name is the localized `blogInputUrlLabel` text
+
+#### Scenario: App validation replaces the native bubble
+
+- **WHEN** the user submits `blog.naver.com/user/1` without a scheme
+- **THEN** no native validation bubble appears, the localized invalid-URL message is shown with `role="alert"`, and the input has `aria-invalid="true"` and `aria-describedby` pointing at that message
+
+##### Example: error type to input state
+
+| Error type          | `aria-invalid` on input | Message referenced by `aria-describedby` |
+| ------------------- | ----------------------- | ---------------------------------------- |
+| `emptyUrl`          | `true`                  | yes                                      |
+| `invalidUrl`        | `true`                  | yes                                      |
+| `networkError`      | absent                  | yes                                      |
+| no error            | absent                  | no                                       |
+
+
+<!-- @trace
+source: web-modern-platform-refresh
+updated: 2026-11-26
+code:
+  - apps/web/CLAUDE.md
+  - apps/web/index.html
+  - apps/web/package.json
+  - apps/web/src/components/blog-input/BlogInputForm.tsx
+  - apps/web/src/components/blog-input/FetchProgress.tsx
+  - apps/web/src/components/download/DownloadProgress.tsx
+  - apps/web/src/components/gallery/ImageViewer.tsx
+  - apps/web/src/components/gallery/PhotoCard.tsx
+  - apps/web/src/components/gallery/PhotoGrid.tsx
+  - apps/web/src/components/layout/AppHeaderControls.tsx
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - apps/web/src/components/onboarding/OnboardingCard.tsx
+  - apps/web/src/index.css
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/lib/hooks/use-color-scheme.ts
+  - apps/web/src/lib/hooks/use-modal-dialog.ts
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/lib/polyfills/popover.ts
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/main.tsx
+tests:
+  - apps/web/src/__tests__/components/blog-input/BlogInputForm.test.tsx
+  - apps/web/src/__tests__/components/download/DownloadProgress.test.tsx
+  - apps/web/src/__tests__/components/gallery/ImageViewer.test.tsx
+  - apps/web/src/__tests__/components/gallery/PhotoCard.test.tsx
+  - apps/web/src/__tests__/components/layout/AppHeaderControls.test.tsx
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/web/src/__tests__/components/onboarding/OnboardingCard.test.tsx
+  - apps/web/src/__tests__/lib/config/ui-controls.test.ts
+  - apps/web/src/__tests__/lib/hooks/use-color-scheme.test.tsx
+  - apps/web/src/__tests__/lib/hooks/use-modal-dialog.test.tsx
+  - apps/web/src/__tests__/lib/polyfills/popover.test.ts
+  - apps/web/src/__tests__/lib/stores/use-settings-store.test.ts
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/setup.ts
+  - apps/web/src/__tests__/test-utils/dialog.ts
+-->
+
+---
+### Requirement: Fetch progress step semantics
+
+FetchProgress SHALL render its three steps (submitting, processing, completed) as an ordered list with `role="list"`, one list item per step, and SHALL mark the list item of the current phase with `aria-current="step"`. Decorative connector lines between steps SHALL be hidden from assistive technologies with `aria-hidden="true"`.
+
+#### Scenario: Current step is announced
+
+- **WHEN** the fetch phase is `processing`
+- **THEN** the second list item has `aria-current="step"` and the other two list items have no `aria-current`
+
+<!-- @trace
+source: web-modern-platform-refresh
+updated: 2026-11-26
+code:
+  - apps/web/CLAUDE.md
+  - apps/web/index.html
+  - apps/web/package.json
+  - apps/web/src/components/blog-input/BlogInputForm.tsx
+  - apps/web/src/components/blog-input/FetchProgress.tsx
+  - apps/web/src/components/download/DownloadProgress.tsx
+  - apps/web/src/components/gallery/ImageViewer.tsx
+  - apps/web/src/components/gallery/PhotoCard.tsx
+  - apps/web/src/components/gallery/PhotoGrid.tsx
+  - apps/web/src/components/layout/AppHeaderControls.tsx
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - apps/web/src/components/onboarding/OnboardingCard.tsx
+  - apps/web/src/index.css
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/lib/hooks/use-color-scheme.ts
+  - apps/web/src/lib/hooks/use-modal-dialog.ts
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/lib/polyfills/popover.ts
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/main.tsx
+tests:
+  - apps/web/src/__tests__/components/blog-input/BlogInputForm.test.tsx
+  - apps/web/src/__tests__/components/download/DownloadProgress.test.tsx
+  - apps/web/src/__tests__/components/gallery/ImageViewer.test.tsx
+  - apps/web/src/__tests__/components/gallery/PhotoCard.test.tsx
+  - apps/web/src/__tests__/components/layout/AppHeaderControls.test.tsx
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/web/src/__tests__/components/onboarding/OnboardingCard.test.tsx
+  - apps/web/src/__tests__/lib/config/ui-controls.test.ts
+  - apps/web/src/__tests__/lib/hooks/use-color-scheme.test.tsx
+  - apps/web/src/__tests__/lib/hooks/use-modal-dialog.test.tsx
+  - apps/web/src/__tests__/lib/polyfills/popover.test.ts
+  - apps/web/src/__tests__/lib/stores/use-settings-store.test.ts
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/setup.ts
+  - apps/web/src/__tests__/test-utils/dialog.ts
+-->

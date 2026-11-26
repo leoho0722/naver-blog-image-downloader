@@ -653,93 +653,82 @@ tests:
 ---
 ### Requirement: M3 color theme with dark mode support
 
-The app SHALL define CSS custom properties derived from Material 3 seed color `#1565C0`. Both light and dark theme tokens SHALL be defined. Dark mode SHALL be toggled via the `dark` class on `<html>`, managed by Tailwind CSS 4's `class` strategy.
+The app SHALL define light and dark color tokens as CSS custom properties on `:root` in `apps/web/src/index.css`, keeping the Material 3 token names (`--color-primary`, `--color-surface`, `--color-scrim`, and the rest). Each color token SHALL resolve through the CSS `light-dark()` function so that one declaration carries both the light and the dark value. `apps/web/index.html` SHALL declare `<meta name="color-scheme" content="light dark">`. The `:root` `color-scheme` property SHALL default to `light dark` and SHALL switch to `dark` or `light` when the meta content is `dark` or `light`, so that color tokens, scrollbars, and native form controls follow the meta. The `<html>` element SHALL NOT carry a `dark` class. Styles that branch on non-color values SHALL key off a `--color-scheme` custom property on `:root` that is derived from the same meta and from the `prefers-color-scheme` media query.
 
-#### Scenario: Light theme applied by default
+#### Scenario: Default follows the OS preference
 
-- **WHEN** no theme preference is set
-- **THEN** light theme CSS custom properties are active
+- **WHEN** the meta content is `light dark` and the OS prefers dark
+- **THEN** every `--color-*` token resolves to its dark value and the root computed `color-scheme` renders native UI in dark
 
-#### Scenario: Dark theme applied via class
+#### Scenario: Meta override pins the scheme
 
-- **WHEN** `<html>` element has the `dark` class
-- **THEN** dark theme CSS custom properties override light theme values
+- **WHEN** the meta content is set to `light` while the OS prefers dark
+- **THEN** every `--color-*` token resolves to its light value
+
+##### Example: resolved scheme by meta content and OS preference
+
+| Meta content | OS preference | Resolved scheme |
+| ------------ | ------------- | --------------- |
+| `light dark` | light         | light           |
+| `light dark` | dark          | dark            |
+| `light`      | dark          | light           |
+| `dark`       | light         | dark            |
+
+#### Scenario: No dark class on the root element
+
+- **WHEN** the user switches between system, light, and dark themes
+- **THEN** the `<html>` element's class list never contains `dark`
+
+#### Scenario: Page follows the OS when scripts fail
+
+- **WHEN** JavaScript fails to load and the OS prefers dark
+- **THEN** the page still renders with the dark tokens because the meta keeps its default `light dark` content
 
 
 <!-- @trace
-source: web-app-with-backend-packaging
-updated: 2026-04-12
+source: web-modern-platform-refresh
+updated: 2026-11-26
 code:
-  - apps/web/src/pages/GalleryPage.tsx
-  - apps/web/tsconfig.tsbuildinfo
-  - apps/web/src/lib/i18n/messages/ja.json
-  - CLAUDE.md
-  - apps/web/src/lib/services/url-validator.ts
-  - apps/web/src/lib/services/blog-id.ts
   - apps/web/CLAUDE.md
-  - apps/web/src/lib/stores/use-blog-input-store.ts
   - apps/web/index.html
-  - apps/backend/src/data_models.py
-  - apps/web/src/components/blog-input/BlogInputForm.tsx
-  - apps/web/src/lib/i18n/messages/zh-TW.json
-  - apps/backend/src/routes/photos.py
   - apps/web/package.json
-  - apps/web/src/components/settings/LanguageSwitcher.tsx
-  - apps/web/src/lib/api/photos.ts
-  - apps/web/src/pages/NotFoundPage.tsx
-  - apps/web/public/icons.svg
-  - apps/web/src/components/gallery/ImageViewer.tsx
-  - apps/web/src/components/gallery/SelectionToolbar.tsx
-  - apps/backend/pyproject.toml
-  - apps/backend/src/response_builder.py
+  - apps/web/src/components/blog-input/BlogInputForm.tsx
   - apps/web/src/components/blog-input/FetchProgress.tsx
-  - apps/web/src/lib/api/types.ts
-  - apps/web/vite.config.ts
-  - .github/workflows/web-ci.yml
-  - apps/web/src/lib/hooks/use-clipboard.ts
-  - apps/web/src/lib/api/client.ts
-  - apps/web/src/App.tsx
-  - apps/backend/README.md
-  - apps/web/src/components/settings/SettingsDrawer.tsx
-  - apps/backend/CLAUDE.md
-  - apps/web/src/index.css
-  - apps/web/src/components/settings/ThemeSwitcher.tsx
-  - apps/web/src/routes.tsx
-  - apps/web/src/lib/config/api.ts
-  - apps/web/src/lib/stores/use-settings-store.ts
-  - apps/web/tsconfig.json
-  - apps/backend/requirements.txt
-  - apps/web/.gitkeep
-  - apps/web/public/icons/icon_new.png
-  - README.md
-  - apps/web/src/lib/i18n/messages/en.json
-  - apps/backend/src/job_store/package.py
-  - apps/web/.env.example
-  - apps/web/public/icons/icon_default.png
-  - apps/web/src/main.tsx
-  - apps/web/src/lib/i18n/messages/ko.json
-  - apps/web/src/pages/HomePage.tsx
-  - apps/backend/.envExample
-  - apps/web/public/favicon.svg
-  - apps/web/src/lib/stores/use-gallery-store.ts
-  - apps/web/src/components/gallery/PhotoGrid.tsx
-  - apps/web/src/lib/i18n/config.ts
-  - apps/backend/src/app.py
-  - apps/web/src/lib/stores/use-download-store.ts
-  - apps/web/src/lib/hooks/use-polling.ts
-  - apps/backend/.env.example
-  - apps/backend/src/job_store/__init__.py
   - apps/web/src/components/download/DownloadProgress.tsx
+  - apps/web/src/components/gallery/ImageViewer.tsx
   - apps/web/src/components/gallery/PhotoCard.tsx
+  - apps/web/src/components/gallery/PhotoGrid.tsx
+  - apps/web/src/components/layout/AppHeaderControls.tsx
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - apps/web/src/components/onboarding/OnboardingCard.tsx
+  - apps/web/src/index.css
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/lib/hooks/use-color-scheme.ts
+  - apps/web/src/lib/hooks/use-modal-dialog.ts
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/lib/polyfills/popover.ts
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/main.tsx
 tests:
+  - apps/web/src/__tests__/components/blog-input/BlogInputForm.test.tsx
+  - apps/web/src/__tests__/components/download/DownloadProgress.test.tsx
+  - apps/web/src/__tests__/components/gallery/ImageViewer.test.tsx
   - apps/web/src/__tests__/components/gallery/PhotoCard.test.tsx
-  - apps/web/src/__tests__/lib/services/blog-id.test.ts
-  - apps/backend/tests/api.http
-  - apps/web/src/__tests__/lib/hooks/use-polling.test.ts
-  - apps/web/src/__tests__/lib/services/url-validator.test.ts
-  - apps/web/src/__tests__/lib/stores/use-gallery-store.test.ts
-  - apps/web/src/__tests__/lib/api/client.test.ts
+  - apps/web/src/__tests__/components/layout/AppHeaderControls.test.tsx
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/web/src/__tests__/components/onboarding/OnboardingCard.test.tsx
+  - apps/web/src/__tests__/lib/config/ui-controls.test.ts
+  - apps/web/src/__tests__/lib/hooks/use-color-scheme.test.tsx
+  - apps/web/src/__tests__/lib/hooks/use-modal-dialog.test.tsx
+  - apps/web/src/__tests__/lib/polyfills/popover.test.ts
+  - apps/web/src/__tests__/lib/stores/use-settings-store.test.ts
+  - apps/web/src/__tests__/routes.test.tsx
   - apps/web/src/__tests__/setup.ts
+  - apps/web/src/__tests__/test-utils/dialog.ts
 -->
 
 ---
@@ -1811,4 +1800,142 @@ code:
   - apps/web/public/manifest.webmanifest
   - apps/web/public/icon-512.png
   - apps/web/index.html
+-->
+
+---
+### Requirement: Native modal dialogs for blocking overlays
+
+Blocking overlays — the image viewer (`ImageViewer`), the first-visit onboarding card (`OnboardingCard`), and the packaging progress dialog (`DownloadProgress`) — SHALL render as native `<dialog>` elements opened with `HTMLDialogElement.showModal()` through a shared hook. They SHALL NOT set `role="dialog"` or `aria-modal`, SHALL NOT be rendered through `createPortal`, and SHALL NOT register window-level Escape key listeners. Each dialog SHALL have an accessible name through `aria-labelledby` or `aria-label`. When a user action dismisses an overlay, the component SHALL call `HTMLDialogElement.close()` and SHALL update React state from the dialog's `close` event, so that the browser returns focus to the element that opened the dialog. Scrolling over the backdrop or inside an open modal dialog SHALL NOT scroll the page underneath; this SHALL be achieved with `overscroll-behavior: contain` on `dialog:modal` and on `dialog::backdrop` (with `overflow: hidden`), and SHALL NOT be achieved by setting `overflow: hidden` or `position: fixed` on `<html>` or `<body>`.
+
+#### Scenario: Focus stays inside an open dialog
+
+- **WHEN** the image viewer is open and the user presses Tab repeatedly
+- **THEN** focus cycles only through controls inside the viewer and the gallery behind it is inert
+
+#### Scenario: Escape closes through the native close request
+
+- **WHEN** the image viewer or the onboarding card is open and the user presses Escape
+- **THEN** the dialog closes and the component's close or dismiss callback runs exactly once
+
+#### Scenario: Focus returns to the opener
+
+- **WHEN** the user opens the image viewer from a photo card button and then activates the viewer's close button
+- **THEN** the viewer closes and focus returns to that photo card button
+
+#### Scenario: Onboarding card focus and heading
+
+- **WHEN** the onboarding card opens
+- **THEN** focus is placed on the card itself rather than on its Start button, and the card is named by its title, which is a level-1 heading
+
+#### Scenario: Background page does not scroll behind a dialog
+
+- **WHEN** a modal dialog is open and the user scrolls with the pointer over the backdrop
+- **THEN** the page underneath keeps its scroll position and the root element keeps its scrollbar
+
+
+<!-- @trace
+source: web-modern-platform-refresh
+updated: 2026-11-26
+code:
+  - apps/web/CLAUDE.md
+  - apps/web/index.html
+  - apps/web/package.json
+  - apps/web/src/components/blog-input/BlogInputForm.tsx
+  - apps/web/src/components/blog-input/FetchProgress.tsx
+  - apps/web/src/components/download/DownloadProgress.tsx
+  - apps/web/src/components/gallery/ImageViewer.tsx
+  - apps/web/src/components/gallery/PhotoCard.tsx
+  - apps/web/src/components/gallery/PhotoGrid.tsx
+  - apps/web/src/components/layout/AppHeaderControls.tsx
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - apps/web/src/components/onboarding/OnboardingCard.tsx
+  - apps/web/src/index.css
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/lib/hooks/use-color-scheme.ts
+  - apps/web/src/lib/hooks/use-modal-dialog.ts
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/lib/polyfills/popover.ts
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/main.tsx
+tests:
+  - apps/web/src/__tests__/components/blog-input/BlogInputForm.test.tsx
+  - apps/web/src/__tests__/components/download/DownloadProgress.test.tsx
+  - apps/web/src/__tests__/components/gallery/ImageViewer.test.tsx
+  - apps/web/src/__tests__/components/gallery/PhotoCard.test.tsx
+  - apps/web/src/__tests__/components/layout/AppHeaderControls.test.tsx
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/web/src/__tests__/components/onboarding/OnboardingCard.test.tsx
+  - apps/web/src/__tests__/lib/config/ui-controls.test.ts
+  - apps/web/src/__tests__/lib/hooks/use-color-scheme.test.tsx
+  - apps/web/src/__tests__/lib/hooks/use-modal-dialog.test.tsx
+  - apps/web/src/__tests__/lib/polyfills/popover.test.ts
+  - apps/web/src/__tests__/lib/stores/use-settings-store.test.ts
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/setup.ts
+  - apps/web/src/__tests__/test-utils/dialog.ts
+-->
+
+---
+### Requirement: Web fonts loaded from the HTML shell
+
+`apps/web/src/index.css` SHALL NOT use CSS `@import` to load remote font stylesheets. `apps/web/index.html` SHALL load the Gowun Dodum stylesheet from Google Fonts and the Pretendard variable stylesheet from jsDelivr with `<link rel="stylesheet">`, and SHALL declare `<link rel="preconnect">` for `https://fonts.googleapis.com`, for `https://fonts.gstatic.com` with `crossorigin`, and for `https://cdn.jsdelivr.net` with `crossorigin`.
+
+#### Scenario: No CSS import chain for fonts
+
+- **WHEN** the production build's CSS bundle is inspected
+- **THEN** it contains no `@import` rule pointing at `fonts.googleapis.com` or `cdn.jsdelivr.net`
+
+#### Scenario: Font stylesheets start loading from the HTML
+
+- **WHEN** the built `index.html` head is inspected
+- **THEN** it contains the three preconnect links and the two font stylesheet links before the app's own stylesheet
+
+<!-- @trace
+source: web-modern-platform-refresh
+updated: 2026-11-26
+code:
+  - apps/web/CLAUDE.md
+  - apps/web/index.html
+  - apps/web/package.json
+  - apps/web/src/components/blog-input/BlogInputForm.tsx
+  - apps/web/src/components/blog-input/FetchProgress.tsx
+  - apps/web/src/components/download/DownloadProgress.tsx
+  - apps/web/src/components/gallery/ImageViewer.tsx
+  - apps/web/src/components/gallery/PhotoCard.tsx
+  - apps/web/src/components/gallery/PhotoGrid.tsx
+  - apps/web/src/components/layout/AppHeaderControls.tsx
+  - apps/web/src/components/layout/ThemeLocaleControls.tsx
+  - apps/web/src/components/onboarding/OnboardingCard.tsx
+  - apps/web/src/index.css
+  - apps/web/src/lib/config/ui-controls.ts
+  - apps/web/src/lib/hooks/use-color-scheme.ts
+  - apps/web/src/lib/hooks/use-modal-dialog.ts
+  - apps/web/src/lib/i18n/messages/en.json
+  - apps/web/src/lib/i18n/messages/ja.json
+  - apps/web/src/lib/i18n/messages/ko.json
+  - apps/web/src/lib/i18n/messages/zh-TW.json
+  - apps/web/src/lib/polyfills/popover.ts
+  - apps/web/src/lib/stores/use-settings-store.ts
+  - apps/web/src/main.tsx
+tests:
+  - apps/web/src/__tests__/components/blog-input/BlogInputForm.test.tsx
+  - apps/web/src/__tests__/components/download/DownloadProgress.test.tsx
+  - apps/web/src/__tests__/components/gallery/ImageViewer.test.tsx
+  - apps/web/src/__tests__/components/gallery/PhotoCard.test.tsx
+  - apps/web/src/__tests__/components/layout/AppHeaderControls.test.tsx
+  - apps/web/src/__tests__/components/layout/AppLayout.test.tsx
+  - apps/web/src/__tests__/components/layout/PublicLayout.test.tsx
+  - apps/web/src/__tests__/components/onboarding/OnboardingCard.test.tsx
+  - apps/web/src/__tests__/lib/config/ui-controls.test.ts
+  - apps/web/src/__tests__/lib/hooks/use-color-scheme.test.tsx
+  - apps/web/src/__tests__/lib/hooks/use-modal-dialog.test.tsx
+  - apps/web/src/__tests__/lib/polyfills/popover.test.ts
+  - apps/web/src/__tests__/lib/stores/use-settings-store.test.ts
+  - apps/web/src/__tests__/routes.test.tsx
+  - apps/web/src/__tests__/setup.ts
+  - apps/web/src/__tests__/test-utils/dialog.ts
 -->
