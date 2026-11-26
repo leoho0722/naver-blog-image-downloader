@@ -134,14 +134,15 @@ function bodyItem(finding, unattached = false) {
 }
 
 /**
- * inline comment 的內文。內容先截斷再補上識別標記，標記一定會留著。
+ * inline comment 與檔案層級留言的內文。內容先截斷再補上識別標記，標記一定會留著。
  *
  * @param {object} finding
+ * @param {string} [extraMarker] 放在識別標記之前的其他標記（檔案層級留言放這次 run 的標記）
  * @returns {string}
  */
-function commentBody(finding) {
+function commentBody(finding, extraMarker = '') {
   const content = `**${SEVERITY_LABELS[finding.severity]}｜${sanitizeModelText(toSingleLine(finding.title))}**\n\n${closeOpenFences(sanitizeModelText(finding.body))}`;
-  const suffix = `\n\n${COMMENT_MARKER}`;
+  const suffix = extraMarker ? `\n\n${extraMarker}\n${COMMENT_MARKER}` : `\n\n${COMMENT_MARKER}`;
   return `${truncateComment(content, COMMENT_LIMIT - suffix.length)}${suffix}`;
 }
 
@@ -317,7 +318,8 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
     comments: inline.map((finding) => ({ path: finding.path, line: finding.line, side: 'RIGHT', body: commentBody(finding) })),
   };
   const bodyOnly = { commit_id: plan.headSha, event: 'COMMENT', body: bodyOnlyBody.body };
-  const toFileComment = (finding) => ({ path: finding.path, body: commentBody(finding) });
+  // 檔案層級留言是逐則另外送出的，內文帶著這次 run 的標記：請求失敗時，用它確認留言是否其實已經發布
+  const toFileComment = (finding) => ({ path: finding.path, body: commentBody(finding, runMarker(runId)) });
   const fileComments = fileLevel.map(toFileComment);
   const fallbackFileComments = fallbackFileLevel.map(toFileComment);
 

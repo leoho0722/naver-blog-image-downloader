@@ -453,6 +453,7 @@ test('沒有上一輪的討論串時，本文不出現追蹤區塊', () => {
 // spectra-scenario: pr-ai-review / Findings are routed to inline comments or the body / finding routing
 // spectra-scenario: pr-ai-review / Optional suggestions stay in the body
 // spectra-scenario: pr-ai-review / Rejected review falls back to a body-only review
+// spectra-scenario: pr-ai-review / Lost file-level comment response is not duplicated
 test('依嚴重程度分流：🟢 只列在本文，🔴／🟡 不能標在行上時改發檔案層級留言，改發本文版時路徑在 diff 內的 🔴／🟡 都改發', () => {
   const plan = makePlan([['a.ts'], ['b.ts']], [
     { path: 'gen.yaml', oldPath: null, status: 'modified', category: 'generated', lines: 0, chunk: null, truncated: false },
@@ -479,7 +480,9 @@ test('依嚴重程度分流：🟢 只列在本文，🔴／🟡 不能標在行
   assert.deepEqual(review.comments.map((comment) => `${comment.path}:${comment.line}`), ['a.ts:5']);
   assert.deepEqual(fileComments.map((comment) => comment.path), ['a.ts', 'gen.yaml']);
   assert.match(fileComments[0].body, /^\*\*🔴 阻擋合併｜整個檔案的問題\*\*/);
-  assert.ok(fileComments.every((comment) => comment.body.endsWith(COMMENT_MARKER)));
+  // 檔案層級留言在識別標記之前帶著這次 run 的標記；inline comment 不帶
+  assert.ok(fileComments.every((comment) => comment.body.endsWith(`\n\n${runMarker(RUN_ID)}\n${COMMENT_MARKER}`)));
+  assert.ok(review.comments.every((comment) => !comment.body.includes(runMarker(RUN_ID))));
   // 改發本文版時：inline 的那一則也改發檔案層級留言；不在 diff 內與 🟢 的不發
   assert.deepEqual(
     fallbackFileComments.map((comment) => comment.body.split('\n')[0]),

@@ -252,9 +252,26 @@ post_review() {
   return 1
 }
 
+# 送出一則檔案層級留言：參數為路徑、內文與 commit SHA
+post_file_comment() {
+  gh api --method POST "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
+    -f body="$2" -f commit_id="$3" -f path="$1" -f subject_type=file >/dev/null
+}
+
+# 確認 PR 上是否已經有路徑與內文完全相同的留言（請求成功、只是回應沒收到）。
+# 檔案層級留言的內文含有這次 run 的標記，所以不會誤認成其他輪的留言。查詢失敗時視為不存在
+file_comment_exists() {
+  local listing
+  listing="$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/comments?per_page=100")" || return 1
+  printf '%s' "$listing" | jq -e -s --arg path "$1" --arg body "$2" \
+    '[.[][] | select(.path == $path and .body == $body)] | length > 0' >/dev/null
+}
+
 # 逐則送出檔案層級留言（🔴／🟡 但不能標在程式碼行上的意見），讓它們形成討論串、擋住合併。
 # 建立 review 的 API 不接受檔案層級的留言，所以 review 發布後另外送（見 design「依嚴重程度決定意見是否擋合併」）。
-# 單則失敗只發出警告：意見仍列在 review 本文
+# 請求失敗時先確認留言是否其實已經發布，沒有才重試一次；仍然失敗時發出 error 並記在 file_comment_failures，
+# 由 publish 在最後讓 workflow 失敗：這則意見沒能擋住合併。意見仍列在 review 本文
+file_comment_failures=0
 post_file_comments() {
   local file="$1" total i path body commit_id posted=0
   [ -f "$file" ] || return 0
@@ -265,11 +282,17 @@ post_file_comments() {
   while [ "$i" -lt "$total" ]; do
     path="$(jq -r ".[${i}].path" "$file")"
     body="$(jq -r ".[${i}].body" "$file")"
-    if gh api --method POST "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
-      -f body="$body" -f commit_id="$commit_id" -f path="$path" -f subject_type=file >/dev/null; then
+    if post_file_comment "$path" "$body" "$commit_id"; then
+      posted=$((posted + 1))
+    elif file_comment_exists "$path" "$body"; then
+      echo "對 ${path} 的檔案層級留言回報失敗，但這則留言已經存在，不重複發布"
+      posted=$((posted + 1))
+    elif post_file_comment "$path" "$body" "$commit_id"; then
+      echo "對 ${path} 的檔案層級留言重試後發布成功"
       posted=$((posted + 1))
     else
-      warn "無法對 ${path} 發布檔案層級留言，這則意見仍列在 review 本文"
+      printf '::error::%s\n' "$(escape_command_data "無法對 ${path} 發布檔案層級留言（已重試一次），這則 🔴／🟡 意見不會擋合併，仍列在 review 本文")"
+      file_comment_failures=$((file_comment_failures + 1))
     fi
     i=$((i + 1))
   done
@@ -334,6 +357,9 @@ command_publish() {
   failed="$(jq -r '.failedChunks | map(tostring) | join("、")' "$outcome")"
   if [ -n "$failed" ]; then
     fail "第 ${failed} 段審查失敗，review 已發布但內容不完整"
+  fi
+  if [ "$file_comment_failures" -gt 0 ]; then
+    fail "${file_comment_failures} 則檔案層級留言發布失敗，這些 🔴／🟡 意見沒有擋住合併（已列在 review 本文）"
   fi
   echo "審查完成，整體結論：$(jq -r '.verdict' "$outcome")"
 }

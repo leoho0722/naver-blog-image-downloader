@@ -109,7 +109,7 @@
   - 自動產生檔的略過，在另開的測試 PR 上驗證：這個 change 的 PR 的 base（main）還沒有 `.gitattributes`，無法在自己的 PR 上驗證，所以從 `features/pr-ai-review-chunked-inline` 開一個測試分支，同時修改 `.agents/skills/` 底下的檔案與一個一般檔案，發 PR 到 `features/pr-ai-review-chunked-inline`。確認前者列在「已略過」、後者被審查，驗證後關閉測試 PR 並刪除分支
 
   若 `resolveReviewThread` 因權限被拒，記錄實際的錯誤，並依 design 的 Risks 更新 spec 與 design。verification：記錄 review ID、討論串的 resolve 狀態與 workflow 執行結果。
-- [ ] 5.2 [after: 5.1, 6.7, 7.6, 7.9] Owner 在 PR 頁面檢視 AI review；verification：五項皆符合：
+- [ ] 5.2 [after: 5.1, 6.7, 7.6, 7.9, 7.11] Owner 在 PR 頁面檢視 AI review；verification：五項皆符合：
   - inline comment 標在正確的程式碼行上
   - review 本文的總評與結論可以讀懂
   - 在 5.1 的測試 PR 上，自動產生的檔案列在「已略過」清單
@@ -170,6 +170,12 @@
 - [x] 7.7 在 `prompts.mjs` 與 `plan.mjs` 改為每段只附精簡的檔案總覽（design：精簡每段的檔案總覽），滿足 spec「Patches are annotated with new-file line numbers and findings are structured」的總覽規則：本段檔案全部列出；刪除、二進位、其他段的檔案依序最多 100 筆，超過時加一行依段落與分類列出沒有列出的數量；自動產生的檔案只寫數量；審查指示中對總覽的說明同步更新。同時讓 `plan` 印出的討論串統計加上 🟢 直接收掉的數量，並修正第七輪的兩項 🟢（`bodyItem` 的 JSDoc 缺少 `unattached`、`review.mjs` 重複的註解行）。verification：`plan.test.mjs` 涵蓋 spec「overview of chunk 1」Example 的兩列，並通過 `node --test`。
 - [x] 7.8 在 `run-review.sh` 的 `collect` 查詢討論串的 `subjectType`，檔案層級的討論串寫成 `line: null`，滿足 spec「Previous AI review threads are resolved after a new review is published」的收集規則。verification：`shellcheck` 沒有新增問題；e2e 情境的假資料加上 `subjectType: FILE`、`line: 1` 的討論串，確認提示詞中沒有行號。
 - [x] 7.9 [after: 7.7, 7.8] 在 PR #36 實測：push 後確認 `plan.mjs:216`「檔案總覽沒有計入每段行數上限」的討論串由 AI 確認已修正、附上回覆並 resolve，並記錄各段提示詞的實際行數。verification：記錄 run ID、該討論串的回覆內容、各段提示詞行數，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。
+- [x] 7.10 檔案層級留言發布失敗時不再只發警告（design：依嚴重程度決定意見是否擋合併、審查結果的判定規則），滿足 spec「The review is published as one pull request review with inline comments」與「Review run outcome reflects missing review content」：
+  - `review.mjs` 在檔案層級留言的內文、識別標記之前加上這次 run 的標記
+  - `run-review.sh` 的 `post_file_comments` 在請求失敗時，先列出 PR 的留言確認有沒有路徑與內文完全相同的留言，有就算已發布，沒有才重試一次；仍失敗時發出 error，其他留言與收掉討論串照常處理，`publish` 最後以 1 結束
+
+  verification：`review.test.mjs` 確認檔案層級留言含 run 標記；`shellcheck` 沒有新增問題；本機 e2e 確認三種情況：重試後成功時退出碼 0；回應遺失但留言已存在時不重試；兩次都失敗時其他留言與收掉討論串照常、退出碼 1。
+- [ ] 7.11 [after: 7.10] 在 PR #36 實測：push 後確認 `run-review.sh`「檔案層級留言發布失敗時只發警告」的討論串由 AI 確認已修正並收掉。verification：記錄 run ID、該討論串的回覆內容，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。
 
 ## 變更紀錄
 
@@ -242,3 +248,8 @@
 - 新一輪有 1 則 🟡 inline comment（`spec.md` 的清理規則沒有涵蓋檔案層級留言與討論串回覆），維持未 resolve；其餘 6 項為 🟢，只列在本文。`github-scripts-test` 通過。
 
 依 PR #36 第八輪審查：spec「Published text is sanitized and kept within GitHub limits」與 design「清理模型文字後才發布」補上清理範圍：檔案層級留言與討論串回覆。程式本來就會清理這兩者（檔案層級留言與 inline comment 共用 `commentBody`，回覆中模型的說明經 `sanitizeModelText` 並限制 1000 字元），只修改文件。
+
+依 PR #36 第九輪審查（2026-11-26，使用者選擇「改為 workflow 失敗」）：
+
+- 檔案層級留言重試後仍發布不了時，由「只發出警告」改為 workflow 失敗：這則 🔴／🟡 沒能擋住合併，屬於審查內容的缺漏。已完成的 7.4 中「單則失敗只發出警告」的規則由 7.10 取代。
+- 5.2 改為等 7.11 完成後進行。
