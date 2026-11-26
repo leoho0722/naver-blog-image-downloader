@@ -110,7 +110,7 @@ The review SHALL send a review request for every chunk and SHALL NOT skip any re
 
 ### Requirement: Patches are annotated with new-file line numbers and findings are structured
 
-The review SHALL produce the diff with `core.quotePath` disabled and SHALL decode any quoted path, so file paths appear unescaped. Each chunk prompt SHALL contain the review instructions, the overview of every changed file with its category and chunk number, and the chunk's annotated patch. In the annotated patch, every context line and added line SHALL be prefixed with its line number in the new file, right-aligned to the width of the file's largest line number, and every deleted line and every `\ No newline at end of file` line SHALL be prefixed with a blank line-number column. A `\ No newline at end of file` line SHALL NOT advance the new-file line number. The lines that carry a line number and were sent to the model SHALL be recorded as the file's commentable lines; for a truncated file, only lines within the sent portion are commentable. The prompt SHALL require the answer to end with exactly one fenced `json` block holding an object with `summary` (string), `verdict` (`blocker`, `changes_suggested`, or `no_concerns`), and `findings` (an array of objects with `path`, `line` as an integer or null, `severity` as `blocker`, `warning`, or `nit`, `title`, and `body`). The review SHALL parse the last fenced `json` block in the answer and SHALL treat the chunk as failed when that block is missing or does not match this shape.
+The review SHALL produce the diff with `core.quotePath` disabled and SHALL decode any quoted path, so file paths appear unescaped. Each chunk prompt SHALL contain the review instructions, the overview of every changed file with its category and chunk number, and the chunk's annotated patch. In the annotated patch, every context line and added line SHALL be prefixed with its line number in the new file, right-aligned to the width of the file's largest line number, and every deleted line and every `\ No newline at end of file` line SHALL be prefixed with a blank line-number column. A `\ No newline at end of file` line SHALL NOT advance the new-file line number. The lines that carry a line number and were sent to the model SHALL be recorded as the file's commentable lines; for a truncated file, only lines within the sent portion are commentable. The prompt SHALL require the answer to end with exactly one fenced `json` block holding an object with `summary` (string), `verdict` (`blocker`, `changes_suggested`, or `no_concerns`), and `findings` (an array of objects with `path`, `line` as an integer or null, `severity` as `blocker`, `warning`, or `nit`, `title`, and `body`). When the prompt lists earlier AI review threads, the object SHALL also hold `previousThreads`, an array of objects with `ref` as a string, `fixed` as a boolean, and `note` as a string; a missing `previousThreads` SHALL count as no judgement for every listed thread, and an entry whose `ref` is not listed in that chunk SHALL be ignored. The review SHALL parse the last fenced `json` block in the answer and SHALL treat the chunk as failed when that block is missing or does not match this shape.
 
 #### Scenario: Hunk lines are numbered
 
@@ -138,7 +138,7 @@ The review SHALL produce the diff with `core.quotePath` disabled and SHALL decod
 
 #### Scenario: Answer without a valid JSON block fails the chunk
 
-- **WHEN** a chunk answer has no fenced `json` block, or its last fenced `json` block lacks `summary`, `verdict`, or `findings`
+- **WHEN** a chunk answer has no fenced `json` block, its last fenced `json` block lacks `summary`, `verdict`, or `findings`, or its `previousThreads` is present but is not an array of objects with a string `ref`, a boolean `fixed`, and a string `note`
 - **THEN** the chunk is marked failed
 - **AND** the raw answer is included in a collapsed section of the published review
 
@@ -171,7 +171,7 @@ When two or more chunks produced a valid result, the review SHALL send one synth
 
 ### Requirement: The review is published as one pull request review with inline comments
 
-The review SHALL publish its result as one pull request review created with event `COMMENT` and with `commit_id` equal to the pull request's head commit, which is also the commit the diff was produced from as `<base>...<head>`. The review SHALL NOT use the merge commit that GitHub creates for the pull request. The plan SHALL record that head commit, and building the review SHALL fail without producing a review when the head commit given to it differs from the recorded one. A finding SHALL become an inline comment on the `RIGHT` side when its path was sent for review in the chunk that produced the finding and its line is one of that file's commentable lines. Every other finding SHALL be listed in the review body with its `path:line` location. The review body SHALL start with the marker `<!-- lkai-review -->`, followed by a line `<!-- lkai-review-run: <run id> -->` that identifies the workflow run attempt, and SHALL contain the overall verdict computed by the script, the overall summary, the synthesis conclusion when a synthesis result exists, the skipped and truncated files, and any warning and failure notes. Each inline comment body SHALL contain the severity label, the title, the finding body, and end with the marker `<!-- lkai-review-comment -->`. When GitHub rejects the review, the workflow SHALL publish a second review without inline comments that lists every finding in the body together with a note that inline comments could not be published, and SHALL emit a workflow warning. Before publishing that second review, the workflow SHALL check the pull request's reviews and SHALL NOT publish it when a review carrying the current run's marker already exists.
+The review SHALL publish its result as one pull request review created with event `COMMENT` and with `commit_id` equal to the pull request's head commit, which is also the commit the diff was produced from as `<base>...<head>`. The review SHALL NOT use the merge commit that GitHub creates for the pull request. The plan SHALL record that head commit, and building the review SHALL fail without producing a review when the head commit given to it differs from the recorded one. A finding SHALL become an inline comment on the `RIGHT` side when its path was sent for review in the chunk that produced the finding and its line is one of that file's commentable lines. Every other finding SHALL be listed in the review body with its `path:line` location. The review body SHALL start with the marker `<!-- lkai-review -->`, followed by a line `<!-- lkai-review-run: <run id> -->` that identifies the workflow run attempt, and SHALL contain the overall verdict computed by the script, the overall summary, the synthesis conclusion when a synthesis result exists, the skipped and truncated files, a summary of how earlier AI review threads were handled, and any warning and failure notes. Each inline comment body SHALL contain the severity label, the title, the finding body, and end with the marker `<!-- lkai-review-comment -->`. When GitHub rejects the review, the workflow SHALL publish a second review without inline comments that lists every finding in the body together with a note that inline comments could not be published, and SHALL emit a workflow warning. Before publishing that second review, the workflow SHALL check the pull request's reviews and SHALL NOT publish it when a review carrying the current run's marker already exists.
 
 #### Scenario: Findings are routed to inline comments or the body
 
@@ -232,39 +232,51 @@ Before publishing, the review SHALL sanitize every model-written text placed in 
 
 ### Requirement: Previous AI review threads are resolved after a new review is published
 
-Before publishing a new review, the workflow SHALL collect every unresolved review thread of the pull request whose first comment was written by the `github-actions` bot, contains `<!-- lkai-review-comment -->`, and is not on a file that this run kept open. A file is kept open when it is in this run's diff but was not reviewed completely: it belongs to a failed chunk, it is truncated, or it is generated or binary. A file that this run reviewed completely, a file that is no longer in this run's diff, and a file deleted in this run's diff are not kept open. After the new review is published, either with inline comments or as the body-only fallback, the workflow SHALL resolve every collected thread. The workflow SHALL NOT resolve any thread whose first comment was written by another author, any thread without the marker, or any thread on a file that this run kept open. When no review could be published, the workflow SHALL NOT resolve any thread. A failure to resolve a thread SHALL produce a workflow warning and SHALL NOT fail the workflow.
+Before planning, the workflow SHALL collect every unresolved review thread of the pull request whose first comment was written by the `github-actions` bot and contains `<!-- lkai-review-comment -->`, together with its path, its line (the original line when the thread is outdated), and its first comment. When the collection fails, the workflow SHALL emit a warning, SHALL still review and publish, and SHALL NOT reply to or resolve any thread. Planning SHALL classify each collected thread by its file in this run: a thread on a file that belongs to a chunk and is not truncated SHALL be listed in that chunk's prompt with a reference, its path, its line, and its first comment, and the prompt SHALL ask the model to judge whether the issue is fixed in the reviewed code and SHALL instruct the model not to report an issue that is still present as a new finding; a thread on a file that is no longer in this run's diff, or that is deleted in this run's diff, SHALL be resolvable without a judgement; every other thread SHALL be kept open. After the new review is published, either with inline comments or as the body-only fallback, the workflow SHALL reply to and then resolve every thread that the model judged fixed in a chunk whose request succeeded, with a reply that states the issue was confirmed fixed at the head commit together with the model's note, and every thread whose file is no longer in the diff or is deleted, with a reply that states the file has no changes left to review. The workflow SHALL NOT reply to or resolve a thread that the model judged not fixed, a thread with no judgement, a thread whose chunk failed, a kept thread, any thread whose first comment was written by another author, or any thread without the marker. When no review could be published, the workflow SHALL NOT reply to or resolve any thread. A failure to reply to a thread SHALL produce a workflow warning and SHALL NOT prevent its resolution; a failure to resolve a thread SHALL produce a workflow warning and SHALL NOT fail the workflow.
 
-#### Scenario: New push resolves the previous round
+#### Scenario: Confirmed fix resolves the thread with a reply
 
-- **WHEN** a pull request has unresolved inline comment threads from an earlier AI review on files that this run did not keep open, and a new review is published
-- **THEN** those earlier AI threads become resolved and the threads from the new review stay unresolved
+- **WHEN** an earlier AI thread is on a file reviewed in a successful chunk and the model reports `fixed` as true for it
+- **THEN** after the new review is published the thread receives a reply that names the head commit and the model's note, and then becomes resolved
+
+#### Scenario: Unfixed issue keeps the thread open
+
+- **WHEN** the model reports `fixed` as false for an earlier AI thread, or gives no judgement for it
+- **THEN** the thread stays unresolved without a reply, and the new review does not repeat the issue as a new finding when the model follows the prompt
 
 ##### Example: which threads are resolved
 
-| First comment author | Has marker | Thread file in this run | Resolved |
-| -------------------- | ---------- | ----------------------- | -------- |
-| `github-actions` | yes | reviewed in a successful chunk, not truncated | yes |
-| `github-actions` | yes | in a failed chunk | no |
-| `github-actions` | yes | truncated | no |
-| `github-actions` | yes | not in this diff | yes |
-| `github-actions` | yes | deleted in this diff | yes |
-| `github-actions` | yes | generated | no |
-| `github-actions` | no | reviewed in a successful chunk, not truncated | no |
-| a person | no | reviewed in a successful chunk, not truncated | no |
+| First comment author | Has marker | Thread file in this run | Model judgement | Resolved |
+| -------------------- | ---------- | ----------------------- | --------------- | -------- |
+| `github-actions` | yes | reviewed in a successful chunk, not truncated | fixed | yes, with a reply |
+| `github-actions` | yes | reviewed in a successful chunk, not truncated | not fixed | no |
+| `github-actions` | yes | reviewed in a successful chunk, not truncated | none | no |
+| `github-actions` | yes | in a failed chunk | not asked | no |
+| `github-actions` | yes | truncated | not asked | no |
+| `github-actions` | yes | not in this diff | not asked | yes, with a reply |
+| `github-actions` | yes | deleted in this diff | not asked | yes, with a reply |
+| `github-actions` | yes | generated | not asked | no |
+| `github-actions` | no | reviewed in a successful chunk, not truncated | not asked | no |
+| a person | no | reviewed in a successful chunk, not truncated | not asked | no |
 
 #### Scenario: Failed publication keeps the previous round
 
 - **WHEN** neither the inline review nor the body-only fallback could be published
-- **THEN** the earlier AI threads stay unresolved
+- **THEN** no earlier AI thread receives a reply or becomes resolved
 
-#### Scenario: Threads left by a cancelled run are resolved later
+#### Scenario: Collection failure resolves nothing
 
-- **WHEN** a run was cancelled after publishing its review but before resolving the earlier threads, and a later run publishes a new review
-- **THEN** the later run resolves the still unresolved AI threads from every earlier round on files it did not keep open
+- **WHEN** the query for earlier review threads fails
+- **THEN** the workflow emits a warning, the review is still published, and no thread is replied to or resolved
+
+#### Scenario: Threads left by a cancelled run are judged later
+
+- **WHEN** a run was cancelled after publishing its review but before resolving the earlier threads, and a later run reviews the pull request
+- **THEN** the later run collects the still unresolved AI threads from every earlier round and handles them by the same rules
 
 ### Requirement: Review run outcome reflects missing review content
 
-The workflow SHALL fail when any chunk request fails, returns an incomplete answer, or returns an answer that cannot be parsed, when the base commit is unavailable, when the head commit check stops publication, and when no review can be published. Even when a chunk fails, the workflow SHALL publish the results it obtained and SHALL list the failed chunks with their files in the review body. The severity of findings SHALL NOT affect the workflow result. A newer run for the same pull request SHALL cancel an older run that is still in progress. The workflow SHALL request only the `contents: write` and `pull-requests: write` permissions, SHALL set the GitHub token only in the environment of the step that publishes the review and resolves threads, SHALL NOT persist git credentials when checking out the pull request, and SHALL stop after 60 minutes.
+The workflow SHALL fail when any chunk request fails, returns an incomplete answer, or returns an answer that cannot be parsed, when the base commit is unavailable, when the head commit check stops publication, and when no review can be published. Even when a chunk fails, the workflow SHALL publish the results it obtained and SHALL list the failed chunks with their files in the review body. The severity of findings SHALL NOT affect the workflow result. A newer run for the same pull request SHALL cancel an older run that is still in progress. The workflow SHALL request only the `contents: write` and `pull-requests: write` permissions, SHALL set the GitHub token only in the environments of the step that collects earlier threads and the step that publishes the review and resolves threads, SHALL NOT persist git credentials when checking out the pull request, and SHALL stop after 60 minutes.
 
 #### Scenario: One chunk fails
 
@@ -285,4 +297,4 @@ The workflow SHALL fail when any chunk request fails, returns an incomplete answ
 #### Scenario: Workflow runs with least privilege
 
 - **WHEN** the review workflow definition is inspected
-- **THEN** its permissions are exactly `contents: write` and `pull-requests: write`, the GitHub token appears only in the publishing step's environment, checkout sets `persist-credentials: false`, its concurrency group is unique per pull request with in-progress cancellation, and its timeout is 60 minutes
+- **THEN** its permissions are exactly `contents: write` and `pull-requests: write`, the GitHub token appears only in the environments of the thread-collecting step and the publishing step, checkout sets `persist-credentials: false`, its concurrency group is unique per pull request with in-progress cancellation, and its timeout is 60 minutes

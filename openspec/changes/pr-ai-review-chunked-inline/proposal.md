@@ -16,7 +16,7 @@ PR AI 審查目前把整份 diff 依檔名排序後，截斷在前 6000 行送�
 - **審查結果改以一次 PR review 發布**，不再是一則一般留言。
   - 總評放在 review 本文；能對應到 diff 行的意見以 inline comment 標在該行，對應不到的意見放進本文。
   - 發布前先清理模型寫的文字，避免誤發 `@mention` 通知或破壞版面；本文超過 GitHub 的長度上限時截斷，完整內容另外寫進 workflow 的 job summary。
-- 新一輪 review 發布成功後，把上一輪 AI 留下、還沒 resolve 的討論串標為 resolved，避免舊意見卡住 main 的「所有對話都要 resolve 才能合併」規則。這一輪沒有完整審查到的檔案（送審失敗、被截斷）上的舊意見會留著；已經沒有變更的檔案（改動被還原或檔案被刪除）上的舊意見會一併收掉。
+- 意見對應的問題修正後，由新一輪的 AI 確認已修正，才自動收掉那則討論串：送審前先收集上一輪 AI 留下、還沒 resolve 的討論串，放進對應段落的提示詞請模型逐一判斷；新一輪 review 發布成功後，對確認已修正的討論串回覆一則說明再 resolve。還沒修正的意見繼續擋住 main 的「所有對話都要 resolve 才能合併」規則，也不會重複發一則新的意見；已經沒有變更的檔案（改動被還原或檔案被刪除）上的舊意見會一併收掉。
 - 同一個 PR 有新的 push 時，取消還在執行的舊審查；workflow 權限為 `contents: write`（收掉討論串需要）與 `pull-requests: write`，不再需要 `issues: write`，有寫入權限的 token 只交給發布審查結果的那一步。
 - 定義失敗時的行為，原則是「審查內容有缺漏才算失敗，只是呈現方式降級則發出警告」：
   - 任何一段送審失敗、回答不完整或結構化結果無法解讀，或 review 完全發布不了時，發布已取得的內容並標註缺漏，整體結論標為「審查不完整」，workflow 判定為失敗。
@@ -39,10 +39,11 @@ PR AI 審查目前把整份 diff 依檔名排序後，截斷在前 6000 行送�
 - Affected code:
   - `.github/workflows/pr-ai-review.yml`：改為呼叫分段審查流程、發布 PR review、收掉舊討論串，加上 concurrency 與 timeout，權限改為 `contents: write`、`pull-requests: write`
   - `.github/scripts/lkai-helpers.sh`：新增只執行 lkai、不立即印出訊息的函式，讓多段可以並行送審
+  - `.github/scripts/ai-review/run-review.sh`：收集上一輪的討論串、規劃、分批送審、發布與收掉討論串的流程控制
   - 新增 `.github/scripts/ai-review/`：分段規劃、文字清理、結果彙整與驗證的 Node script 及其單元測試
   - 新增 `.gitattributes`：標記自動產生的檔案
   - 新增 `.github/workflows/github-scripts-test.yml`：`.github/scripts/**` 變動時執行單元測試
   - `README.md`：CI/CD 表格中 PR AI Review 的說明
-- 外部系統：GitHub REST API（建立 pull request review）與 GraphQL API（查詢與 resolve review thread）
+- 外部系統：GitHub REST API（建立 pull request review）與 GraphQL API（查詢、回覆與 resolve review thread）
 - 費用：所有段落都送審，請求數隨 PR 大小增加；最近 150 個 commit 中，排除自動產生檔與純刪除檔後最大的是 12,690 行（實測），約 3 段
 - 版號：只改動 `.github/` 與根目錄的 `.gitattributes`，不涉及任何元件的 version 檔案，不 bump 版號

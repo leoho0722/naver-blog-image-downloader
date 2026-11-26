@@ -109,10 +109,42 @@
   - 自動產生檔的略過，在另開的測試 PR 上驗證：這個 change 的 PR 的 base（main）還沒有 `.gitattributes`，無法在自己的 PR 上驗證，所以從 `features/pr-ai-review-chunked-inline` 開一個測試分支，同時修改 `.agents/skills/` 底下的檔案與一個一般檔案，發 PR 到 `features/pr-ai-review-chunked-inline`。確認前者列在「已略過」、後者被審查，驗證後關閉測試 PR 並刪除分支
 
   若 `resolveReviewThread` 因權限被拒，記錄實際的錯誤，並依 design 的 Risks 更新 spec 與 design。verification：記錄 review ID、討論串的 resolve 狀態與 workflow 執行結果。
-- [ ] 5.2 [after: 5.1] Owner 在 PR 頁面檢視 AI review；verification：三項皆符合：
+- [ ] 5.2 [after: 5.1, 6.7] Owner 在 PR 頁面檢視 AI review；verification：四項皆符合：
   - inline comment 標在正確的程式碼行上
   - review 本文的總評與結論可以讀懂
   - 在 5.1 的測試 PR 上，自動產生的檔案列在「已略過」清單
+  - 6.7 修正過的意見附上確認回覆並收掉，沒修正的維持未 resolve
+
+## 6. 由 AI 確認已修正後才收掉上一輪的討論串
+
+- [ ] 6.1 [after: 5.1] 在 `plan` 子命令加上 `--threads <threads.json>`（design：由 AI 確認已修正後才收掉上一輪的討論串），滿足 spec「Previous AI review threads are resolved after a new review is published」中的分類與提示詞規則：
+  - 依討論串所在檔案在這次 diff 的狀態分類為 `ask`、`no-longer-changed`、`deleted`、`keep`，寫進 `plan.json` 的 `previousThreads`，並給每個討論串 `P1`、`P2`… 的代號
+  - `ask` 的討論串放進對應段落提示詞的「上一輪仍未解決的意見」區塊（`prompts.mjs`），要求模型在 `previousThreads` 回報是否已修正，並且不要把仍存在的問題再列為新的 findings
+
+  verification：`plan.test.mjs` 以暫存 repo 驗證四種分類（屬於某段且未截斷、已不在 diff、已刪除、被截斷或自動產生），以及討論串只出現在它所屬段落的提示詞中，並通過 `node --test`。
+- [ ] 6.2 [after: 5.1] 讓 `findings.mjs` 的 `parseChunkResult` 接受選填的 `previousThreads`，滿足 spec「Patches are annotated with new-file line numbers and findings are structured」中的格式規則：每項必須有字串 `ref`、布林 `fixed`、字串 `note`，不合格時這一段視為失敗；沒有這個欄位時視為全部沒有判斷。verification：`findings.test.mjs` 涵蓋合格、缺少欄位、`fixed` 不是布林、不是陣列等情況並通過。
+- [ ] 6.3 [after: 6.1, 6.2] 在 `review.mjs` 依 `plan.json` 的 `previousThreads` 與各段結果計算 `outcome.json` 的 `threadActions` 與 `threadSummary`，取代 `keepThreadPaths`：
+  - 只有判定已修正且那一段成功的 `ask` 討論串，以及 `no-longer-changed`、`deleted` 的討論串會列入 `threadActions`，並附上已清理的回覆內容（含 head commit 短 SHA 與模型的說明）
+  - review 本文加上「上一輪意見的追蹤」，滿足 spec「The review is published as one pull request review with inline comments」中的本文內容規則
+
+  verification：`review.test.mjs` 涵蓋 spec「which threads are resolved」Example 中與模型判斷相關的各列（已修正、未修正、沒有判斷、段落失敗、已不在 diff、已刪除、保留），並通過 `node --test`。
+- [ ] 6.4 [after: 6.3] 在 `run-review.sh` 新增 `collect` 子命令並改寫 `publish`，取代已完成的 3.3 中「依 `keepThreadPaths` 收掉上一輪全部討論串」的規則：
+  - `collect` 以 GraphQL 分頁查詢未 resolve 的 AI 討論串，寫出 `threads.json`；查詢失敗時發出警告、寫出空清單
+  - `plan` 傳入 `--threads`
+  - `publish` 在 review 發布成功後，依 `threadActions` 對每個討論串先以 `addPullRequestReviewThreadReply` 回覆、再 `resolveReviewThread`；回覆或 resolve 失敗只發出警告
+  - workflow 在「規劃審查」前新增「收集上一輪的 AI 討論串」步驟，`GH_TOKEN` 只設定在這一步與「發布審查結果」
+
+  verification：`shellcheck` 與 `actionlint` 沒有新增問題；檢查 workflow 中 `GH_TOKEN` 只出現在這兩步；行為由 6.5 確認。
+- [ ] 6.5 [after: 6.4] 以本機 `/bin/bash` 3.2、假的 `lkai` 與假的 `gh` 執行 e2e 情境，確認五件事：
+  - 模型判定已修正的討論串先回覆再 resolve
+  - 判定未修正或沒有判斷的討論串不回覆也不 resolve
+  - 已不在 diff 內的討論串附上回覆並 resolve
+  - 段落失敗時該段的討論串不動
+  - 查詢討論串失敗或 review 發布失敗時不回覆、不 resolve
+
+  verification：每種情境的假 `gh` 呼叫紀錄與退出碼符合預期。
+- [ ] 6.6 [after: 6.4] 更新 `README.md`「PR AI Review 的運作方式」中收掉討論串的說明：改為 AI 確認已修正才收掉並附回覆，未修正的維持未 resolve。verification：檢查文件內容，確認說明與 spec 一致。
+- [ ] 6.7 [after: 6.5, 6.6] 在 PR #36 實測：修正一則 AI 意見對應的問題後 push，以 `gh api` 確認三件事：那則討論串有確認回覆並變成 resolved；其他未修正的討論串維持未 resolve；新一輪沒有重複提出那些未修正的問題。verification：記錄 run ID、該討論串的回覆內容與各討論串的 resolve 狀態。
 
 ## 變更紀錄
 
@@ -140,3 +172,9 @@
 - PR #36 第三輪（run 45779972357）：workflow 權限加上 `contents: write` 後，收集到的 14 個上一輪 AI 討論串全部 resolve，新一輪的 7 個維持未 resolve。依此更新 spec 與 design：權限改為 `contents: write`、`pull-requests: write`，`GH_TOKEN` 只設定在發布步驟，checkout 不保留憑證（3.2 描述中的 `contents: read` 以此為準）。
 - PR #36 第四輪（run 45781016672）：`GH_TOKEN` 只設定在發布步驟、checkout 不保留憑證後，第三輪的 7 個 AI 討論串全部 resolve，新一輪的 9 個維持未 resolve；`github-scripts-test` 通過（run 45781016566）。
 - 同一輪審查的意見也一併處理：inline 分流改以產生意見的那一段為準（模型對其他段的檔案只看過總覽）；git diff 固定 `a/`、`b/` 前綴；模型的標題轉成單行、內文補上未閉合的 code fence；錯誤訊息不再使用成對的反引號。
+
+需求變更（2026-11-26，依使用者指示「當修正對應的 inline comment 後，經 AI 審查確認已修正後，就要自動 resolve」）：
+
+- 收掉上一輪 AI 討論串的條件，由「新一輪發布後一律收掉」改為「新一輪的 AI 確認已修正才收掉」，見 design「由 AI 確認已修正後才收掉上一輪的討論串」（取代「發布成功後才收掉上一輪的討論串」）。
+- 已完成的 3.3 保留原文作為歷史；其中「依 `keepThreadPaths` 收掉上一輪全部討論串」的規則由 6.4 取代，`keepThreadPaths` 由 6.3 的 `threadActions` 取代。
+- 5.2 的驗收新增一項，並改為等 6.7 完成後進行。

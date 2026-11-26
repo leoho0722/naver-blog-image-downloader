@@ -21,7 +21,7 @@ job 在 `xcode-27` macOS runner 上執行（`lkai` 只能在 macOS 執行）。�
 
 - 自動產生的檔案不再佔用送審額度，而且 PR 無法藉此讓自己的程式碼跳過審查
 - 所有可審查的檔案都會被審查；過大的 PR 依相關性分段，所有段落彙整成一次審查結果
-- 意見以 inline comment 標在程式碼行上，新一輪審查發布後自動收掉上一輪 AI 的討論串
+- 意見以 inline comment 標在程式碼行上；意見對應的問題修正後，由新一輪的 AI 確認已修正並自動收掉那則討論串，沒修正的繼續擋合併
 - 失敗時清楚標註缺漏，不讓不完整的審查看起來像成功
 
 **Non-Goals:**
@@ -169,6 +169,8 @@ GitHub 拒絕整個 review（回應不是 2xx）時，改送一個不含 inline 
 
 ### 發布成功後才收掉上一輪的討論串
 
+> 已由下一個決策「由 AI 確認已修正後才收掉上一輪的討論串」取代：收掉的條件改為「AI 確認已修正」，不再是「下一輪發布後一律收掉」。以下保留原本的內容供追溯。
+
 收掉舊討論串分成三步，順序固定：
 
 1. **發布前先收集**：以 GraphQL 分頁查詢這個 PR 的 `reviewThreads`，找出同時符合四個條件的討論串 ID：
@@ -191,6 +193,33 @@ GitHub 拒絕整個 review（回應不是 2xx）時，改送一個不含 inline 
 一直被截斷的檔案（單一檔案超過 `MAX_CHUNK_LINES`），其上的 AI 討論串不會被自動收掉，需要由人 resolve；README 會說明這一點。
 
 concurrency 可能在「發布之後、resolve 之前」取消舊的執行，留下沒收掉的討論串。下一輪執行會收集所有仍未 resolve 的 AI 討論串，包含更早幾輪的，所以會自動補上。
+
+### 由 AI 確認已修正後才收掉上一輪的討論串
+
+**Supersedes**: pr-ai-review-chunked-inline / 發布成功後才收掉上一輪的討論串
+
+使用者的需求是：意見對應的問題修正之後，經新一輪的 AI 審查確認已修正，才自動收掉那則討論串；還沒修正的意見繼續擋合併。原本「下一輪發布後一律收掉上一輪」的做法，會把沒修正的問題也收掉，再重新發一則新的意見，等於讓舊的討論串失去作用。
+
+流程分成四步，順序固定：
+
+1. **送審前先收集**：新增一個有 token 的步驟（`run-review.sh collect`），以 GraphQL 分頁查詢 `reviewThreads`，收集「還沒 resolve、第一則留言的作者是 `github-actions`、含有 `<!-- lkai-review-comment -->`」的討論串，連同路徑、行號（`line`，討論串已過時則用 `originalLine`）與第一則留言的內容寫進 `threads.json`。查詢失敗時只發出警告，這一輪不收掉任何討論串，審查照常進行。
+2. **規劃時分類**：`plan --threads threads.json` 依每個討論串所在檔案在這次 diff 中的狀態分類：
+   - **交給模型判斷**（`ask`）：檔案屬於某一段、而且沒有被截斷。討論串以 `P1`、`P2`… 的代號、路徑、行號與留言內容，放進那一段提示詞的「上一輪仍未解決的意見」區塊。
+   - **已沒有變更**（`no-longer-changed`）：檔案已不在這次 diff 內（例如改動被還原）。
+   - **已刪除**（`deleted`）：檔案在這次 diff 中被刪除。
+   - **保留**（`keep`）：檔案被截斷、是自動產生或二進位檔案。
+3. **模型判斷**：提示詞請模型逐一判斷列出的問題在本段的程式碼中是否已經修正，結果寫在 JSON 的 `previousThreads`（`ref`、`fixed`、`note`）；仍然存在的問題不要再列進 `findings`，避免重複。
+4. **發布成功後才回覆並 resolve**：新一輪 review 發布成功（inline 版或只有本文的版本）之後，對每個要收掉的討論串先回覆一則說明，再呼叫 `resolveReviewThread`：
+   - 模型判定已修正、而且那一段送審成功：回覆「新一輪審查確認已修正（commit 短 SHA）」加上模型的說明
+   - 已沒有變更或已刪除：回覆說明檔案已沒有可審的變更
+
+以下情況維持未 resolve，也不回覆：模型判定未修正、模型沒有判斷、那一段送審失敗、分類為保留的討論串。由人開啟的討論串一律不動；新 review 發布失敗時，不回覆也不收掉任何討論串。回覆失敗只發出警告，仍然照常 resolve；resolve 失敗只發出警告。
+
+review 本文加上「上一輪意見的追蹤」，列出這一輪確認修正而收掉、仍未修正、因檔案已沒有變更而收掉的數量。
+
+concurrency 取消舊的執行而留下的討論串，下一輪會連同更早幾輪的一起收集、重新判斷。
+
+替代方案：發布前由另一次模型請求專門比對舊意見。不採用：多一次請求，而且判斷需要看到程式碼，放在原本的段落中一起判斷最省。
 
 ### 多段並行送審並延後印出 lkai 訊息
 
@@ -232,7 +261,7 @@ workflow 另外加上三項設定：
 - `concurrency`：`group: pr-ai-review-<PR 編號>`、`cancel-in-progress: true`，同一個 PR 有新的 push 時，取消還在執行的舊審查
 - `timeout-minutes: 60`
 - `permissions`：`contents: write` 與 `pull-requests: write`。不再發一般留言，所以移除 `issues: write`。建立 review 只需要 `pull-requests: write`，但 PR #36 實測，`GITHUB_TOKEN` 只有 `pull-requests: write` 時，`resolveReviewThread` 回 `Resource not accessible by integration`，加上 `contents: write` 後才能收掉討論串。為了縮小這個寫入權限的範圍：
-  - `GH_TOKEN` 只設定在「發布審查結果」這一步，建置 lkai、規劃與送審的 script 環境中沒有 token（action 仍可自行引用 `github.token`；這個 workflow 使用的 action 只有 `actions/checkout` 與以 SHA 固定的 LKAIKit）
+  - `GH_TOKEN` 只設定在「收集上一輪的 AI 討論串」與「發布審查結果」這兩步，建置 lkai、規劃與送審的 script 環境中沒有 token（action 仍可自行引用 `github.token`；這個 workflow 使用的 action 只有 `actions/checkout` 與以 SHA 固定的 LKAIKit）
   - checkout 設定 `persist-credentials: false`，token 不會寫進 `.git/config`；fetch base commit 走公開 repo 的匿名存取
 
 ## Implementation Contract
@@ -241,15 +270,17 @@ workflow 另外加上三項設定：
 
 - PR 開啟或更新後，PR 上出現一則由 `github-actions` 發布的 review：本文是總評，問題標在程式碼行上。
 - 自動產生的檔案出現在總覽的「已略過」清單，不會被審查；PR 改了 `.gitattributes` 也無法讓自己的程式碼被略過。
-- 再 push 一次後，上一輪 AI 在已重新審查過的檔案上的討論串變成 resolved，並出現新的一輪 review。
+- 修正某則意見對應的問題並 push 後，新一輪 review 發布，AI 確認已修正的那則討論串出現一則確認回覆並變成 resolved；沒修正的維持未 resolve，也不會重複出現新的意見。
 
 **介面與資料格式：**
 
-- `node .github/scripts/ai-review/ai-review.mjs plan --base <sha> --head <sha> --out <dir> [--max-chunk-lines <n>]`
+- `node .github/scripts/ai-review/ai-review.mjs plan --base <sha> --head <sha> --out <dir> [--max-chunk-lines <n>] [--threads <threads.json>]`
   - 在 `<dir>` 寫出 `plan.json`，以及各段的提示詞 `chunk-<n>.md`（含審查指示、完整檔案總覽、該段標註後的 patch）
   - base commit 不存在於本機時，以非 0 退出碼結束，不寫出任何檔案
+  - 有 `--threads` 時，`plan.json` 另有 `previousThreads: [{ "ref": "P1", "id", "path", "line", "comment", "chunk": <n|null>, "disposition": "ask|no-longer-changed|deleted|keep" }]`，`ask` 的討論串放進對應段落的提示詞
+  - `threads.json`（`run-review.sh collect` 產生）的格式：`[{ "id", "path", "line", "comment" }]`，`line` 已依「`line`，過時則用 `originalLine`」取得
   - `plan.json` 的格式：`{ "baseSha", "headSha", "gitattributesChanged": <bool>, "files": [{ "path", "status": "added|modified|renamed|deleted", "category": "reviewed|generated|deleted|binary", "lines", "chunk": <n|null>, "truncated": <bool> }], "chunks": [{ "index", "files": [<path>], "lines" }], "commentable": { "<path>": [[<起始行>, <結束行>], ...] } }`
-- 每段模型輸出的 JSON：`{ "summary": <字串>, "verdict": "blocker|changes_suggested|no_concerns", "findings": [{ "path": <字串>, "line": <整數|null>, "severity": "blocker|warning|nit", "title": <字串>, "body": <字串> }] }`
+- 每段模型輸出的 JSON：`{ "summary": <字串>, "verdict": "blocker|changes_suggested|no_concerns", "findings": [{ "path": <字串>, "line": <整數|null>, "severity": "blocker|warning|nit", "title": <字串>, "body": <字串> }], "previousThreads": [{ "ref": <字串>, "fixed": <布林>, "note": <字串> }] }`；`previousThreads` 只在提示詞列出上一輪的討論串時需要，沒有時視為全部沒有判斷
 - `node .github/scripts/ai-review/ai-review.mjs synthesis-prompt --plan <plan.json> --results <dir> --out <檔案>`：產出彙整用的提示詞，內含 script 計算的整體結論；彙整的模型輸出為 `{ "summary": <字串>, "conclusion": <字串> }`
 - `node .github/scripts/ai-review/ai-review.mjs build-review --plan <plan.json> --results <dir> [--synthesis <檔案>] --head-sha <sha> --run-id <id> --warn-chunks <n> --out <dir>`
   - `--head-sha` 與 `plan.json` 的 `headSha` 不同時，以非 0 退出碼結束，不寫出任何 review
@@ -258,9 +289,10 @@ workflow 另外加上三項設定：
     - `review-body-only.json`：不含 inline comment 的版本
     - `summary.md`：完整、未截斷的本文，供寫入 job summary
     - `outcome.json`
-  - `outcome.json` 的格式：`{ "verdict": "blocker|incomplete|changes_suggested|no_concerns", "failedChunks": [<n>], "warnings": [<字串>], "inlineCount", "bodyOnlyCount", "keepThreadPaths": [<path>] }`；`keepThreadPaths` 是這次 diff 內、但這一輪沒有完整審查的檔案（失敗的段落、被截斷、自動產生、二進位），這些檔案上的舊討論串不會被收掉
+  - `outcome.json` 的格式：`{ "verdict": "blocker|incomplete|changes_suggested|no_concerns", "failedChunks": [<n>], "warnings": [<字串>], "inlineCount", "bodyOnlyCount", "threadActions": [{ "id", "reason": "fixed|no-longer-changed|deleted", "reply": <字串> }], "threadSummary": { "fixed", "notFixed", "noLongerChanged", "kept" } }`；`threadActions` 是發布成功後要回覆並 resolve 的討論串，回覆內容已清理
   - `--results <dir>` 內每段有 `chunk-<n>.out`（lkai 的 stdout）與 `chunk-<n>.status`（lkai 的退出碼）
 - `lkai-helpers.sh` 新增 `run_lkai <提示詞檔案> <輸出檔案> [lkai 選項...]`：回傳 lkai 的退出碼，stderr 寫到 `<輸出檔案>.err`，不印出任何內容
+- `run-review.sh` 的子命令：`collect`（收集上一輪的 AI 討論串，需要 `GH_TOKEN`）、`plan`、`review`、`publish`（需要 `GH_TOKEN`）
 - workflow 的設定值：`MAX_CHUNK_LINES`（6000）、`MAX_PARALLEL_CHUNKS`（3）、`WARN_CHUNKS`（6）
 - `.gitattributes` 中以 `linguist-generated` 標記的路徑，即為排除清單；判斷時以 base commit 的版本為準
 
@@ -274,7 +306,7 @@ workflow 另外加上三項設定：
 - 新增的 `github-scripts-test.yml` 在 PR 上執行這些測試並通過
 - `actionlint` 對修改過的 workflow 沒有新增問題
 - 在本機 `/bin/bash` 3.2 以假的 `lkai`／`gh` 執行 workflow 的審查 script，可以產出 inline 版與只有本文版的 review payload，分批送審、失敗段落與 resolve 篩選都符合判定規則
-- 這個 change 自己的 PR 上，出現含 inline comment 的 review；再 push 一次後，上一輪的 AI 討論串變成 resolved
+- 這個 change 自己的 PR 上，出現含 inline comment 的 review；修正其中一則意見對應的問題並 push 後，只有那則討論串附上確認回覆並變成 resolved
 
 **範圍：**
 
@@ -297,8 +329,12 @@ workflow 另外加上三項設定：
   - 依 Context 的實測，這個 repo 的 PR 排除後最多約 3 段，極端情況才會明顯增加費用。
 - **同時送出多段可能撞到 API 的速率限制**
   - 緩解：`MAX_PARALLEL_CHUNKS` 限制同時的請求數；失敗的段落會被標註、workflow 判定為失敗，可以重跑。
-- **有人回覆過的 AI 討論串也會被收掉**
-  - 取捨：避免舊意見累積而卡住合併；新一輪審查會重新提出仍然存在的問題。沒有重新審查到的檔案則不收掉。
+- **模型誤判已修正，提早收掉討論串**
+  - 緩解：收掉前一定回覆模型的說明，看得出是依據什麼判斷；誤判時可以在 GitHub 上把討論串重新打開（Unresolve），下一輪會再次交給模型判斷。
+- **模型誤判未修正，或沒有給判斷，討論串一直卡住合併**
+  - 緩解：維持未 resolve 是安全的一方；確認已處理後可以手動 resolve。
+- **模型仍把未修正的舊問題列成新意見，造成重複**
+  - 緩解：提示詞明確要求不要重複；即使重複，也只是多一則討論串，不影響正確性。
 - **這個機制防的是誤標，不防惡意修改審查流程**
   - workflow 執行的是 PR head 的 script 與 action，同 repo 的 PR 可以直接修改審查 script 讓自己跳過審查；放進自動產生路徑（例如 `.archify/`）或取名為 lockfile 的檔案也會被略過。
   - 取捨：同 repo 的 PR 只有具寫入權限的協作者能開，fork 的 PR 拿不到 secret；要防止惡意修改，需要改從 base commit 取出 script 執行，這也會讓修改審查流程的 PR 無法用自己的新 script 自測，不在這次範圍內。
