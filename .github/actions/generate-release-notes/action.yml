@@ -1,7 +1,7 @@
 # Generate Release Notes：以 LKAIKit 的 lkai 依 commit 記錄撰寫正體中文 Release Notes。
 #
 # - lkai 只能在 macOS runner 執行，呼叫端的 job 要用 macOS runner（見 .github/actions/setup-lkai）。
-# - 供應商與模型由 .github/lkai.json 決定；三個 API 金鑰都傳入，lkai 只讀所選供應商的那一個。
+# - 供應商與模型由 .github/lkai.json 的 default 設定決定；三個 API 金鑰都傳入，lkai 只讀所選供應商的那一個。
 # - AI 失敗或回答不完整時，改用原始 commit 記錄當 Release Notes，不讓發版失敗。
 name: Generate Release Notes
 description: 以 LKAIKit（lkai）生成正體中文 Release Notes，失敗時改用 commit 記錄
@@ -17,7 +17,7 @@ inputs:
     description: Release Notes 輸出檔案路徑
     required: true
   anthropic_api_key:
-    description: Anthropic API 金鑰（.github/lkai.json 的 provider 是 anthropic 時必填）
+    description: Anthropic API 金鑰（.github/lkai.json 的 default 設定中 provider 是 anthropic 時必填）
     required: false
     default: ''
   openai_api_key:

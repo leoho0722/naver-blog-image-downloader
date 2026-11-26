@@ -79,7 +79,7 @@ pnpm dev      # 開發伺服器 http://localhost:5173
 
 ## CI/CD（GitHub Actions）
 
-各元件皆有獨立的 CI/CD workflow，CI 成功後自動觸發 CD。Release Notes 與 PR 審查統一透過 [LKAIKit](https://github.com/leoho0722/LKAIKit) 的 `lkai` CLI 呼叫 AI（供應商與模型設定於 `.github/lkai.json`，目前為 Anthropic `claude-sonnet-5-5`；`lkai` 只能在 macOS runner 執行），生成正體中文內容，Release Notes 在 AI 失敗時 fallback 至原始 commit log。
+各元件皆有獨立的 CI/CD workflow，CI 成功後自動觸發 CD。Release Notes 與 PR 審查統一透過 [LKAIKit](https://github.com/leoho0722/LKAIKit) 的 `lkai` CLI 呼叫 AI（供應商與模型設定於 `.github/lkai.json`：PR 審查使用 `review` 設定，目前為 Anthropic `claude-opus-5-5`；Release Notes 使用 `default` 設定，目前為 `claude-sonnet-5-5`；`lkai` 只能在 macOS runner 執行），生成正體中文內容，Release Notes 在 AI 失敗時 fallback 至原始 commit log。
 
 | Workflow | 觸發條件 | 說明 |
 |----------|----------|------|
