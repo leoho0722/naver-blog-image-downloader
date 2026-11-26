@@ -109,7 +109,7 @@
   - 自動產生檔的略過，在另開的測試 PR 上驗證：這個 change 的 PR 的 base（main）還沒有 `.gitattributes`，無法在自己的 PR 上驗證，所以從 `features/pr-ai-review-chunked-inline` 開一個測試分支，同時修改 `.agents/skills/` 底下的檔案與一個一般檔案，發 PR 到 `features/pr-ai-review-chunked-inline`。確認前者列在「已略過」、後者被審查，驗證後關閉測試 PR 並刪除分支
 
   若 `resolveReviewThread` 因權限被拒，記錄實際的錯誤，並依 design 的 Risks 更新 spec 與 design。verification：記錄 review ID、討論串的 resolve 狀態與 workflow 執行結果。
-- [ ] 5.2 [after: 5.1, 6.7, 7.6] Owner 在 PR 頁面檢視 AI review；verification：五項皆符合：
+- [ ] 5.2 [after: 5.1, 6.7, 7.6, 7.9] Owner 在 PR 頁面檢視 AI review；verification：五項皆符合：
   - inline comment 標在正確的程式碼行上
   - review 本文的總評與結論可以讀懂
   - 在 5.1 的測試 PR 上，自動產生的檔案列在「已略過」清單
@@ -165,7 +165,11 @@
   verification：`review.test.mjs` 涵蓋上述四項與 spec「which threads are resolved」中的 `nit` 一列，並通過 `node --test`。
 - [x] 7.4 [after: 7.3] 改寫 `run-review.sh` 的 `publish`：review 發布成功後，依發布的版本逐則以 `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments` 送出 `subject_type: file` 的檔案層級留言（inline 版，或請求回報失敗但 review 其實已發布時，用 `file-comments.json`；改發本文版時用 `file-comments-fallback.json`）；單則失敗只發出警告；沒有任何版本發布時不送。verification：`shellcheck` 沒有新增問題；本機 e2e 情境確認 inline 版、改發本文版、單則留言失敗、兩個版本都發布失敗四種情況的假 `gh` 呼叫紀錄與退出碼符合預期。
 - [x] 7.5 [after: 7.3] 更新 `README.md`「PR AI Review 的運作方式」：說明 🔴／🟡 以 inline comment 或檔案層級留言擋合併、🟢 只列在本文不擋合併，以及整體結論的意義。verification：檢查文件內容，確認說明與 spec 一致。
-- [ ] 7.6 [after: 7.4, 7.5] 在 PR #36 實測，以 `gh api` 確認四件事：新一輪沒有 🟢 的討論串；上一輪仍未 resolve 的 🟢 討論串附上回覆並 resolve；🔴／🟡 意見以 inline comment 或檔案層級留言呈現且維持未 resolve；整體結論與未 resolve 的 🔴／🟡 一致。若這一輪沒有需要發成檔案層級留言的意見，另以 `gh api` 對 PR #36 送出一則 `subject_type: file` 的測試留言，確認 API 參數可用後刪除。verification：記錄 run ID、各討論串的嚴重程度與 resolve 狀態，以及檔案層級留言的數量。
+- [x] 7.6 [after: 7.4, 7.5] 在 PR #36 實測，以 `gh api` 確認四件事：新一輪沒有 🟢 的討論串；上一輪仍未 resolve 的 🟢 討論串附上回覆並 resolve；🔴／🟡 意見以 inline comment 或檔案層級留言呈現且維持未 resolve；整體結論與未 resolve 的 🔴／🟡 一致。若這一輪沒有需要發成檔案層級留言的意見，另以 `gh api` 對 PR #36 送出一則 `subject_type: file` 的測試留言，確認 API 參數可用後刪除。verification：記錄 run ID、各討論串的嚴重程度與 resolve 狀態，以及檔案層級留言的數量。
+
+- [x] 7.7 在 `prompts.mjs` 與 `plan.mjs` 改為每段只附精簡的檔案總覽（design：精簡每段的檔案總覽），滿足 spec「Patches are annotated with new-file line numbers and findings are structured」的總覽規則：本段檔案全部列出；刪除、二進位、其他段的檔案依序最多 100 筆，超過時加一行依段落與分類列出沒有列出的數量；自動產生的檔案只寫數量；審查指示中對總覽的說明同步更新。同時讓 `plan` 印出的討論串統計加上 🟢 直接收掉的數量，並修正第七輪的兩項 🟢（`bodyItem` 的 JSDoc 缺少 `unattached`、`review.mjs` 重複的註解行）。verification：`plan.test.mjs` 涵蓋 spec「overview of chunk 1」Example 的兩列，並通過 `node --test`。
+- [x] 7.8 在 `run-review.sh` 的 `collect` 查詢討論串的 `subjectType`，檔案層級的討論串寫成 `line: null`，滿足 spec「Previous AI review threads are resolved after a new review is published」的收集規則。verification：`shellcheck` 沒有新增問題；e2e 情境的假資料加上 `subjectType: FILE`、`line: 1` 的討論串，確認提示詞中沒有行號。
+- [ ] 7.9 [after: 7.7, 7.8] 在 PR #36 實測：push 後確認 `plan.mjs:216`「檔案總覽沒有計入每段行數上限」的討論串由 AI 確認已修正、附上回覆並 resolve，並記錄各段提示詞的實際行數。verification：記錄 run ID、該討論串的回覆內容、各段提示詞行數，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。
 
 ## 變更紀錄
 
@@ -214,3 +218,19 @@
 - 已完成的 2.1（整體結論的計算方式）與 2.3（意見分流）保留原文作為歷史，由 7.1、7.3 取代；已完成的 6.1 的分類規則由 7.2 補上 `nit` 一類。
 - 依 PR #36 第六輪審查一併修正文件不一致：design 的 Risks 與 proposal 中 token 的範圍漏掉收集步驟、spec 沒有定義更名檔案上的討論串如何分類、design 補上 fetch base commit 依賴匿名存取的風險。
 - 5.2 改為等 7.6 完成後進行，並新增一項驗收。
+
+7.6 實測紀錄（2026-11-26，已完成）：
+
+- PR #36 第七輪（run 45808818730，head `ced803d`）：收集到上一輪仍未 resolve 的 AI 討論串 14 個，其中 🟢 9 個、🟡 5 個。
+  - 9 個 🟢 都附上「✅ 🟢 可選優化不擋合併，收掉這則討論串（ced803d）」並 resolve，沒有交給模型判斷。
+  - 5 個 🟡 交給模型判斷：4 個確認已修正，附上回覆並 resolve；`plan.mjs:216`「檔案總覽沒有計入每段行數上限」判定未修正，維持未 resolve。
+- 新一輪的 6 項意見都是 🟢，只列在本文，沒有建立任何討論串（inline comment 0 則、檔案層級留言 0 則）。
+- 整體結論為「🟡 有建議修正的問題」，來自那 1 則仍未 resolve 的 🟡，與擋合併的狀態一致；`github-scripts-test` 通過。
+- 這一輪沒有需要發成檔案層級留言的意見，所以依 7.6 另以 owner 的 `gh` 身分，用與 `post_file_comments` 相同的參數（`body`、`commit_id`、`path`、`subject_type=file`）對 PR #36 的 `README.md` 送出測試留言：回應的 `subject_type` 為 `file`，GraphQL 的討論串 `subjectType` 為 `FILE`、未 resolve（會擋合併）；刪除留言後，GitHub 自動建立的那筆 review 也一併消失（查詢回 404）。
+- 發現：檔案層級的討論串在 GraphQL 中的 `line` 回傳 1，不是 null；收集步驟直接使用時，下一輪提示詞會把它寫成「第 1 行」。由 7.8 修正。
+
+依 PR #36 第七輪審查（2026-11-26，使用者選擇「精簡總覽」）：
+
+- 新增 7.7：每段只附精簡的檔案總覽，見 design「精簡每段的檔案總覽」；spec 中「每段提示詞含所有檔案的總覽」與「略過的檔案列在總覽」的規則同步改寫。已完成的 1.4 中「所有檔案的總覽」的描述保留原文作為歷史，由 7.7 取代。
+- 新增 7.8：7.6 實測發現檔案層級討論串的 `line` 回傳 1，收集時改寫成 null。
+- 新增 7.9 實測；5.2 改為等 7.9 完成後進行。

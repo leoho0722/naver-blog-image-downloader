@@ -121,14 +121,14 @@ function commandPlan(options) {
   const lines = chunks.map((chunk) => chunk.lines).join('、') || '無';
   console.log(`規劃完成：共 ${files.length} 個檔案，其中 ${reviewed} 個送審，分成 ${chunks.length} 段（各段行數：${lines}）`);
   if (result.prompts.length > 0) {
-    // 提示詞還包含審查指示與整個 PR 的檔案總覽；印出實際行數，供核對每段上限的估計值
+    // 提示詞還包含審查指示、精簡的檔案總覽與上一輪的討論串；印出實際行數，供核對每段上限與總覽上限的估計值
     const promptLines = result.prompts.map((prompt) => prompt.split('\n').length).join('、');
     console.log(`各段提示詞的實際行數（含審查指示與檔案總覽）：${promptLines}`);
   }
   if (previousThreads.length > 0) {
     const count = (disposition) => previousThreads.filter((thread) => thread.disposition === disposition).length;
     console.log(
-      `上一輪仍未 resolve 的 AI 討論串 ${previousThreads.length} 個：交給模型判斷 ${count('ask')} 個、檔案已沒有變更 ${count('no-longer-changed') + count('deleted')} 個、維持不動 ${count('keep')} 個`,
+      `上一輪仍未 resolve 的 AI 討論串 ${previousThreads.length} 個：交給模型判斷 ${count('ask')} 個、檔案已沒有變更 ${count('no-longer-changed') + count('deleted')} 個、維持不動 ${count('keep')} 個、🟢 直接收掉 ${count('nit')} 個`,
     );
   }
 }

@@ -43,8 +43,8 @@ const REVIEW_INSTRUCTIONS = `你是本 monorepo 的資深 code reviewer。請審
 5. 效能：明顯的 N+1、不必要的 allocation、阻塞主執行緒
 
 審查範圍：
-- 這個 PR 依檔案的相關性分成多段審查，「檔案總覽」列出整個 PR 的所有檔案與它們所在的段落。請只對「本段 patch」中的內容提出意見，其他段落會另外審查。
-- 總覽中標為「已略過」「已刪除」「二進位」的檔案沒有附上內容，不要對它們的內容下結論；但可以指出可疑的刪除，例如整個測試檔或安全檢查被移除。
+- 這個 PR 依檔案的相關性分成多段審查。「檔案總覽」列出本段的檔案，以及刪除、二進位與其他段落的檔案（檔案很多時只列出一部分，並附上沒有列出的數量）；自動產生的檔案只寫數量。請只對「本段 patch」中的內容提出意見，其他段落會另外審查。
+- 總覽中標為「已刪除」「二進位」的檔案與自動產生的檔案沒有附上內容，不要對它們的內容下結論；但可以指出可疑的刪除，例如整個測試檔或安全檢查被移除。
 - 標示「這個檔案超過每段的行數上限」的檔案只附上前段，不要對沒附上的部分下結論。
 
 行號：
@@ -78,14 +78,23 @@ const REVIEW_INSTRUCTIONS = `你是本 monorepo 的資深 code reviewer。請審
   - 只有確實需要修正的問題才標 warning；風格、命名等可有可無的建議標 nit。
 - 沒有任何意見時，findings 是空陣列。`;
 
+/** 總覽中「其他檔案」最多列出的筆數（估計值，見 design「精簡每段的檔案總覽」） */
+export const OVERVIEW_OTHER_LIMIT = 100;
+
 /**
- * 產生檔案總覽：整個 PR 的每個檔案、變更類型、分類與所在段落。
+ * 產生某一段的檔案總覽（見 design「精簡每段的檔案總覽」）：
+ * - 本段的檔案全部列出
+ * - 其他檔案依序列出刪除的、二進位的、其他段落的，最多 limit 筆；超過時加一行，依段落與分類列出沒有列出的數量
+ * - 自動產生的檔案只寫數量
+ * 總覽的大小因此只隨本段的檔案數增加，不會因為 PR 的檔案很多而讓每一段的提示詞都變得很大。
  *
  * @param {Array<{ path: string, oldPath: string | null, status: string, category: string, chunk: number | null, truncated: boolean }>} files
+ * @param {number} chunkIndex 這是第幾段
+ * @param {number} [limit] 其他檔案最多列出的筆數
  * @returns {string}
  */
-export function renderOverview(files) {
-  const lines = files.map((file) => {
+export function renderOverview(files, chunkIndex, limit = OVERVIEW_OTHER_LIMIT) {
+  const describe = (file) => {
     const parts = [STATUS_LABELS[file.status] ?? file.status, CATEGORY_LABELS[file.category] ?? file.category];
     if (file.chunk !== null) {
       parts.push(`第 ${file.chunk} 段`);
@@ -95,7 +104,34 @@ export function renderOverview(files) {
     }
     const renamed = file.oldPath ? `（更名自 ${file.oldPath}）` : '';
     return `- ${file.path}${renamed}：${parts.join('，')}`;
-  });
+  };
+  const own = files.filter((file) => file.chunk === chunkIndex);
+  // 刪除的檔案排在最前面，讓模型仍能指出可疑的刪除（例如整個測試檔被移除）
+  const others = [
+    ...files.filter((file) => file.category === 'deleted'),
+    ...files.filter((file) => file.category === 'binary'),
+    ...files.filter((file) => file.category === 'reviewed' && file.chunk !== chunkIndex),
+  ];
+  const generated = files.filter((file) => file.category === 'generated').length;
+
+  const lines = ['本段的檔案：', ...own.map(describe)];
+  if (others.length > 0) {
+    lines.push('', '其他檔案：', ...others.slice(0, limit).map(describe));
+  }
+  const omitted = others.slice(limit);
+  if (omitted.length > 0) {
+    /** @type {Map<string, number>} */
+    const groups = new Map();
+    for (const file of omitted) {
+      const key = file.chunk !== null ? `第 ${file.chunk} 段` : file.category === 'deleted' ? '刪除的檔案' : '二進位檔案';
+      groups.set(key, (groups.get(key) ?? 0) + 1);
+    }
+    const detail = [...groups].map(([key, count]) => `${key} ${count} 個`).join('、');
+    lines.push(`- 另有 ${omitted.length} 個檔案沒有列出：${detail}`);
+  }
+  if (generated > 0) {
+    lines.push('', `已略過的自動產生檔案：${generated} 個（不附內容，也不列出路徑）`);
+  }
   return lines.join('\n');
 }
 
@@ -103,7 +139,7 @@ export function renderOverview(files) {
  * 產生一段的審查提示詞。
  *
  * @param {{ index: number, total: number, overview: string, patch: string, previousThreads?: Array<object> }} input
- *   index：第幾段；total：總段數；overview：renderOverview 的結果；patch：這一段標註後的 patch；
+ *   index：第幾段；total：總段數；overview：這一段的 renderOverview 結果；patch：這一段標註後的 patch；
  *   previousThreads：這一段要請模型判斷是否已修正的上一輪討論串（見 renderPreviousThreads）
  * @returns {string}
  */

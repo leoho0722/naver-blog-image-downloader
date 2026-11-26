@@ -118,6 +118,7 @@ const locationOf = (finding) => (finding.line === null ? finding.path : `${findi
  * 本文中「無法標在程式碼行上的意見」的一項。
  *
  * @param {object} finding
+ * @param {boolean} [unattached] 是否為路徑不在 diff 內、無法留言的 🔴／🟡；是的話加上 ⚠️ 標示
  * @returns {string}
  */
 function bodyItem(finding, unattached = false) {
@@ -305,7 +306,6 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
     warnings.push('review 本文超過 GitHub 的長度上限，已截斷；完整內容寫在這次 workflow run 的 job summary');
   }
 
-  // job summary 放未截斷、含全部意見的版本
   // job summary 放未截斷、含全部意見的版本；不帶「inline comment 無法發布」的提示，那只適用於改發本文版的情況
   const fullBody = fitReviewBody(assemble(findings, null), Number.MAX_SAFE_INTEGER).body;
   const summaryMarkdown = truncateUtf8(fullBody).text;

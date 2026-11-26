@@ -5,7 +5,7 @@
 // - deleted：在這個 PR 中被刪除
 // - binary：二進位檔案
 // - reviewed：其餘的檔案，會被送審
-// 只有 reviewed 的檔案會送出內容，其他分類只列在檔案總覽。
+// 只有 reviewed 的檔案會送出內容，其他分類只出現在檔案總覽（自動產生的檔案只寫數量）。
 //
 // 自動產生檔一律依 base commit 的 .gitattributes 判斷，PR 無法藉由修改 .gitattributes
 // 讓自己的程式碼跳過審查。
@@ -213,12 +213,11 @@ export function buildPlan({ cwd, base, head, maxChunkLines = DEFAULT_MAX_CHUNK_L
 
   const previousThreads = classifyThreads(threads, files);
 
-  const overview = renderOverview(files);
   const prompts = chunks.map((chunk) =>
     renderChunkPrompt({
       index: chunk.index,
       total: chunks.length,
-      overview,
+      overview: renderOverview(files, chunk.index),
       patch: chunk.files.map((path) => patchText.get(path)).join('\n\n'),
       previousThreads: previousThreads.filter((thread) => thread.disposition === 'ask' && thread.chunk === chunk.index),
     }),

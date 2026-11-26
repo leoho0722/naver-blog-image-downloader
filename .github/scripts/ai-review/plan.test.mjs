@@ -9,6 +9,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { buildPlan, PlanError } from './plan.mjs';
+import { renderOverview } from './prompts.mjs';
 
 const CLI = join(dirname(fileURLToPath(import.meta.url)), 'ai-review.mjs');
 
@@ -47,7 +48,7 @@ const categories = (plan) => Object.fromEntries(plan.files.map((file) => [file.p
 
 // spectra-scenario: pr-ai-review / Files are classified before chunking
 // spectra-scenario: pr-ai-review / Files are classified before chunking / file classification
-test('檔案分類：依 base 的 .gitattributes 判斷自動產生檔，刪除與二進位只列在總覽', () => {
+test('檔案分類：依 base 的 .gitattributes 判斷自動產生檔，刪除與二進位只列在總覽、自動產生檔只寫數量', () => {
   withRepo(({ dir, write, remove, commit }) => {
     write('.gitattributes', '.agents/skills/** linguist-generated\n**/pnpm-lock.yaml linguist-generated\n');
     write('.agents/skills/spectra-apply/SKILL.md', 'v1\n');
@@ -80,10 +81,11 @@ test('檔案分類：依 base 的 .gitattributes 判斷自動產生檔，刪除�
     assert.equal(plan.files.find((file) => file.path === 'apps/web/pnpm-lock.yaml').chunk, null);
     assert.deepEqual(Object.keys(plan.commentable), ['apps/web/src/main.tsx']);
 
-    // 提示詞：總覽列出所有檔案（含略過原因），patch 只含送審的檔案
+    // 提示詞：總覽列出本段、刪除與二進位的檔案，自動產生的檔案只寫數量；patch 只含送審的檔案
     assert.equal(prompts.length, 1);
     const prompt = prompts[0];
-    assert.match(prompt, /- \.agents\/skills\/spectra-apply\/SKILL\.md：修改，已略過（自動產生）/);
+    assert.match(prompt, /已略過的自動產生檔案：2 個（不附內容，也不列出路徑）/);
+    assert.doesNotMatch(prompt, /SKILL\.md/);
     assert.match(prompt, /- apps\/web\/src\/legacy\.ts：刪除，已刪除（只列出，不附內容）/);
     assert.match(prompt, /- apps\/web\/public\/icon\.png：新增，二進位（只列出，不附內容）/);
     assert.match(prompt, /- apps\/web\/src\/main\.tsx：修改，送審，第 1 段/);
@@ -335,4 +337,32 @@ test('上一輪討論串的嚴重程度從留言開頭的標籤讀出；🟢 分
     assert.doesNotMatch(prompts[0], /命名可以更清楚/);
     assert.doesNotMatch(prompts[0], /### P4｜/);
   });
+});
+
+// spectra-scenario: pr-ai-review / Overview stays bounded for a pull request with many files / overview of chunk 1
+test('精簡總覽：本段全部列出，其他檔案最多 100 筆並附上沒有列出的數量，自動產生檔只寫數量', () => {
+  const file = (path, category, chunk, status = 'modified') => ({ path, oldPath: null, status, category, lines: 1, chunk, truncated: false });
+  const own = ['a1.ts', 'a2.ts', 'a3.ts'].map((path) => file(path, 'reviewed', 1));
+  const deleted = ['gone1.ts', 'gone2.ts'].map((path) => file(path, 'deleted', null, 'deleted'));
+  const chunk2 = (count) => Array.from({ length: count }, (_, i) => file(`b/${String(i).padStart(3, '0')}.ts`, 'reviewed', 2));
+  const generated = (count) => Array.from({ length: count }, (_, i) => file(`gen/${i}.yaml`, 'generated', null));
+  const listedIn = (text) => text.split('\n').filter((line) => line.startsWith('- ') && !line.startsWith('- 另有'));
+
+  // 第一列：其他檔案 42 筆，沒有超過上限；500 個自動產生檔只寫數量
+  const first = renderOverview([...own, ...deleted, ...chunk2(40), ...generated(500)], 1);
+  assert.equal(listedIn(first).length, 3 + 2 + 40);
+  assert.match(first, /^本段的檔案：\n- a1\.ts：修改，送審，第 1 段/);
+  // 刪除的檔案排在其他檔案的最前面
+  assert.match(first, /其他檔案：\n- gone1\.ts：刪除，已刪除/);
+  assert.match(first, /已略過的自動產生檔案：500 個/);
+  assert.doesNotMatch(first, /gen\/0\.yaml/);
+  assert.doesNotMatch(first, /另有/);
+
+  // 第二列：其他檔案 152 筆，只列出 100 筆，另一行說明第 2 段還有 52 個沒有列出
+  const second = renderOverview([...own, ...deleted, ...chunk2(150)], 1);
+  const listed = listedIn(second);
+  assert.equal(listed.length, 3 + 2 + 98);
+  assert.equal(listed.filter((line) => line.startsWith('- b/')).length, 98);
+  assert.match(second, /- 另有 52 個檔案沒有列出：第 2 段 52 個/);
+  assert.doesNotMatch(second, /自動產生/);
 });
