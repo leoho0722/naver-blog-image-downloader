@@ -362,3 +362,51 @@ export function toInlineCode(text) {
   const pad = singleLine.startsWith('`') || singleLine.endsWith('`') ? ' ' : '';
   return `${fence}${pad}${singleLine}${pad}${fence}`;
 }
+
+/**
+ * 補上沒有關閉的 code fence，避免模型文字中未閉合的 ``` 把後面的本文都吞進 code block。
+ *
+ * 依 Markdown 規則逐行判斷：行首（最多 3 個空白縮排）連續 3 個以上的反引號或波浪號開啟 fence，
+ * 之後同一種字元、數量不少於開頭的行才會關閉它。讀到結尾仍未關閉時，補上一行對應的結尾。
+ *
+ * @param {string} text 模型寫的文字
+ * @returns {string} fence 都已成對的文字
+ * @throws {TypeError} text 不是字串時。
+ */
+export function closeOpenFences(text) {
+  assertString(text, 'text');
+  /** @type {{ char: string, length: number } | null} */
+  let open = null;
+  for (const line of text.split('\n')) {
+    const match = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (!match) {
+      continue;
+    }
+    const [, fence, rest] = match;
+    if (open === null) {
+      // 反引號 fence 的說明文字不可再含反引號（Markdown 規則），否則不算開啟
+      if (fence[0] === '`' && rest.includes('`')) {
+        continue;
+      }
+      open = { char: fence[0], length: fence.length };
+    } else if (fence[0] === open.char && fence.length >= open.length && rest.trim() === '') {
+      open = null;
+    }
+  }
+  if (open === null) {
+    return text;
+  }
+  return `${text}${text.endsWith('\n') ? '' : '\n'}${open.char.repeat(open.length)}`;
+}
+
+/**
+ * 把模型寫的單行文字（例如意見的標題）中的換行換成空白，避免破壞清單與粗體等版面。
+ *
+ * @param {string} text
+ * @returns {string}
+ * @throws {TypeError} text 不是字串時。
+ */
+export function toSingleLine(text) {
+  assertString(text, 'text');
+  return text.replace(/\s*[\r\n]+\s*/g, ' ');
+}

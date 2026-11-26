@@ -4,9 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# 建立 review 需要 pull-requests: write；不再發一般留言，所以不需要 issues: write。
-# 實驗中：只有 pull-requests: write 時，resolveReviewThread 會回 Resource not accessible by integration，
-# 這裡試試加上 contents: write 是否能讓 GITHUB_TOKEN 收掉上一輪的討論串（見 change pr-ai-review-chunked-inline 的 5.1 實測紀錄）
+# - pull-requests: write：建立 review。不再發一般留言，所以不需要 issues: write。
+# - contents: write：GITHUB_TOKEN 收掉（resolve）上一輪的 AI 討論串需要它；只有 pull-requests: write 時，
+#   resolveReviewThread 會回 Resource not accessible by integration（PR #36 實測）。
+# 有寫入權限的 token 只交給「發布審查結果」這一步（GH_TOKEN 只設定在那一步），checkout 也不保留 git 憑證，
+# 建置 lkai、規劃與送審的步驟都拿不到它。
 permissions:
   contents: write
   pull-requests: write
@@ -27,7 +29,6 @@ jobs:
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       REPO: ${{ github.repository }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
       # 一律使用 PR 的 head commit，不使用 GitHub 為 PR 建立的 merge commit：
       # inline comment 的 commit_id 必須是 PR 的 commit，行號也才會和 PR 頁面的 diff 一致
@@ -42,6 +43,9 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
+          # 不把 token 寫進 .git/config：後續步驟會執行 PR 的程式與建置 lkai，不需要也不應拿到 git 憑證
+          # （fetch base commit 走公開 repo 的匿名存取）
+          persist-credentials: false
 
       # 建置 lkai 並讀出 .github/lkai.json 中 review 設定的供應商與模型；要換審查用的模型只改那個設定
       - name: Setup lkai
@@ -67,4 +71,6 @@ jobs:
 
       # 發布 review（被拒時改發只有本文的版本）、收掉上一輪 AI 的討論串，並依審查結果判定成敗
       - name: 發布審查結果
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash .github/scripts/ai-review/run-review.sh publish

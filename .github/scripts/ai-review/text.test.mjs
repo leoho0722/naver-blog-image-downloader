@@ -10,10 +10,12 @@ import {
   COMMENT_LIMIT,
   SUMMARY_BYTE_LIMIT,
   TRUNCATION_NOTE,
+  closeOpenFences,
   fenceRawAnswer,
   fitReviewBody,
   sanitizeModelText,
   toInlineCode,
+  toSingleLine,
   truncateComment,
   truncateUtf8,
 } from './text.mjs';
@@ -630,5 +632,37 @@ describe('toInlineCode', () => {
 
   it('傳入非字串時丟出 TypeError', () => {
     assert.throws(() => toInlineCode(1), TypeError);
+  });
+});
+
+describe('closeOpenFences', () => {
+  it('fence 都已成對時不變', () => {
+    const text = '說明\n```ts\nconst a = 1;\n```\n結尾';
+    assert.equal(closeOpenFences(text), text);
+  });
+
+  it('沒有關閉的 fence 會補上對應的結尾', () => {
+    assert.equal(closeOpenFences('a\n```ts\ncode'), 'a\n```ts\ncode\n```');
+    assert.equal(closeOpenFences('a\n````\n```\nstill open\n'), 'a\n````\n```\nstill open\n````');
+    assert.equal(closeOpenFences('~~~\nx'), '~~~\nx\n~~~');
+  });
+
+  it('行中間的反引號與說明文字含反引號的行不算 fence', () => {
+    assert.equal(closeOpenFences('用 ```js 寫'), '用 ```js 寫');
+    assert.equal(closeOpenFences('``` a`b'), '``` a`b');
+  });
+
+  it('傳入非字串時丟出 TypeError', () => {
+    assert.throws(() => closeOpenFences(null), TypeError);
+  });
+});
+
+describe('toSingleLine', () => {
+  it('換行換成空白', () => {
+    assert.equal(toSingleLine('第一行\n  第二行\r\n第三行'), '第一行 第二行 第三行');
+  });
+
+  it('傳入非字串時丟出 TypeError', () => {
+    assert.throws(() => toSingleLine(1), TypeError);
   });
 });

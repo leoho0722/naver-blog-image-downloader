@@ -101,15 +101,15 @@ export function extractLastJsonBlock(text) {
   }
 
   if (lastJson === null) {
-    return { ok: false, error: '回答中沒有 ```json 區塊' };
+    return { ok: false, error: '回答中沒有 json 程式碼區塊' };
   }
   if (!lastJson.closed) {
-    return { ok: false, error: '最後一個 ```json 區塊沒有結尾的 ``` 行（回答可能被截斷）' };
+    return { ok: false, error: '最後一個 json 程式碼區塊沒有結尾行（回答可能被截斷）' };
   }
   try {
     return { ok: true, value: JSON.parse(lastJson.content) };
   } catch (error) {
-    return { ok: false, error: `最後一個 \`\`\`json 區塊不是合法的 JSON：${error.message}` };
+    return { ok: false, error: `最後一個 json 程式碼區塊不是合法的 JSON：${error.message}` };
   }
 }
 

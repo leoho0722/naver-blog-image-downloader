@@ -171,12 +171,12 @@ When two or more chunks produced a valid result, the review SHALL send one synth
 
 ### Requirement: The review is published as one pull request review with inline comments
 
-The review SHALL publish its result as one pull request review created with event `COMMENT` and with `commit_id` equal to the pull request's head commit, which is also the commit the diff was produced from as `<base>...<head>`. The review SHALL NOT use the merge commit that GitHub creates for the pull request. The plan SHALL record that head commit, and building the review SHALL fail without producing a review when the head commit given to it differs from the recorded one. A finding SHALL become an inline comment on the `RIGHT` side when its path was sent for review and its line is one of that file's commentable lines. Every other finding SHALL be listed in the review body with its `path:line` location. The review body SHALL start with the marker `<!-- lkai-review -->`, followed by a line `<!-- lkai-review-run: <run id> -->` that identifies the workflow run attempt, and SHALL contain the overall verdict computed by the script, the overall summary, the synthesis conclusion when a synthesis result exists, the skipped and truncated files, and any warning and failure notes. Each inline comment body SHALL contain the severity label, the title, the finding body, and end with the marker `<!-- lkai-review-comment -->`. When GitHub rejects the review, the workflow SHALL publish a second review without inline comments that lists every finding in the body together with a note that inline comments could not be published, and SHALL emit a workflow warning. Before publishing that second review, the workflow SHALL check the pull request's reviews and SHALL NOT publish it when a review carrying the current run's marker already exists.
+The review SHALL publish its result as one pull request review created with event `COMMENT` and with `commit_id` equal to the pull request's head commit, which is also the commit the diff was produced from as `<base>...<head>`. The review SHALL NOT use the merge commit that GitHub creates for the pull request. The plan SHALL record that head commit, and building the review SHALL fail without producing a review when the head commit given to it differs from the recorded one. A finding SHALL become an inline comment on the `RIGHT` side when its path was sent for review in the chunk that produced the finding and its line is one of that file's commentable lines. Every other finding SHALL be listed in the review body with its `path:line` location. The review body SHALL start with the marker `<!-- lkai-review -->`, followed by a line `<!-- lkai-review-run: <run id> -->` that identifies the workflow run attempt, and SHALL contain the overall verdict computed by the script, the overall summary, the synthesis conclusion when a synthesis result exists, the skipped and truncated files, and any warning and failure notes. Each inline comment body SHALL contain the severity label, the title, the finding body, and end with the marker `<!-- lkai-review-comment -->`. When GitHub rejects the review, the workflow SHALL publish a second review without inline comments that lists every finding in the body together with a note that inline comments could not be published, and SHALL emit a workflow warning. Before publishing that second review, the workflow SHALL check the pull request's reviews and SHALL NOT publish it when a review carrying the current run's marker already exists.
 
 #### Scenario: Findings are routed to inline comments or the body
 
 - **WHEN** the review builds the pull request review from the merged findings
-- **THEN** each finding on a commentable line of a reviewed file becomes an inline comment and every other finding is listed in the body
+- **THEN** each finding on a commentable line of a file reviewed in the finding's own chunk becomes an inline comment and every other finding is listed in the body
 
 ##### Example: finding routing
 
@@ -186,6 +186,7 @@ The review SHALL publish its result as one pull request review created with even
 | `apps/web/src/a.ts` | 99 | 10–12 | body, `apps/web/src/a.ts:99` |
 | `apps/web/src/a.ts` | null | 10–12 | body, `apps/web/src/a.ts` |
 | `apps/web/pnpm-lock.yaml` | 5 | not reviewed | body, `apps/web/pnpm-lock.yaml:5` |
+| `apps/web/src/b.ts`, reported by a chunk that does not contain it | 5 | 1–20 | body, `apps/web/src/b.ts:5` |
 
 #### Scenario: Head commit mismatch stops publication
 
@@ -263,7 +264,7 @@ Before publishing a new review, the workflow SHALL collect every unresolved revi
 
 ### Requirement: Review run outcome reflects missing review content
 
-The workflow SHALL fail when any chunk request fails, returns an incomplete answer, or returns an answer that cannot be parsed, when the base commit is unavailable, when the head commit check stops publication, and when no review can be published. Even when a chunk fails, the workflow SHALL publish the results it obtained and SHALL list the failed chunks with their files in the review body. The severity of findings SHALL NOT affect the workflow result. A newer run for the same pull request SHALL cancel an older run that is still in progress. The workflow SHALL request only the `contents: read` and `pull-requests: write` permissions and SHALL stop after 60 minutes.
+The workflow SHALL fail when any chunk request fails, returns an incomplete answer, or returns an answer that cannot be parsed, when the base commit is unavailable, when the head commit check stops publication, and when no review can be published. Even when a chunk fails, the workflow SHALL publish the results it obtained and SHALL list the failed chunks with their files in the review body. The severity of findings SHALL NOT affect the workflow result. A newer run for the same pull request SHALL cancel an older run that is still in progress. The workflow SHALL request only the `contents: write` and `pull-requests: write` permissions, SHALL set the GitHub token only in the environment of the step that publishes the review and resolves threads, SHALL NOT persist git credentials when checking out the pull request, and SHALL stop after 60 minutes.
 
 #### Scenario: One chunk fails
 
@@ -284,4 +285,4 @@ The workflow SHALL fail when any chunk request fails, returns an incomplete answ
 #### Scenario: Workflow runs with least privilege
 
 - **WHEN** the review workflow definition is inspected
-- **THEN** its permissions are exactly `contents: read` and `pull-requests: write`, its concurrency group is unique per pull request with in-progress cancellation, and its timeout is 60 minutes
+- **THEN** its permissions are exactly `contents: write` and `pull-requests: write`, the GitHub token appears only in the publishing step's environment, checkout sets `persist-credentials: false`, its concurrency group is unique per pull request with in-progress cancellation, and its timeout is 60 minutes

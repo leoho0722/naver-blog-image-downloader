@@ -237,7 +237,21 @@ test('實際的 git diff：中文、空白與引號路徑都還原成原本的�
     writeFileSync(join(dir, 'say "hi".txt'), 'b\n');
     run('commit', '-q', '-am', 'change');
 
-    const text = run('-c', 'core.quotePath=false', 'diff', '--no-color', '--no-ext-diff', '-M', 'HEAD~1', 'HEAD');
+    // 刻意開啟 diff.noprefix，確認固定前綴後仍能正確解析
+    const text = run(
+      '-c',
+      'core.quotePath=false',
+      '-c',
+      'diff.noprefix=true',
+      'diff',
+      '--no-color',
+      '--no-ext-diff',
+      '-M',
+      '--src-prefix=a/',
+      '--dst-prefix=b/',
+      'HEAD~1',
+      'HEAD',
+    );
     const paths = parseDiff(text)
       .map((f) => f.path)
       .sort();

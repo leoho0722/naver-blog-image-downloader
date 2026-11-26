@@ -343,3 +343,37 @@ test('失敗原因中的模型原文會被清理後才放進本文', () => {
   assert.doesNotMatch(line, /@octocat/);
   assert.doesNotMatch(line, /<!--/);
 });
+
+// spectra-scenario: pr-ai-review / Findings are routed to inline comments or the body / finding routing
+test('意見指向其他段的檔案時放進本文：模型沒看過那個檔案的內容', () => {
+  const plan = makePlan([['a.ts'], ['b.ts']]);
+  const { review } = build(
+    plan,
+    [
+      ok({ summary: '一', verdict: 'changes_suggested', findings: [finding('b.ts', 5, 'warning', '猜測的問題'), finding('a.ts', 3)] }),
+      ok({ summary: '二', verdict: 'no_concerns', findings: [] }),
+    ],
+    { synthesisRaw: answer({ summary: '彙整', conclusion: '結論' }) },
+  );
+  assert.deepEqual(
+    review.comments.map((comment) => `${comment.path}:${comment.line}`),
+    ['a.ts:3'],
+  );
+  assert.match(review.body, /猜測的問題\*\*（`b\.ts:5`）/);
+});
+
+test('標題的換行換成空白，內文未閉合的 code fence 會補上，不會吞掉後面的本文', () => {
+  const plan = makePlan([['a.ts']]);
+  const { review } = build(plan, [
+    ok({
+      summary: '總評',
+      verdict: 'changes_suggested',
+      findings: [finding('a.ts', null, 'nit', '第一行\n第二行', '範例：\n```ts\nconst a = 1;'), finding('a.ts', null, 'nit', '下一項', 'x')],
+    }),
+  ]);
+  assert.match(review.body, /\*\*第一行 第二行\*\*/);
+  // 補上的結尾 fence 在下一項意見之前
+  const closedAt = review.body.indexOf('const a = 1;\n  ```');
+  assert.ok(closedAt > 0, review.body);
+  assert.ok(closedAt < review.body.indexOf('下一項'));
+});

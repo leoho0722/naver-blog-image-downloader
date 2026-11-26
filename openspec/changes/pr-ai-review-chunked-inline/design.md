@@ -158,7 +158,7 @@ GitHub 對 review 本文與每則留言的上限都是 65,536 字元。本文超
 
 一次 API 呼叫會一起成功或一起失敗，使用者也只會收到一次通知。
 
-意見的路徑必須是送審過的檔案，行號必須落在該檔案的可留言行內，才會成為 inline comment。沒有行號、行號不在 diff 內、路徑沒有送審的意見，列在本文的「無法標在程式碼行上的意見」區塊並附上 `path:line`。
+意見的路徑必須是「產生這項意見的那一段」送審的檔案，行號必須落在該檔案的可留言行內，才會成為 inline comment。模型只看得到本段的內容，對其他段的檔案只看過總覽，給出的行號只是猜測，所以不發成 inline comment。沒有行號、行號不在 diff 內、路徑不屬於本段的意見，列在本文的「無法標在程式碼行上的意見」區塊並附上 `path:line`。
 
 識別用的隱藏標記：
 
@@ -179,7 +179,7 @@ GitHub 拒絕整個 review（回應不是 2xx）時，改送一個不含 inline 
 2. **發布新一輪 review**（inline 版本或只有本文的版本）。
 3. **發布成功後才 resolve**：對收集到的每個討論串呼叫 `resolveReviewThread`。
 
-這個順序保證三件事：
+這個順序保證四件事：
 
 - 新 review 發布失敗時，上一輪的意見仍然留著。
 - 這一輪送審失敗或被截斷的檔案，其上的舊意見不會在沒有重新審查的情況下被收掉。
@@ -231,7 +231,9 @@ workflow 另外加上三項設定：
 
 - `concurrency`：`group: pr-ai-review-<PR 編號>`、`cancel-in-progress: true`，同一個 PR 有新的 push 時，取消還在執行的舊審查
 - `timeout-minutes: 60`
-- `permissions`：只有 `contents: read` 與 `pull-requests: write`。不再發一般留言，所以移除 `issues: write`；建立 review 與 resolve 討論串都只需要 `pull-requests: write`
+- `permissions`：`contents: write` 與 `pull-requests: write`。不再發一般留言，所以移除 `issues: write`。建立 review 只需要 `pull-requests: write`，但 PR #36 實測，`GITHUB_TOKEN` 只有 `pull-requests: write` 時，`resolveReviewThread` 回 `Resource not accessible by integration`，加上 `contents: write` 後才能收掉討論串。為了縮小這個寫入權限的範圍：
+  - `GH_TOKEN` 只設定在「發布審查結果」這一步，建置 lkai、規劃與送審的步驟拿不到 token
+  - checkout 設定 `persist-credentials: false`，token 不會寫進 `.git/config`；fetch base commit 走公開 repo 的匿名存取
 
 ## Implementation Contract
 
@@ -281,8 +283,9 @@ workflow 另外加上三項設定：
 
 ## Risks / Trade-offs
 
-- **GITHUB_TOKEN 可能沒有 `resolveReviewThread` 的權限**
-  - 緩解：resolve 失敗只發出警告；在這個 change 的 PR 上實測。若確實不可行，再改由人手動 resolve，並更新 spec。
+- **`GITHUB_TOKEN` 需要 `contents: write` 才能 resolve 討論串**（PR #36 實測）
+  - 取捨：這讓 job 的 token 有 repo 的寫入權限。緩解：token 只交給發布那一步、checkout 不保留憑證；fork 發出的 PR 拿到的 token 本來就是唯讀，也拿不到 secret。同 repo 的 PR 只有具寫入權限的協作者能開，而且 `pull_request` 事件使用的 workflow 定義本來就來自 PR，提高這個權限沒有讓協作者多出原本沒有的能力。
+  - resolve 失敗時只發出警告，不讓 workflow 失敗。
 - **模型沒有照格式輸出 JSON**
   - 緩解：提示詞明確要求，取最後一個 ```json 區塊解析；解析失敗時該段視為失敗，原始回答放進摺疊區塊，不會悄悄遺失。
 - **模型給的行號不在 diff 內**

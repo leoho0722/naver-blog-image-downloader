@@ -137,3 +137,5 @@
 - PR #36 第二輪（run 45765429797）：收集到上一輪的 5 個 AI 討論串，新的 review（9 則 inline comment）發布成功，但 5 次 `resolveReviewThread` 全部失敗，錯誤為 `gh: Resource not accessible by integration`。workflow 權限為 `contents: read`、`pull-requests: write`，PR 不是 fork 發出。依 design 的 Risks，需要決定改用其他 token 或改為手動 resolve，再更新 spec 與 design。
 - `github-scripts-test`：第一次因 Node 24 不接受資料夾參數而失敗，改為 glob 後通過（run 45765429799）。
 - 自動產生檔的略過：測試 PR #37（base 為 `features/pr-ai-review-chunked-inline`）中，`.agents/skills/spectra-apply/SKILL.md` 列在「已略過」，一般檔案正常送審（run 45765867496）；驗證後已關閉 PR 並刪除分支。
+- PR #36 第三輪（run 45779972357）：workflow 權限加上 `contents: write` 後，收集到的 14 個上一輪 AI 討論串全部 resolve，新一輪的 7 個維持未 resolve。依此更新 spec 與 design：權限改為 `contents: write`、`pull-requests: write`，`GH_TOKEN` 只設定在發布步驟，checkout 不保留憑證（3.2 描述中的 `contents: read` 以此為準）。
+- 同一輪審查的意見也一併處理：inline 分流改以產生意見的那一段為準（模型對其他段的檔案只看過總覽）；git diff 固定 `a/`、`b/` 前綴；模型的標題轉成單行、內文補上未閉合的 code fence；錯誤訊息不再使用成對的反引號。

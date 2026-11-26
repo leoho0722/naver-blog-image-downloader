@@ -131,7 +131,19 @@ export function buildPlan({ cwd, base, head, maxChunkLines = DEFAULT_MAX_CHUNK_L
   } catch {
     range = [baseSha, headSha];
   }
-  const diffText = git(cwd, ['-c', 'core.quotePath=false', 'diff', '--no-color', '--no-ext-diff', '-M', ...range]);
+  // 固定輸出格式：中文路徑不跳脫、不上色、不用外部 diff 工具、偵測更名，並固定 a/、b/ 前綴
+  // （使用者或 runner 設定了 diff.noprefix、diff.mnemonicPrefix 時，前綴會不同，路徑就會解析錯誤）
+  const diffText = git(cwd, [
+    '-c',
+    'core.quotePath=false',
+    'diff',
+    '--no-color',
+    '--no-ext-diff',
+    '-M',
+    '--src-prefix=a/',
+    '--dst-prefix=b/',
+    ...range,
+  ]);
   const diffs = parseDiff(diffText);
 
   const generated = generatedPaths(

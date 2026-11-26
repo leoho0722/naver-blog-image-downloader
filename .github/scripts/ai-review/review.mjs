@@ -15,8 +15,10 @@ import {
   COMMENT_LIMIT,
   fenceRawAnswer,
   fitReviewBody,
+  closeOpenFences,
   sanitizeModelText,
   toInlineCode,
+  toSingleLine,
   truncateComment,
   truncateUtf8,
 } from './text.mjs';
@@ -114,8 +116,8 @@ const locationOf = (finding) => (finding.line === null ? finding.path : `${findi
  * @returns {string}
  */
 function bodyItem(finding) {
-  const title = sanitizeModelText(finding.title);
-  const detail = sanitizeModelText(finding.body)
+  const title = sanitizeModelText(toSingleLine(finding.title));
+  const detail = closeOpenFences(sanitizeModelText(finding.body))
     .split('\n')
     .map((line) => (line === '' ? '' : `  ${line}`))
     .join('\n');
@@ -131,7 +133,7 @@ function bodyItem(finding) {
  * @returns {string}
  */
 function commentBody(finding) {
-  const content = `**${SEVERITY_LABELS[finding.severity]}｜${sanitizeModelText(finding.title)}**\n\n${sanitizeModelText(finding.body)}`;
+  const content = `**${SEVERITY_LABELS[finding.severity]}｜${sanitizeModelText(toSingleLine(finding.title))}**\n\n${closeOpenFences(sanitizeModelText(finding.body))}`;
   const suffix = `\n\n${COMMENT_MARKER}`;
   return `${truncateComment(content, COMMENT_LIMIT - suffix.length)}${suffix}`;
 }
@@ -191,16 +193,16 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
   } else if (succeeded.length === 0) {
     summary = '沒有任何段落取得有效的審查結果，各段的失敗原因列在下方。';
   } else if (succeeded.length === 1) {
-    summary = sanitizeModelText(succeeded[0].value.summary);
+    summary = closeOpenFences(sanitizeModelText(succeeded[0].value.summary));
   } else {
     const parsed = synthesisRaw === null ? null : parseSynthesisResult(synthesisRaw);
     if (parsed?.ok) {
-      summary = sanitizeModelText(parsed.value.summary);
-      conclusion = sanitizeModelText(parsed.value.conclusion);
+      summary = closeOpenFences(sanitizeModelText(parsed.value.summary));
+      conclusion = closeOpenFences(sanitizeModelText(parsed.value.conclusion));
     } else {
       const reason = parsed ? parsed.error : '沒有彙整結果';
       warnings.push(`彙整總評失敗（${reason}），改列各段的總評`);
-      summary = succeeded.map((result) => `- 第 ${result.index} 段：${sanitizeModelText(result.value.summary)}`).join('\n');
+      summary = succeeded.map((result) => `- 第 ${result.index} 段：${sanitizeModelText(toSingleLine(result.value.summary))}`).join('\n');
     }
   }
 
@@ -219,8 +221,13 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
     )
     .map((file) => file.path);
 
-  const reviewedPaths = new Set(succeeded.flatMap((result) => result.files));
-  const { inline, body } = routeFindings(findings, { commentable: plan.commentable, reviewedPaths });
+  // 意見分流以「產生這項意見的那一段」為準：模型只看得到本段的內容，對其他段的檔案只看過總覽，
+  // 就算給了剛好落在可留言行內的行號，也只是猜測，所以一律放進本文
+  const routed = succeeded.map((result) =>
+    routeFindings(result.value.findings, { commentable: plan.commentable, reviewedPaths: result.files }),
+  );
+  const inline = mergeFindings(routed.map((entry) => entry.inline));
+  const body = mergeFindings(routed.map((entry) => entry.body));
 
   const skipped = plan.files.filter((file) => file.category === 'generated').map((file) => file.path);
   const listed = plan.files.filter((file) => file.category === 'deleted' || file.category === 'binary').map((file) => file.path);
