@@ -6,7 +6,7 @@ The PR AI review reviews every pull request's diff with an AI model through LKAI
 
 ### Requirement: Generated, deleted, and binary files are excluded from review content
 
-The review SHALL NOT send the patch content of a file when the file is marked `linguist-generated` by the `.gitattributes` of the pull request's base commit, when the file is deleted in the pull request, or when the file is binary. The review SHALL evaluate `linguist-generated` against the base commit, so a pull request that changes `.gitattributes` SHALL NOT exclude its own files by doing so. When the pull request changes `.gitattributes`, the published review SHALL state that generated files were determined by the base commit's rules. Each excluded file SHALL still appear in the published review, labelled with the reason it was skipped, and SHALL be represented in the file overview given to the model as defined by the overview rules. The workflow SHALL fetch the base commit before planning, and when the base commit is not available locally, planning SHALL fail without classifying any file, and the run SHALL NOT send any model request, publish any review, or resolve any thread.
+The review SHALL NOT send the patch content of a file when the file is marked `linguist-generated` by the `.gitattributes` of the pull request's base commit, when the file is deleted in the pull request, or when the file is binary. The review SHALL evaluate `linguist-generated` against the base commit, so a pull request that changes `.gitattributes` SHALL NOT exclude its own files by doing so. When the pull request changes `.gitattributes`, the published review SHALL state that generated files were determined by the base commit's rules. Each excluded file SHALL still appear in the published review, labelled with the reason it was skipped, and SHALL be represented in the file overview given to the model as defined by the overview rules. The workflow SHALL fetch the base commit before planning, and when the base commit is not available locally, or when the generated-file check against the base commit cannot run (for example because the installed Git is older than 2.40), planning SHALL fail with a message that states the cause, without classifying any file, and the run SHALL NOT send any model request, publish any review, or resolve any thread.
 
 #### Scenario: Files are classified before chunking
 
@@ -340,7 +340,7 @@ The workflow SHALL fail when any chunk request fails, returns an incomplete answ
 #### Scenario: One chunk fails
 
 - **WHEN** one of three chunk requests fails and the other two succeed
-- **THEN** the published review contains the findings of the two successful chunks, names the failed chunk with its files, and shows the overall verdict `incomplete` unless a finding has severity `blocker`
+- **THEN** the published review contains the findings of the two successful chunks, names the failed chunk with its files, and shows the overall verdict `incomplete` unless a finding has severity `blocker` or an earlier AI review thread with severity `blocker` stays unresolved after this run
 - **AND** the workflow fails
 
 #### Scenario: Blocker findings do not fail the workflow

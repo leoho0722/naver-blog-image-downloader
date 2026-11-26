@@ -46,7 +46,7 @@ job 在 `xcode-27` macOS runner 上執行（`lkai` 只能在 macOS 執行）。�
 - `.archify/**`：archify 的輸出
 - `**/pnpm-lock.yaml`、`**/package-lock.json`、`**/uv.lock`：lockfile
 
-審查 script 以 `git check-attr --source=<base sha> linguist-generated` 判斷，**依據是 base commit 的 `.gitattributes`**，不是 PR 分支的版本。否則 PR 只要把 `apps/web/** linguist-generated` 寫進 `.gitattributes`，自己的程式碼就會被跳過。`--source` 需要 git 2.40 以上，`xcode-27` 的 git 是 2.56。PR 有修改 `.gitattributes` 時，這個檔案本身照常送審，review 本文另外註明「本次以 base 版本的規則判斷自動產生檔」。
+審查 script 以 `git check-attr --source=<base sha> linguist-generated` 判斷，**依據是 base commit 的 `.gitattributes`**，不是 PR 分支的版本。否則 PR 只要把 `apps/web/** linguist-generated` 寫進 `.gitattributes`，自己的程式碼就會被跳過。`--source` 需要 git 2.40 以上，`xcode-27` 的 git 是 2.56；`check-attr` 執行失敗時（例如 git 版本不夠），規劃以說明原因與所需版本的訊息失敗，不印出 stack trace。PR 有修改 `.gitattributes` 時，這個檔案本身照常送審，review 本文另外註明「本次以 base 版本的規則判斷自動產生檔」。
 
 base commit 必須存在於本機：workflow 在執行 `plan` 前先 `git fetch` base SHA，`plan` 再以 `git cat-file -e <base>^{commit}` 確認。取不到時 `plan` 以非 0 退出碼結束，整個 run 判定為失敗，不送審、不發布、不 resolve。這樣不會在拿不到規則的情況下，悄悄把所有檔案當成可審查或全部略過。
 
@@ -295,7 +295,7 @@ diff 解析、行號標註、裝箱、文字清理與 JSON 驗證，都放在 `.
 
 原則是「審查內容有缺漏才算失敗，只是呈現方式降級只發出警告」：
 
-- **workflow 失敗**：任一段送審失敗、回答不完整、JSON 無法解讀；review 完全發布不了；檔案層級留言重試後仍發布不了（這則 🔴／🟡 沒能擋住合併）；base commit 取不到；`build-review` 的 head SHA 與 `plan.json` 不一致。第一種情況仍要發布已經取得的部分，並列出失敗的段落。
+- **workflow 失敗**：任一段送審失敗、回答不完整、JSON 無法解讀；review 完全發布不了；檔案層級留言重試後仍發布不了（這則 🔴／🟡 沒能擋住合併）；base commit 取不到；判斷自動產生檔的 `git check-attr` 無法執行；`build-review` 的 head SHA 與 `plan.json` 不一致；`plan.json` 無法解讀。第一種情況仍要發布已經取得的部分，並列出失敗的段落。
 - **只發出警告**：彙整請求失敗（改為依段落順序列出各段總評）、inline 版本被拒而改發只有本文的版本、回覆或 resolve 舊討論串失敗、段數超過 `WARN_CHUNKS`、本文超過長度而被截斷。
 - **整體結論**：依序判斷，有 🔴 意見或這一輪沒有收掉的上一輪 🔴 討論串時為「有阻擋合併的問題」；否則有段落失敗時為「審查不完整」；否則有 🟡 意見或這一輪沒有收掉的上一輪 🟡 討論串時為「有建議修正的問題」；否則為「沒有擋合併的問題」（可以有 🟢）。意見的嚴重程度不影響 workflow 的成敗。
 - **不送審**：沒有任何可審查的檔案（全部是自動產生、已刪除或二進位）時，不送出模型請求，發布一則說明沒有可審查內容的 review，workflow 成功。
