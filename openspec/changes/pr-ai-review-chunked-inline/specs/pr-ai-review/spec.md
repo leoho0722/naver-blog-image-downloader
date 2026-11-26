@@ -244,7 +244,7 @@ The review SHALL publish its result as one pull request review created with even
 
 ### Requirement: Published text is sanitized and kept within GitHub limits
 
-Before publishing, the review SHALL sanitize every model-written text placed in the review body, an inline comment, a file-level comment, or a reply to an earlier AI review thread. It SHALL insert U+200B ZERO WIDTH SPACE between `@` and a following account or team name when the `@` is not preceded by an ASCII letter or digit, SHALL replace `<!--` with `&lt;!--` and `-->` with `--&gt;`, and SHALL replace `<details` with `&lt;details` and `</details` with `&lt;/details` regardless of letter case, so model text can neither open nor close a collapsed section. A raw answer of a failed chunk SHALL be placed inside a `<details>` section in a code fence whose backtick count exceeds the longest backtick run in the answer, with `</details` in the answer replaced by `&lt;/details`. When the review body exceeds 60,000 characters, the review SHALL first remove raw-answer sections and then shorten the end of the list of findings that are not inline comments, SHALL append a note that the content was truncated, and SHALL emit a workflow warning. The complete, untruncated body SHALL be written to the workflow job summary, truncated with a note only when it exceeds 1,000,000 bytes. An inline comment or file-level comment body longer than 60,000 characters SHALL be truncated with a note, and a reply SHALL contain at most 1,000 characters of the model's note.
+Before publishing, the review SHALL sanitize every model-written text placed in the review body, an inline comment, a file-level comment, or a reply to an earlier AI review thread. It SHALL insert U+200B ZERO WIDTH SPACE between `@` and a following account or team name when the `@` is not preceded by an ASCII letter or digit, SHALL replace `<!--` with `&lt;!--` and `-->` with `--&gt;`, and SHALL replace `<details` with `&lt;details` and `</details` with `&lt;/details` regardless of letter case, so model text can neither open nor close a collapsed section. A raw answer of a failed chunk SHALL be placed inside a `<details>` section in a code fence whose backtick count exceeds the longest backtick run in the answer, with `</details` in the answer replaced by `&lt;/details`. The review body SHALL list at most 100 paths in each of its lists of skipped generated files and of deleted or binary files, followed by the number of paths left out and a pointer to the job summary, so lists that grow with the pull request cannot push findings out of the body. When the review body exceeds 60,000 characters, the review SHALL first remove raw-answer sections, then shorten the end of the list of findings that are not inline comments, and, when the body is still too long, SHALL cut the remaining body from its end while closing any collapsed section left open by the cut; it SHALL append a note that the content was truncated and SHALL emit a workflow warning. The complete, untruncated body, including the complete file lists, SHALL be written to the workflow job summary, truncated with a note only when it exceeds 1,000,000 bytes. An inline comment or file-level comment body longer than 60,000 characters SHALL be truncated with a note, and a reply SHALL contain at most 1,000 characters of the model's note.
 
 #### Scenario: Model text is sanitized
 
@@ -268,6 +268,11 @@ Before publishing, the review SHALL sanitize every model-written text placed in 
 - **THEN** the published body is at most 60,000 characters and ends with a note that the content was truncated
 - **AND** the job summary contains the complete body
 - **AND** the workflow emits a warning
+
+#### Scenario: Long file lists do not push findings out of the body
+
+- **WHEN** a pull request skips 3,000 generated files and the review has findings listed in the body
+- **THEN** the body lists 100 of the skipped files with a line counting the other 2,900, the findings stay in the body, and the job summary lists all 3,000 files
 
 ### Requirement: Previous AI review threads are resolved after a new review is published
 
