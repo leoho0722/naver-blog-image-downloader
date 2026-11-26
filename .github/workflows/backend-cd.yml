@@ -60,8 +60,14 @@ jobs:
 
       - name: Build Docker image
         run: |
+          # Lambda 只接受單一映像的 manifest，不接受 manifest list（OCI image index）。
+          # 新版 Docker（BuildKit）預設會附加 provenance／SBOM attestation，產出的就是 manifest list，
+          # 推上 ECR 後 update-function-code 會回 InvalidParameterValueException
+          # （image manifest, config or layer media type ... is not supported），所以兩者都要關掉。
           docker build \
             --no-cache \
+            --provenance=false \
+            --sbom=false \
             --platform ${{ env.IMAGE_ARCH }} \
             -t ${{ env.IMAGE_NAME }}:${{ steps.image_tag.outputs.version }} \
             -f ${{ env.DOCKERFILE_PATH }} \
