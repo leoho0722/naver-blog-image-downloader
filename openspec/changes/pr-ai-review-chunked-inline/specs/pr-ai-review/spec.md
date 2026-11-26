@@ -1,6 +1,6 @@
 ## Purpose
 
-The PR AI review reviews every pull request's diff with an AI model through LKAIKit and publishes the result back to the pull request. It keeps generated files out of the review budget, splits oversized diffs into related chunks that are all reviewed, and publishes one review with inline comments so findings are anchored to the code they describe.
+The PR AI review reviews every pull request's diff with an AI model through LKAIKit and publishes the result back to the pull request. It keeps generated files out of the review budget, splits oversized diffs into related chunks that are all reviewed, and publishes one review with inline comments so findings are anchored to the code they describe. Findings with severity `blocker` or `warning` leave unresolved review threads that block merging until they are fixed, while optional suggestions are listed in the review body only.
 
 ## ADDED Requirements
 
@@ -144,7 +144,7 @@ The review SHALL produce the diff with `core.quotePath` disabled and SHALL decod
 
 ### Requirement: Multi-chunk results are consolidated into one summary
 
-When two or more chunks produced a valid result, the review SHALL send one synthesis request containing each chunk's summary, verdict, and findings list without code, together with the overall verdict computed by the script, and SHALL require the returned `summary` and `conclusion` to be consistent with that verdict. When only one chunk produced a valid result, the review SHALL NOT send a synthesis request and SHALL use that chunk's summary. When no chunk produced a valid result, the review SHALL NOT send a synthesis request, and its summary SHALL state that no chunk produced a valid result and list the failure of each chunk. Findings from all chunks SHALL be merged by the script, ordered by severity (`blocker`, `warning`, `nit`), then path, then line. The overall verdict SHALL be computed by the script in this order: `blocker` when any chunk verdict is `blocker` or any finding has severity `blocker`; otherwise `incomplete` when any chunk failed; otherwise `changes_suggested` when any finding exists or any chunk verdict is `changes_suggested`; otherwise `no_concerns`. The published review SHALL show the script's verdict as the authoritative result. When the synthesis request fails, the review SHALL list each chunk's summary in chunk order instead and SHALL emit a workflow warning.
+When two or more chunks produced a valid result, the review SHALL send one synthesis request containing each chunk's summary, verdict, and findings list without code, together with the overall verdict computed by the script, and SHALL require the returned `summary` and `conclusion` to be consistent with that verdict. When only one chunk produced a valid result, the review SHALL NOT send a synthesis request and SHALL use that chunk's summary. When no chunk produced a valid result, the review SHALL NOT send a synthesis request, and its summary SHALL state that no chunk produced a valid result and list the failure of each chunk. Findings from all chunks SHALL be merged by the script, ordered by severity (`blocker`, `warning`, `nit`), then path, then line. The overall verdict SHALL be computed by the script from finding severities and earlier AI review threads, in this order: `blocker` when any finding has severity `blocker` or an earlier AI review thread with severity `blocker` stays unresolved after this run; otherwise `incomplete` when any chunk failed; otherwise `changes_suggested` when any finding has severity `warning` or an earlier AI review thread with severity `warning` stays unresolved after this run; otherwise `no_concerns`, even when findings with severity `nit` exist. An earlier thread stays unresolved after this run when this run does not reply to and resolve it. Chunk verdicts SHALL NOT change the overall verdict. The published review SHALL show the script's verdict as the authoritative result. When the synthesis request fails, the review SHALL list each chunk's summary in chunk order instead and SHALL emit a workflow warning.
 
 #### Scenario: Single chunk skips synthesis
 
@@ -157,36 +157,56 @@ When two or more chunks produced a valid result, the review SHALL send one synth
 - **THEN** the review body lists the chunk summaries in chunk order
 - **AND** the workflow emits a warning and does not fail because of the synthesis failure
 
+#### Scenario: Optional suggestions alone keep the verdict clear
+
+- **WHEN** every chunk succeeds, every finding has severity `nit`, and no earlier AI review thread with severity `blocker` or `warning` stays unresolved
+- **THEN** the overall verdict is `no_concerns`
+
 ##### Example: overall verdict
 
-| Chunk verdicts | Finding severities | Overall verdict |
-| -------------- | ------------------ | --------------- |
-| `no_concerns`, `no_concerns` | none | `no_concerns` |
-| `no_concerns`, `changes_suggested` | `nit` | `changes_suggested` |
-| `changes_suggested`, `no_concerns` | `warning`, `blocker` | `blocker` |
-| `blocker`, `no_concerns` | none | `blocker` |
-| `no_concerns`, failed chunk | none | `incomplete` |
-| `changes_suggested`, failed chunk | `blocker` | `blocker` |
-| failed chunk, failed chunk | none | `incomplete` |
+| Chunk verdicts | Finding severities | Earlier AI threads still unresolved after this run | Overall verdict |
+| -------------- | ------------------ | -------------------------------------------------- | --------------- |
+| `no_concerns`, `no_concerns` | none | none | `no_concerns` |
+| `no_concerns`, `changes_suggested` | `nit` | none | `no_concerns` |
+| `changes_suggested`, `no_concerns` | `warning`, `blocker` | none | `blocker` |
+| `blocker`, `no_concerns` | none | none | `no_concerns` |
+| `no_concerns`, `no_concerns` | `nit` | one `warning` judged not fixed | `changes_suggested` |
+| `no_concerns`, `no_concerns` | none | one `blocker` on a truncated file | `blocker` |
+| `no_concerns`, failed chunk | none | none | `incomplete` |
+| `no_concerns`, failed chunk | `warning` | none | `incomplete` |
+| `changes_suggested`, failed chunk | `blocker` | none | `blocker` |
+| failed chunk, failed chunk | none | none | `incomplete` |
 
 ### Requirement: The review is published as one pull request review with inline comments
 
-The review SHALL publish its result as one pull request review created with event `COMMENT` and with `commit_id` equal to the pull request's head commit, which is also the commit the diff was produced from as `<base>...<head>`. The review SHALL NOT use the merge commit that GitHub creates for the pull request. The plan SHALL record that head commit, and building the review SHALL fail without producing a review when the head commit given to it differs from the recorded one. A finding SHALL become an inline comment on the `RIGHT` side when its path was sent for review in the chunk that produced the finding and its line is one of that file's commentable lines. Every other finding SHALL be listed in the review body with its `path:line` location. The review body SHALL start with the marker `<!-- lkai-review -->`, followed by a line `<!-- lkai-review-run: <run id> -->` that identifies the workflow run attempt, and SHALL contain the overall verdict computed by the script, the overall summary, the synthesis conclusion when a synthesis result exists, the skipped and truncated files, a summary of how earlier AI review threads were handled, and any warning and failure notes. Each inline comment body SHALL contain the severity label, the title, the finding body, and end with the marker `<!-- lkai-review-comment -->`. When GitHub rejects the review, the workflow SHALL publish a second review without inline comments that lists every finding in the body together with a note that inline comments could not be published, and SHALL emit a workflow warning. Before publishing that second review, the workflow SHALL check the pull request's reviews and SHALL NOT publish it when a review carrying the current run's marker already exists.
+The review SHALL publish its result as one pull request review created with event `COMMENT` and with `commit_id` equal to the pull request's head commit, which is also the commit the diff was produced from as `<base>...<head>`. The review SHALL NOT use the merge commit that GitHub creates for the pull request. The plan SHALL record that head commit, and building the review SHALL fail without producing a review when the head commit given to it differs from the recorded one. Findings with severity `blocker` or `warning` SHALL block merging through unresolved review threads, and findings with severity `nit` SHALL NOT. A finding with severity `blocker` or `warning` SHALL become an inline comment on the `RIGHT` side when its path was sent for review in the chunk that produced the finding and its line is one of that file's commentable lines. Any other finding with severity `blocker` or `warning` whose path is a file in the pull request's diff SHALL be published, after the review is published, as a file-level review comment on that path at the head commit, and SHALL also be listed in the review body. A finding with severity `blocker` or `warning` whose path is not a file in the diff SHALL be listed in the review body with a note that it does not block merging. A finding with severity `nit` SHALL be listed in the review body only. Every finding listed in the body SHALL show its `path:line` location, and the body SHALL state that findings with severity `blocker` or `warning` are also published as file-level comments and that findings with severity `nit` do not block merging. A failure to publish a file-level comment SHALL produce a workflow warning and SHALL NOT fail the workflow. The review body SHALL start with the marker `<!-- lkai-review -->`, followed by a line `<!-- lkai-review-run: <run id> -->` that identifies the workflow run attempt, and SHALL contain the overall verdict computed by the script, the overall summary, the synthesis conclusion when a synthesis result exists, the skipped and truncated files, a summary of how earlier AI review threads were handled, and any warning and failure notes. Each inline comment and file-level comment body SHALL start with the severity label and the title, contain the finding body, and end with the marker `<!-- lkai-review-comment -->`. When GitHub rejects the review, the workflow SHALL publish a second review without inline comments that lists every finding in the body together with a note that inline comments could not be published, SHALL publish every finding with severity `blocker` or `warning` whose path is a file in the diff as a file-level comment, and SHALL emit a workflow warning. When no review could be published, the workflow SHALL NOT publish file-level comments. Before publishing that second review, the workflow SHALL check the pull request's reviews and SHALL NOT publish it when a review carrying the current run's marker already exists.
 
 #### Scenario: Findings are routed to inline comments or the body
 
 - **WHEN** the review builds the pull request review from the merged findings
-- **THEN** each finding on a commentable line of a file reviewed in the finding's own chunk becomes an inline comment and every other finding is listed in the body
+- **THEN** each `blocker` or `warning` finding on a commentable line of a file reviewed in the finding's own chunk becomes an inline comment, every other `blocker` or `warning` finding on a file in the diff becomes a file-level comment and is also listed in the body, and every remaining finding is listed in the body only
 
 ##### Example: finding routing
 
-| Finding path | Finding line | Commentable lines of path | Placement |
-| ------------ | ------------ | ------------------------- | --------- |
-| `apps/web/src/a.ts` | 11 | 10–12 | inline comment |
-| `apps/web/src/a.ts` | 99 | 10–12 | body, `apps/web/src/a.ts:99` |
-| `apps/web/src/a.ts` | null | 10–12 | body, `apps/web/src/a.ts` |
-| `apps/web/pnpm-lock.yaml` | 5 | not reviewed | body, `apps/web/pnpm-lock.yaml:5` |
-| `apps/web/src/b.ts`, reported by a chunk that does not contain it | 5 | 1–20 | body, `apps/web/src/b.ts:5` |
+| Severity | Finding path | Finding line | Commentable lines of path | Placement |
+| -------- | ------------ | ------------ | ------------------------- | --------- |
+| `warning` | `apps/web/src/a.ts` | 11 | 10–12 | inline comment |
+| `nit` | `apps/web/src/a.ts` | 11 | 10–12 | body only, `apps/web/src/a.ts:11` |
+| `warning` | `apps/web/src/a.ts` | 99 | 10–12 | file-level comment and body, `apps/web/src/a.ts:99` |
+| `blocker` | `apps/web/src/a.ts` | null | 10–12 | file-level comment and body, `apps/web/src/a.ts` |
+| `warning` | `apps/web/pnpm-lock.yaml`, generated | 5 | not reviewed | file-level comment and body, `apps/web/pnpm-lock.yaml:5` |
+| `warning` | `apps/web/src/b.ts`, reported by a chunk that does not contain it | 5 | 1–20 | file-level comment and body, `apps/web/src/b.ts:5` |
+| `blocker` | `docs/missing.md`, not in the diff | 3 | none | body only, `docs/missing.md:3`, marked as not blocking |
+
+#### Scenario: Optional suggestions stay in the body
+
+- **WHEN** a finding has severity `nit`
+- **THEN** it is listed in the review body only, and no inline comment or file-level comment is published for it
+
+#### Scenario: Failed file-level comment only warns
+
+- **WHEN** the review is published and publishing one file-level comment fails
+- **THEN** the workflow emits a warning, the finding stays listed in the review body, and the workflow does not fail because of it
 
 #### Scenario: Head commit mismatch stops publication
 
@@ -202,6 +222,7 @@ The review SHALL publish its result as one pull request review created with even
 
 - **WHEN** GitHub rejects the review that contains inline comments
 - **THEN** the workflow publishes a review without inline comments that lists every finding in the body
+- **AND** every `blocker` or `warning` finding whose path is a file in the diff is published as a file-level comment
 - **AND** the workflow emits a warning and does not fail because of the rejection
 
 ### Requirement: Published text is sanitized and kept within GitHub limits
@@ -232,7 +253,7 @@ Before publishing, the review SHALL sanitize every model-written text placed in 
 
 ### Requirement: Previous AI review threads are resolved after a new review is published
 
-Before planning, the workflow SHALL collect every unresolved review thread of the pull request whose first comment was written by the `github-actions` bot and contains `<!-- lkai-review-comment -->`, together with its path, its line (the original line when the thread is outdated), and its first comment. When the collection fails, the workflow SHALL emit a warning, SHALL still review and publish, and SHALL NOT reply to or resolve any thread. Planning SHALL classify each collected thread by its file in this run: a thread on a file that belongs to a chunk and is not truncated SHALL be listed in that chunk's prompt with a reference, its path, its line, and its first comment, and the prompt SHALL ask the model to judge whether the issue is fixed in the reviewed code and SHALL instruct the model not to report an issue that is still present as a new finding; a thread on a file that is no longer in this run's diff, or that is deleted in this run's diff, SHALL be resolvable without a judgement; every other thread SHALL be kept open. After the new review is published, either with inline comments or as the body-only fallback, the workflow SHALL reply to and then resolve every thread that the model judged fixed in a chunk whose request succeeded, with a reply that states the issue was confirmed fixed at the head commit together with the model's note, and every thread whose file is no longer in the diff or is deleted, with a reply that states the file has no changes left to review. The workflow SHALL NOT reply to or resolve a thread that the model judged not fixed, a thread with no judgement, a thread whose chunk failed, a kept thread, any thread whose first comment was written by another author, or any thread without the marker. When no review could be published, the workflow SHALL NOT reply to or resolve any thread. A failure to reply to a thread SHALL produce a workflow warning and SHALL NOT prevent its resolution; a failure to resolve a thread SHALL produce a workflow warning and SHALL NOT fail the workflow.
+Before planning, the workflow SHALL collect every unresolved review thread of the pull request whose first comment was written by the `github-actions` bot and contains `<!-- lkai-review-comment -->`, together with its path, its line (the original line when the thread is outdated), and its first comment. When the collection fails, the workflow SHALL emit a warning, SHALL still review and publish, and SHALL NOT reply to or resolve any thread. Planning SHALL read each collected thread's severity from the severity label at the start of its first comment, and SHALL treat a thread whose label cannot be read as severity `warning`. A thread with severity `nit` SHALL NOT be listed in any prompt and SHALL be resolvable without a judgement. Planning SHALL classify every other collected thread by its file in this run, matching the thread's path against both the current path and the previous path of files renamed in this run's diff: a thread on a file that belongs to a chunk and is not truncated SHALL be listed in that chunk's prompt with a reference, its path, its line, and its first comment, and the prompt SHALL ask the model to judge whether the issue is fixed in the reviewed code and SHALL instruct the model not to report an issue that is still present as a new finding; a thread on a file that is no longer in this run's diff, or that is deleted in this run's diff, SHALL be resolvable without a judgement; every other thread SHALL be kept open. After the new review is published, either with inline comments or as the body-only fallback, the workflow SHALL reply to and then resolve every thread that the model judged fixed in a chunk whose request succeeded, with a reply that states the issue was confirmed fixed at the head commit together with the model's note, every thread whose file is no longer in the diff or is deleted, with a reply that states the file has no changes left to review, and every thread with severity `nit`, with a reply that states optional suggestions do not block merging. The workflow SHALL NOT reply to or resolve a thread that the model judged not fixed, a thread with no judgement, a thread whose chunk failed, a kept thread, any thread whose first comment was written by another author, or any thread without the marker. When no review could be published, the workflow SHALL NOT reply to or resolve any thread. A failure to reply to a thread SHALL produce a workflow warning and SHALL NOT prevent its resolution; a failure to resolve a thread SHALL produce a workflow warning and SHALL NOT fail the workflow.
 
 #### Scenario: Confirmed fix resolves the thread with a reply
 
@@ -244,20 +265,33 @@ Before planning, the workflow SHALL collect every unresolved review thread of th
 - **WHEN** the model reports `fixed` as false for an earlier AI thread, or gives no judgement for it
 - **THEN** the thread stays unresolved without a reply, and the new review does not repeat the issue as a new finding when the model follows the prompt
 
+#### Scenario: Earlier optional suggestion is resolved without a judgement
+
+- **WHEN** an earlier AI thread's first comment starts with the severity label of `nit`
+- **THEN** the thread is not listed in any prompt, and after the new review is published it receives a reply that optional suggestions do not block merging and then becomes resolved
+
+#### Scenario: Thread on a renamed file follows the file
+
+- **WHEN** an earlier AI thread's path is the previous path of a file renamed in this run's diff
+- **THEN** the thread is classified by the renamed file, and when that file is reviewed and not truncated the thread is listed in that file's chunk prompt with the new path
+
 ##### Example: which threads are resolved
 
-| First comment author | Has marker | Thread file in this run | Model judgement | Resolved |
-| -------------------- | ---------- | ----------------------- | --------------- | -------- |
-| `github-actions` | yes | reviewed in a successful chunk, not truncated | fixed | yes, with a reply |
-| `github-actions` | yes | reviewed in a successful chunk, not truncated | not fixed | no |
-| `github-actions` | yes | reviewed in a successful chunk, not truncated | none | no |
-| `github-actions` | yes | in a failed chunk | not asked | no |
-| `github-actions` | yes | truncated | not asked | no |
-| `github-actions` | yes | not in this diff | not asked | yes, with a reply |
-| `github-actions` | yes | deleted in this diff | not asked | yes, with a reply |
-| `github-actions` | yes | generated | not asked | no |
-| `github-actions` | no | reviewed in a successful chunk, not truncated | not asked | no |
-| a person | no | reviewed in a successful chunk, not truncated | not asked | no |
+| First comment author | Has marker | Severity label | Thread file in this run | Model judgement | Resolved |
+| -------------------- | ---------- | -------------- | ----------------------- | --------------- | -------- |
+| `github-actions` | yes | `warning` | reviewed in a successful chunk, not truncated | fixed | yes, with a reply |
+| `github-actions` | yes | `blocker` | reviewed in a successful chunk, not truncated | not fixed | no |
+| `github-actions` | yes | `warning` | reviewed in a successful chunk, not truncated | none | no |
+| `github-actions` | yes | unreadable | reviewed in a successful chunk, not truncated | fixed | yes, with a reply |
+| `github-actions` | yes | `warning` | previous path of a renamed file reviewed in a successful chunk | fixed | yes, with a reply |
+| `github-actions` | yes | `warning` | in a failed chunk | not asked | no |
+| `github-actions` | yes | `warning` | truncated | not asked | no |
+| `github-actions` | yes | `warning` | not in this diff | not asked | yes, with a reply |
+| `github-actions` | yes | `warning` | deleted in this diff | not asked | yes, with a reply |
+| `github-actions` | yes | `warning` | generated | not asked | no |
+| `github-actions` | yes | `nit` | any | not asked | yes, with a reply |
+| `github-actions` | no | `warning` | reviewed in a successful chunk, not truncated | not asked | no |
+| a person | no | none | reviewed in a successful chunk, not truncated | not asked | no |
 
 #### Scenario: Failed publication keeps the previous round
 

@@ -158,14 +158,39 @@ GitHub 對 review 本文與每則留言的上限都是 65,536 字元。本文超
 
 一次 API 呼叫會一起成功或一起失敗，使用者也只會收到一次通知。
 
-意見的路徑必須是「產生這項意見的那一段」送審的檔案，行號必須落在該檔案的可留言行內，才會成為 inline comment。模型只看得到本段的內容，對其他段的檔案只看過總覽，給出的行號只是猜測，所以不發成 inline comment。沒有行號、行號不在 diff 內、路徑不屬於本段的意見，列在本文的「無法標在程式碼行上的意見」區塊並附上 `path:line`。
+哪些意見發成 inline comment、哪些另發檔案層級留言或只列在本文，依嚴重程度決定，見「依嚴重程度決定意見是否擋合併」。成為 inline comment 的位置條件：路徑必須是「產生這項意見的那一段」送審的檔案，行號必須落在該檔案的可留言行內。模型只看得到本段的內容，對其他段的檔案只看過總覽，給出的行號只是猜測，所以不發成 inline comment。
 
 識別用的隱藏標記：
 
 - review 本文開頭放 `<!-- lkai-review -->`，下一行放 `<!-- lkai-review-run: <run id> -->`（`<run id>` 是 `GITHUB_RUN_ID` 加上 `GITHUB_RUN_ATTEMPT`）
-- 每則 inline comment 結尾放 `<!-- lkai-review-comment -->`
+- 每則 inline comment 與檔案層級留言結尾放 `<!-- lkai-review-comment -->`
 
 GitHub 拒絕整個 review（回應不是 2xx）時，改送一個不含 inline comment 的 review，全部意見放進本文，並註明 inline comment 發布失敗。改送之前，先列出這個 PR 的 review，確認沒有帶著這次 run 標記的 review：第一次請求可能其實成功了、只是回應沒收到，這時不再改送，避免重複發布。
+
+### 依嚴重程度決定意見是否擋合併
+
+使用者定義的規則：有 🔴 阻擋合併或 🟡 建議修正時擋合併；只剩 🟢 可選優化時不擋。main 的分支保護沒有必過的檢查（`required_status_checks` 的清單是空的，實測），能擋合併的只有「所有對話都要 resolve」，所以「擋合併」就是「留下未 resolve 的討論串」。
+
+每項意見依產生它的那一段分流：
+
+| 嚴重程度 | 條件 | 呈現方式 | 擋合併 |
+| -------- | ---- | -------- | ------ |
+| 🔴／🟡 | 路徑是本段送審的檔案，行號在可留言行內 | inline comment | 是 |
+| 🔴／🟡 | 路徑是這個 PR diff 中的檔案，但沒有行號、行號不在可留言行內，或檔案不屬於本段 | 檔案層級留言，也列在本文 | 是 |
+| 🔴／🟡 | 路徑不在這個 PR 的 diff 內 | 只列在本文，標示不會擋合併 | 否 |
+| 🟢 | 任何位置 | 只列在本文 | 否 |
+
+- **檔案層級留言**：建立 review 的 API 不接受檔案層級的留言（REST 的 `comments` 沒有 `subject_type`，GraphQL 的 `DraftPullRequestReviewThread` 也沒有 `subjectType`，實測查詢 schema 與文件），所以在 review 發布成功之後，逐則以 `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments` 送出 `subject_type: file`、`commit_id`（PR 的 head commit）、`path` 與內文。每則會在 PR 時間軸上多一筆 review 紀錄；這類意見一輪通常只有 0～2 則（估計，7.6 實測時記錄實際數量）。單則失敗只發出警告，意見仍列在本文，不會遺失。
+- **改發只有本文的版本時**：inline 版被拒時，全部 🔴／🟡 中路徑在 diff 內的意見都改發檔案層級留言，讓它們仍然擋合併。沒有任何版本發布時，不送檔案層級留言。
+- **本文**：「無法標在程式碼行上的意見」區塊列出所有不是 inline comment 的意見，開頭說明 🔴／🟡 另以檔案層級留言發布、🟢 不擋合併；路徑不在 diff 內的 🔴／🟡 標示「不會擋合併，請人工判斷」。
+- **上一輪留下的 🟢 討論串**（這個規則生效前留下的）：不交給模型判斷，發布成功後回覆「🟢 可選優化不擋合併」再 resolve。討論串的嚴重程度從第一則留言開頭的標籤讀出；讀不出來時視為 🟡，照一般規則處理。
+- **整體結論**：只依意見與仍未 resolve 的上一輪討論串的嚴重程度計算（見「審查結果的判定規則」），讓結論與「會不會擋合併」一致。模型在各段給的 verdict 只放進彙整提示詞參考，不再影響整體結論。
+- **提示詞**：說明 blocker 與 warning 會擋合併、nit 不會，只有確實需要修正的問題才標 warning；blocker 與 warning 的 path 必須填本段的檔案，不對應到特定的行時 line 填 null。
+
+替代方案：
+
+- 🟢 也發成 inline comment，發布後立刻 resolve。不採用（使用者選擇只寫在本文）：已 resolve 的討論串會一直累積，下一輪的模型也不知道已經提過，可能重複提出。
+- 以 pending review 把檔案層級留言併進同一個 review：先建立 pending review，再以 GraphQL `addPullRequestReviewThread`（`subjectType: FILE`）加入討論串，最後送出。不採用：同一個 PR 每位使用者只能有一個 pending review，被取消的執行留下的 pending review 會擋住下一輪，需要額外的清理流程。
 
 ### 發布成功後才收掉上一輪的討論串
 
@@ -203,7 +228,7 @@ concurrency 可能在「發布之後、resolve 之前」取消舊的執行，留
 流程分成四步，順序固定：
 
 1. **送審前先收集**：新增一個有 token 的步驟（`run-review.sh collect`），以 GraphQL 分頁查詢 `reviewThreads`，收集「還沒 resolve、第一則留言的作者是 `github-actions`、含有 `<!-- lkai-review-comment -->`」的討論串，連同路徑、行號（`line`，討論串已過時則用 `originalLine`）與第一則留言的內容寫進 `threads.json`。查詢失敗時只發出警告，這一輪不收掉任何討論串，審查照常進行。
-2. **規劃時分類**：`plan --threads threads.json` 依每個討論串所在檔案在這次 diff 中的狀態分類：
+2. **規劃時分類**：`plan --threads threads.json` 先從第一則留言開頭的標籤讀出嚴重程度（讀不出來時視為 🟡）。🟢 的討論串分類為 **可選優化**（`nit`），不交給模型判斷（見「依嚴重程度決定意見是否擋合併」）；其餘依所在檔案在這次 diff 中的狀態分類，檔案被更名時也以更名前的路徑比對：
    - **交給模型判斷**（`ask`）：檔案屬於某一段、而且沒有被截斷。討論串以 `P1`、`P2`… 的代號、路徑、行號與留言內容，放進那一段提示詞的「上一輪仍未解決的意見」區塊。
    - **已沒有變更**（`no-longer-changed`）：檔案已不在這次 diff 內（例如改動被還原）。
    - **已刪除**（`deleted`）：檔案在這次 diff 中被刪除。
@@ -212,10 +237,11 @@ concurrency 可能在「發布之後、resolve 之前」取消舊的執行，留
 4. **發布成功後才回覆並 resolve**：新一輪 review 發布成功（inline 版或只有本文的版本）之後，對每個要收掉的討論串先回覆一則說明，再呼叫 `resolveReviewThread`：
    - 模型判定已修正、而且那一段送審成功：回覆「新一輪審查確認已修正（commit 短 SHA）」加上模型的說明
    - 已沒有變更或已刪除：回覆說明檔案已沒有可審的變更
+   - 🟢 可選優化：回覆說明可選優化不擋合併
 
 以下情況維持未 resolve，也不回覆：模型判定未修正、模型沒有判斷、那一段送審失敗、分類為保留的討論串。由人開啟的討論串一律不動；新 review 發布失敗時，不回覆也不收掉任何討論串。回覆失敗只發出警告，仍然照常 resolve；resolve 失敗只發出警告。
 
-review 本文加上「上一輪意見的追蹤」，列出這一輪確認修正而收掉、仍未修正、因檔案已沒有變更而收掉的數量。
+review 本文加上「上一輪意見的追蹤」，列出這一輪確認修正而收掉、仍未修正、因檔案已沒有變更而收掉、因 🟢 不擋合併而收掉、沒有重新審查而維持不動的數量。
 
 concurrency 取消舊的執行而留下的討論串，下一輪會連同更早幾輪的一起收集、重新判斷。
 
@@ -253,7 +279,8 @@ diff 解析、行號標註、裝箱、文字清理與 JSON 驗證，都放在 `.
 原則是「審查內容有缺漏才算失敗，只是呈現方式降級只發出警告」：
 
 - **workflow 失敗**：任一段送審失敗、回答不完整、JSON 無法解讀；review 完全發布不了；base commit 取不到；`build-review` 的 head SHA 與 `plan.json` 不一致。第一種情況仍要發布已經取得的部分，並列出失敗的段落。
-- **只發出警告**：彙整請求失敗（改為依段落順序列出各段總評）、inline 版本被拒而改發只有本文的版本、resolve 舊討論串失敗、段數超過 `WARN_CHUNKS`、本文超過長度而被截斷。
+- **只發出警告**：彙整請求失敗（改為依段落順序列出各段總評）、inline 版本被拒而改發只有本文的版本、檔案層級留言發布失敗、回覆或 resolve 舊討論串失敗、段數超過 `WARN_CHUNKS`、本文超過長度而被截斷。
+- **整體結論**：依序判斷，有 🔴 意見或這一輪沒有收掉的上一輪 🔴 討論串時為「有阻擋合併的問題」；否則有段落失敗時為「審查不完整」；否則有 🟡 意見或這一輪沒有收掉的上一輪 🟡 討論串時為「有建議修正的問題」；否則為「沒有擋合併的問題」（可以有 🟢）。意見的嚴重程度不影響 workflow 的成敗。
 - **不送審**：沒有任何可審查的檔案（全部是自動產生、已刪除或二進位）時，不送出模型請求，發布一則說明沒有可審查內容的 review，workflow 成功。
 
 workflow 另外加上三項設定：
@@ -271,25 +298,28 @@ workflow 另外加上三項設定：
 - PR 開啟或更新後，PR 上出現一則由 `github-actions` 發布的 review：本文是總評，問題標在程式碼行上。
 - 自動產生的檔案出現在總覽的「已略過」清單，不會被審查；PR 改了 `.gitattributes` 也無法讓自己的程式碼被略過。
 - 修正某則意見對應的問題並 push 後，新一輪 review 發布，AI 確認已修正的那則討論串出現一則確認回覆並變成 resolved；沒修正的維持未 resolve，也不會重複出現新的意見。
+- 🔴／🟡 意見以 inline comment 或檔案層級留言呈現，resolve 前擋住合併；🟢 意見只列在 review 本文，不擋合併。
 
 **介面與資料格式：**
 
 - `node .github/scripts/ai-review/ai-review.mjs plan --base <sha> --head <sha> --out <dir> [--max-chunk-lines <n>] [--threads <threads.json>]`
   - 在 `<dir>` 寫出 `plan.json`，以及各段的提示詞 `chunk-<n>.md`（含審查指示、完整檔案總覽、該段標註後的 patch）
   - base commit 不存在於本機時，以非 0 退出碼結束，不寫出任何檔案
-  - 有 `--threads` 時，`plan.json` 另有 `previousThreads: [{ "ref": "P1", "id", "path", "line", "comment", "chunk": <n|null>, "disposition": "ask|no-longer-changed|deleted|keep" }]`，`ask` 的討論串放進對應段落的提示詞
+  - 有 `--threads` 時，`plan.json` 另有 `previousThreads: [{ "ref": "P1", "id", "path", "filePath": <這次 diff 中對應的路徑|null>, "line", "comment", "severity": "blocker|warning|nit", "chunk": <n|null>, "disposition": "ask|no-longer-changed|deleted|keep|nit" }]`，`ask` 的討論串放進對應段落的提示詞
   - `threads.json`（`run-review.sh collect` 產生）的格式：`[{ "id", "path", "line", "comment" }]`，`line` 已依「`line`，過時則用 `originalLine`」取得
   - `plan.json` 的格式：`{ "baseSha", "headSha", "gitattributesChanged": <bool>, "files": [{ "path", "status": "added|modified|renamed|deleted", "category": "reviewed|generated|deleted|binary", "lines", "chunk": <n|null>, "truncated": <bool> }], "chunks": [{ "index", "files": [<path>], "lines" }], "commentable": { "<path>": [[<起始行>, <結束行>], ...] } }`
 - 每段模型輸出的 JSON：`{ "summary": <字串>, "verdict": "blocker|changes_suggested|no_concerns", "findings": [{ "path": <字串>, "line": <整數|null>, "severity": "blocker|warning|nit", "title": <字串>, "body": <字串> }], "previousThreads": [{ "ref": <字串>, "fixed": <布林>, "note": <字串> }] }`；`previousThreads` 只在提示詞列出上一輪的討論串時需要，沒有時視為全部沒有判斷
 - `node .github/scripts/ai-review/ai-review.mjs synthesis-prompt --plan <plan.json> --results <dir> --out <檔案>`：產出彙整用的提示詞，內含 script 計算的整體結論；彙整的模型輸出為 `{ "summary": <字串>, "conclusion": <字串> }`
 - `node .github/scripts/ai-review/ai-review.mjs build-review --plan <plan.json> --results <dir> [--synthesis <檔案>] --head-sha <sha> --run-id <id> --warn-chunks <n> --out <dir>`
   - `--head-sha` 與 `plan.json` 的 `headSha` 不同時，以非 0 退出碼結束，不寫出任何 review
-  - 寫出四個檔案：
+  - 寫出六個檔案：
     - `review.json`：含 inline comment 的 REST request body
     - `review-body-only.json`：不含 inline comment 的版本
+    - `file-comments.json`：`review.json` 發布後要送的檔案層級留言，格式為 `[{ "path", "body" }]`
+    - `file-comments-fallback.json`：改發 `review-body-only.json` 時要送的檔案層級留言，含全部路徑在 diff 內的 🔴／🟡 意見
     - `summary.md`：完整、未截斷的本文，供寫入 job summary
     - `outcome.json`
-  - `outcome.json` 的格式：`{ "verdict": "blocker|incomplete|changes_suggested|no_concerns", "failedChunks": [<n>], "warnings": [<字串>], "inlineCount", "bodyOnlyCount", "threadActions": [{ "id", "reason": "fixed|no-longer-changed|deleted", "reply": <字串> }], "threadSummary": { "fixed", "notFixed", "noLongerChanged", "kept" } }`；`threadActions` 是發布成功後要回覆並 resolve 的討論串，回覆內容已清理
+  - `outcome.json` 的格式：`{ "verdict": "blocker|incomplete|changes_suggested|no_concerns", "failedChunks": [<n>], "warnings": [<字串>], "inlineCount", "bodyOnlyCount", "fileCommentCount", "threadActions": [{ "id", "reason": "fixed|no-longer-changed|deleted|nit", "reply": <字串> }], "threadSummary": { "fixed", "notFixed", "noLongerChanged", "kept", "nit" } }`；`threadActions` 是發布成功後要回覆並 resolve 的討論串，回覆內容已清理
   - `--results <dir>` 內每段有 `chunk-<n>.out`（lkai 的 stdout）與 `chunk-<n>.status`（lkai 的退出碼）
 - `lkai-helpers.sh` 新增 `run_lkai <提示詞檔案> <輸出檔案> [lkai 選項...]`：回傳 lkai 的退出碼，stderr 寫到 `<輸出檔案>.err`，不印出任何內容
 - `run-review.sh` 的子命令：`collect`（收集上一輪的 AI 討論串，需要 `GH_TOKEN`）、`plan`、`review`、`publish`（需要 `GH_TOKEN`）
@@ -307,6 +337,7 @@ workflow 另外加上三項設定：
 - `actionlint` 對修改過的 workflow 沒有新增問題
 - 在本機 `/bin/bash` 3.2 以假的 `lkai`／`gh` 執行 workflow 的審查 script，可以產出 inline 版與只有本文版的 review payload，分批送審、失敗段落與 resolve 篩選都符合判定規則
 - 這個 change 自己的 PR 上，出現含 inline comment 的 review；修正其中一則意見對應的問題並 push 後，只有那則討論串附上確認回覆並變成 resolved
+- 同一個 PR 上，新一輪沒有 🟢 的討論串，上一輪留下的 🟢 討論串附上回覆並 resolve，整體結論與未 resolve 的 🔴／🟡 一致
 
 **範圍：**
 
@@ -316,8 +347,14 @@ workflow 另外加上三項設定：
 ## Risks / Trade-offs
 
 - **`GITHUB_TOKEN` 需要 `contents: write` 才能 resolve 討論串**（PR #36 實測）
-  - 取捨：這讓 job 的 token 有 repo 的寫入權限。緩解：token 只交給發布那一步、checkout 不保留憑證；fork 發出的 PR 拿到的 token 本來就是唯讀，也拿不到 secret。同 repo 的 PR 只有具寫入權限的協作者能開，而且 `pull_request` 事件使用的 workflow 定義本來就來自 PR，提高這個權限沒有讓協作者多出原本沒有的能力。
+  - 取捨：這讓 job 的 token 有 repo 的寫入權限。緩解：token 只交給收集上一輪討論串與發布審查結果這兩步、checkout 不保留憑證；fork 發出的 PR 拿到的 token 本來就是唯讀，也拿不到 secret。同 repo 的 PR 只有具寫入權限的協作者能開，而且 `pull_request` 事件使用的 workflow 定義本來就來自 PR，提高這個權限沒有讓協作者多出原本沒有的能力。
   - resolve 失敗時只發出警告，不讓 workflow 失敗。
+- **checkout 不保留憑證後，fetch base commit 走匿名存取**
+  - 取捨：repo 是公開的，匿名 fetch 可行；`fetch-depth: 0` 的 checkout 通常已經取得 base commit，fetch 失敗時也會改用本機已有的資料。repo 改為私有後，若 base commit 不在本機，規劃會失敗（不會猜測），屆時需要讓 fetch 帶上 token。
+- **🟡 改為擋合併後，模型把可有可無的建議標成 warning，會增加要處理的討論串**
+  - 緩解：提示詞說明只有確實需要修正的問題才標 warning；誤標時可以手動 resolve。
+- **手動 resolve（決定不修）的 🔴／🟡，下一輪可能被重新提出**
+  - 取捨：收集步驟只收未 resolve 的討論串，模型不知道已經討論過；重新提出時再手動 resolve 即可。要避免需要把已 resolve 的討論串也交給模型，不在這次範圍內。
 - **模型沒有照格式輸出 JSON**
   - 緩解：提示詞明確要求，取最後一個 ```json 區塊解析；解析失敗時該段視為失敗，原始回答放進摺疊區塊，不會悄悄遺失。
 - **模型給的行號不在 diff 內**
