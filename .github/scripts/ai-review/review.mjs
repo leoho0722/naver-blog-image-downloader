@@ -3,13 +3,15 @@
 // 產出：
 // - review.json：含 inline comment 的 REST request body（POST /repos/{owner}/{repo}/pulls/{n}/reviews）
 // - review-body-only.json：不含 inline comment、全部意見放進本文的版本（inline 版被拒時改用）
+// - file-comments.json：review.json 發布後要另外送出的檔案層級留言（🔴／🟡 但不能標在行上的意見）
+// - file-comments-fallback.json：改發 review-body-only.json 時要送出的檔案層級留言（全部路徑在 diff 內的 🔴／🟡）
 // - summary.md：未截斷、含全部意見的完整本文，寫進 workflow 的 job summary
 // - outcome.json：整體結論、失敗段落、警告，以及發布後要回覆並收掉的上一輪討論串（threadActions）
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { computeVerdict, mergeFindings, parseChunkResult, parseSynthesisResult, routeFindings } from './findings.mjs';
+import { BLOCKING_SEVERITIES, computeVerdict, mergeFindings, parseChunkResult, parseSynthesisResult, routeFindings } from './findings.mjs';
 import { SEVERITY_LABELS, VERDICT_LABELS } from './prompts.mjs';
 import {
   COMMENT_LIMIT,
@@ -25,7 +27,7 @@ import {
 
 /** review 本文開頭的識別標記 */
 export const REVIEW_MARKER = '<!-- lkai-review -->';
-/** 每則 inline comment 結尾的識別標記；收掉舊討論串時用它辨認 AI 留下的討論串 */
+/** 每則 inline comment 與檔案層級留言結尾的識別標記；收掉舊討論串時用它辨認 AI 留下的討論串 */
 export const COMMENT_MARKER = '<!-- lkai-review-comment -->';
 /** 這次 run 的識別標記；inline 版發布失敗時，用它確認是否其實已經發布過 */
 export const runMarker = (runId) => `<!-- lkai-review-run: ${runId} -->`;
@@ -90,20 +92,23 @@ export function loadChunkResults(plan, resultsDir) {
 }
 
 /**
- * 依各段結果計算整體結論。
+ * 依各段結果與上一輪討論串的處理方式計算整體結論。
+ * 彙整提示詞與 review 都用這個結果，兩者的結論一定一致。
  *
+ * @param {object} plan plan.json 的內容
  * @param {ChunkResult[]} results
- * @returns {{ verdict: string, findings: Array<object> }}
+ * @returns {{ verdict: string, findings: Array<object>, threads: ReturnType<typeof planThreadActions> }}
  */
-export function summarizeResults(results) {
+export function summarizeResults(plan, results) {
   const succeeded = results.filter((result) => result.ok);
   const findings = mergeFindings(succeeded.map((result) => result.value.findings));
+  const threads = planThreadActions(plan, succeeded);
   const verdict = computeVerdict({
-    chunkVerdicts: succeeded.map((result) => result.value.verdict),
     findings,
     failedChunks: results.length - succeeded.length,
+    openThreadSeverities: threads.openThreadSeverities,
   });
-  return { verdict, findings };
+  return { verdict, findings, threads };
 }
 
 /** 意見的位置文字：`path:line` 或只有 `path` */
@@ -115,14 +120,15 @@ const locationOf = (finding) => (finding.line === null ? finding.path : `${findi
  * @param {object} finding
  * @returns {string}
  */
-function bodyItem(finding) {
+function bodyItem(finding, unattached = false) {
   const title = sanitizeModelText(toSingleLine(finding.title));
   const detail = closeOpenFences(sanitizeModelText(finding.body))
     .split('\n')
     .map((line) => (line === '' ? '' : `  ${line}`))
     .join('\n');
   // 落到本文的意見，path 可能不是真實檔案（模型可以寫任意文字），一律放進無法跳出的 code span
-  const head = `- ${SEVERITY_LABELS[finding.severity]}｜**${title}**（${toInlineCode(locationOf(finding))}）`;
+  const mark = unattached ? '⚠️ ' : '';
+  const head = `- ${mark}${SEVERITY_LABELS[finding.severity]}｜**${title}**（${toInlineCode(locationOf(finding))}）`;
   return detail.trim() === '' ? head : `${head}\n\n${detail}`;
 }
 
@@ -153,7 +159,7 @@ function fileListBlock(title, paths) {
 }
 
 /**
- * 組出 review 的本文、inline comment、job summary 與 outcome。
+ * 組出 review 的本文、inline comment、檔案層級留言、job summary 與 outcome。
  *
  * @param {object} input
  * @param {object} input.plan plan.json 的內容
@@ -163,7 +169,8 @@ function fileListBlock(title, paths) {
  * @param {string} input.runId 這次 run 的識別字串
  * @param {number} [input.warnChunks] 段數超過這個值時發出警告
  * @param {string} [input.modelLabel] 標題中顯示的供應商與模型
- * @returns {{ review: object, bodyOnly: object, summaryMarkdown: string, outcome: object }}
+ * @returns {{ review: object, bodyOnly: object, fileComments: Array<{ path: string, body: string }>, fallbackFileComments: Array<{ path: string, body: string }>, summaryMarkdown: string, outcome: object }}
+ *   fileComments：review 發布後要送的檔案層級留言；fallbackFileComments：改發 bodyOnly 時要送的檔案層級留言
  */
 export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnChunks = DEFAULT_WARN_CHUNKS, modelLabel }) {
   if (typeof headSha !== 'string' || headSha !== plan.headSha) {
@@ -175,7 +182,8 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
 
   const warnings = [];
   const notes = [];
-  const { verdict, findings } = summarizeResults(results);
+  const { verdict, findings, threads } = summarizeResults(plan, results);
+  const { threadActions, threadSummary, notFixedThreads } = threads;
   const succeeded = results.filter((result) => result.ok);
   const failed = results.filter((result) => !result.ok);
 
@@ -210,15 +218,21 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
     notes.push('> ℹ️ 這個 PR 修改了 `.gitattributes`；本次仍以 base commit 的 `.gitattributes` 判斷哪些是自動產生的檔案，新的規則要等合併後才會生效。');
   }
 
-  const { threadActions, threadSummary, notFixedThreads } = planThreadActions(plan, succeeded);
-
   // 意見分流以「產生這項意見的那一段」為準：模型只看得到本段的內容，對其他段的檔案只看過總覽，
-  // 就算給了剛好落在可留言行內的行號，也只是猜測，所以一律放進本文
+  // 就算給了剛好落在可留言行內的行號，也只是猜測，所以不發成 inline comment。
+  // 🔴／🟡 不能標在行上時改發檔案層級留言，🟢 只列在本文（見 design「依嚴重程度決定意見是否擋合併」）
+  const diffPaths = plan.files.map((file) => file.path);
   const routed = succeeded.map((result) =>
-    routeFindings(result.value.findings, { commentable: plan.commentable, reviewedPaths: result.files }),
+    routeFindings(result.value.findings, { commentable: plan.commentable, reviewedPaths: result.files, diffPaths }),
   );
   const inline = mergeFindings(routed.map((entry) => entry.inline));
-  const body = mergeFindings(routed.map((entry) => entry.body));
+  const fileLevel = mergeFindings(routed.map((entry) => entry.fileLevel));
+  // 路徑不在 diff 內的 🔴／🟡：無法留言，只能列在本文並標示不會擋合併
+  const unattached = new Set(routed.flatMap((entry) => entry.body).filter((finding) => BLOCKING_SEVERITIES.includes(finding.severity)));
+  const nonInline = mergeFindings(routed.map((entry) => [...entry.fileLevel, ...entry.body]));
+  // 改發只有本文的版本時，所有路徑在 diff 內的 🔴／🟡 都改發檔案層級留言，讓它們仍然擋合併
+  const inDiff = new Set(diffPaths);
+  const fallbackFileLevel = findings.filter((finding) => BLOCKING_SEVERITIES.includes(finding.severity) && inDiff.has(finding.path));
 
   const skipped = plan.files.filter((file) => file.category === 'generated').map((file) => file.path);
   const listed = plan.files.filter((file) => file.category === 'deleted' || file.category === 'binary').map((file) => file.path);
@@ -244,6 +258,7 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
       }`,
       `- 檔案已沒有可審查的變更而收掉：${threadSummary.noLongerChanged} 則`,
       `- 這一輪沒有重新審查而維持不動：${threadSummary.kept} 則`,
+      `- 🟢 可選優化不擋合併而收掉：${threadSummary.nit} 則`,
     ];
     headSections.push(`#### 上一輪意見的追蹤\n\n${lines.join('\n')}`);
   }
@@ -274,14 +289,14 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
     }
     return {
       head: head.join('\n\n'),
-      nonInlineHeading: '#### 無法標在程式碼行上的意見',
-      nonInline: nonInlineFindings.map(bodyItem),
+      nonInlineHeading: nonInlineHeading(nonInlineFindings, unattached),
+      nonInline: nonInlineFindings.map((finding) => bodyItem(finding, unattached.has(finding))),
       rawAnswers,
       tail: '',
     };
   };
 
-  const inlineParts = assemble(body, null);
+  const inlineParts = assemble(nonInline, null);
   const bodyOnlyParts = assemble(findings, '> ⚠️ inline comment 無法發布，所有意見改列在本文。');
 
   const inlineBody = fitReviewBody(inlineParts);
@@ -302,6 +317,9 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
     comments: inline.map((finding) => ({ path: finding.path, line: finding.line, side: 'RIGHT', body: commentBody(finding) })),
   };
   const bodyOnly = { commit_id: plan.headSha, event: 'COMMENT', body: bodyOnlyBody.body };
+  const toFileComment = (finding) => ({ path: finding.path, body: commentBody(finding) });
+  const fileComments = fileLevel.map(toFileComment);
+  const fallbackFileComments = fallbackFileLevel.map(toFileComment);
 
   const outcome = {
     verdict,
@@ -309,10 +327,32 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
     warnings,
     inlineCount: inline.length,
     bodyOnlyCount: findings.length,
+    fileCommentCount: fileComments.length,
     threadActions,
     threadSummary,
   };
-  return { review, bodyOnly, summaryMarkdown, outcome };
+  return { review, bodyOnly, fileComments, fallbackFileComments, summaryMarkdown, outcome };
+}
+
+/**
+ * 「無法標在程式碼行上的意見」的標題與說明：只說明清單中實際出現的情況。
+ *
+ * @param {object[]} findings 清單中的意見
+ * @param {Set<object>} unattached 路徑不在 diff 內的 🔴／🟡
+ * @returns {string}
+ */
+function nonInlineHeading(findings, unattached) {
+  const notes = [];
+  if (findings.some((finding) => BLOCKING_SEVERITIES.includes(finding.severity) && !unattached.has(finding))) {
+    notes.push('🔴／🟡 的意見另外以檔案層級留言發布，resolve 前會擋合併。');
+  }
+  if (findings.some((finding) => !BLOCKING_SEVERITIES.includes(finding.severity))) {
+    notes.push('🟢 可選優化只列在這裡，不擋合併。');
+  }
+  if (findings.some((finding) => unattached.has(finding))) {
+    notes.push('標示 ⚠️ 的意見找不到對應的檔案，無法留言，不會擋合併，請人工判斷。');
+  }
+  return notes.length === 0 ? '#### 無法標在程式碼行上的意見' : `#### 無法標在程式碼行上的意見\n\n${notes.join('')}`;
 }
 
 /** 回覆中模型說明的長度上限（字元） */
@@ -323,12 +363,14 @@ const REPLY_NOTE_LIMIT = 1000;
  * （見 design「由 AI 確認已修正後才收掉上一輪的討論串」）：
  * - ask：只有在那一段送審成功、而且那一段的模型回報 fixed 為 true 時才收掉
  * - no-longer-changed、deleted：檔案已沒有可審查的變更，直接收掉
+ * - nit：🟢 可選優化不擋合併，直接收掉
  * - keep，或 ask 但那一段失敗：維持不動
  * 模型回報的代號必須屬於它自己那一段，其他段的代號一律忽略。
+ * openThreadSeverities 是這一輪不會收掉的討論串的嚴重程度，計入整體結論。
  *
  * @param {object} plan
  * @param {ChunkResult[]} succeeded 送審成功的段落
- * @returns {{ threadActions: Array<{ id: string, reason: string, reply: string }>, threadSummary: { fixed: number, notFixed: number, noLongerChanged: number, kept: number }, notFixedThreads: string[] }}
+ * @returns {{ threadActions: Array<{ id: string, reason: string, reply: string }>, threadSummary: { fixed: number, notFixed: number, noLongerChanged: number, kept: number, nit: number }, notFixedThreads: string[], openThreadSeverities: string[] }}
  */
 export function planThreadActions(plan, succeeded) {
   const shortSha = plan.headSha.slice(0, 7);
@@ -347,9 +389,19 @@ export function planThreadActions(plan, succeeded) {
   }
 
   const threadActions = [];
-  const threadSummary = { fixed: 0, notFixed: 0, noLongerChanged: 0, kept: 0 };
+  const threadSummary = { fixed: 0, notFixed: 0, noLongerChanged: 0, kept: 0, nit: 0 };
   const notFixedThreads = [];
+  const openThreadSeverities = [];
   for (const thread of previous) {
+    if (thread.disposition === 'nit') {
+      threadSummary.nit += 1;
+      threadActions.push({
+        id: thread.id,
+        reason: 'nit',
+        reply: `✅ 🟢 可選優化不擋合併，收掉這則討論串（${shortSha}）；需要時仍可展開查看。`,
+      });
+      continue;
+    }
     if (thread.disposition === 'no-longer-changed' || thread.disposition === 'deleted') {
       threadSummary.noLongerChanged += 1;
       const what = thread.disposition === 'deleted' ? '已在最新的變更中刪除' : '在最新的變更中已沒有可審查的內容';
@@ -362,6 +414,7 @@ export function planThreadActions(plan, succeeded) {
     }
     if (thread.disposition !== 'ask' || !succeededChunks.has(thread.chunk)) {
       threadSummary.kept += 1;
+      openThreadSeverities.push(thread.severity ?? 'warning');
       continue;
     }
     const judgement = judgements.get(thread.ref);
@@ -376,7 +429,8 @@ export function planThreadActions(plan, succeeded) {
     } else {
       threadSummary.notFixed += 1;
       notFixedThreads.push(thread.line === null ? thread.filePath : `${thread.filePath}:${thread.line}`);
+      openThreadSeverities.push(thread.severity ?? 'warning');
     }
   }
-  return { threadActions, threadSummary, notFixedThreads };
+  return { threadActions, threadSummary, notFixedThreads, openThreadSeverities };
 }

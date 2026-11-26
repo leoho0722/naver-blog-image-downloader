@@ -4,7 +4,7 @@
 // 子命令：
 //   plan             產生 diff、替檔案分類、切段，寫出 plan.json 與每段的提示詞 chunk-<n>.md
 //   synthesis-prompt 兩段以上取得有效結果時，寫出彙整請求的提示詞；否則不寫檔案
-//   build-review     組出要發布的 review（review.json、review-body-only.json）、summary.md 與 outcome.json
+//   build-review     組出要發布的 review（review.json、review-body-only.json）、檔案層級留言（file-comments*.json）、summary.md 與 outcome.json
 //
 // 用法：node ai-review.mjs <子命令> --<參數> <值> ...
 // 出錯時把原因寫到 stderr，並以非 0 退出碼結束；呼叫端依退出碼判斷是否繼續。
@@ -160,8 +160,11 @@ function commandSynthesisPrompt(options) {
     console.log(`不需要彙整：有效的段落只有 ${valid} 段`);
     return;
   }
-  const { verdict } = summarizeResults(results);
-  writeFileSync(required(options, 'out'), renderSynthesisPrompt({ verdict, chunks: results }));
+  const { verdict, threads } = summarizeResults(plan, results);
+  writeFileSync(
+    required(options, 'out'),
+    renderSynthesisPrompt({ verdict, chunks: results, openThreadCount: threads.openThreadSeverities.length }),
+  );
   console.log(`需要彙整：有效的段落共 ${valid} 段`);
 }
 
@@ -189,13 +192,15 @@ function commandBuildReview(options) {
   mkdirSync(out, { recursive: true });
   writeFileSync(join(out, 'review.json'), `${JSON.stringify(output.review)}\n`);
   writeFileSync(join(out, 'review-body-only.json'), `${JSON.stringify(output.bodyOnly)}\n`);
+  writeFileSync(join(out, 'file-comments.json'), `${JSON.stringify(output.fileComments)}\n`);
+  writeFileSync(join(out, 'file-comments-fallback.json'), `${JSON.stringify(output.fallbackFileComments)}\n`);
   writeFileSync(join(out, 'summary.md'), output.summaryMarkdown);
   // outcome.json 最後寫：呼叫端可以用它是否存在判斷組裝是否完整
   writeFileSync(join(out, 'outcome.json'), `${JSON.stringify(output.outcome, null, 2)}\n`);
 
   const { outcome } = output;
   console.log(
-    `review 組裝完成：整體結論 ${outcome.verdict}，inline comment ${outcome.inlineCount} 則，意見共 ${outcome.bodyOnlyCount} 項，失敗段落 ${outcome.failedChunks.length} 段`,
+    `review 組裝完成：整體結論 ${outcome.verdict}，inline comment ${outcome.inlineCount} 則，檔案層級留言 ${outcome.fileCommentCount} 則，意見共 ${outcome.bodyOnlyCount} 項，失敗段落 ${outcome.failedChunks.length} 段`,
   );
 }
 

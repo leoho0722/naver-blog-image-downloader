@@ -313,83 +313,89 @@ export function mergeFindings(lists) {
   return merged.sort(compareFindings);
 }
 
+/** 會擋合併的嚴重程度：🔴 阻擋合併與 🟡 建議修正（見 design「依嚴重程度決定意見是否擋合併」） */
+export const BLOCKING_SEVERITIES = Object.freeze(['blocker', 'warning']);
+
 /**
- * 計算整體審查結論，依序判斷，第一個符合的就是結果：
- * 1. 任一段的結論是 blocker，或任一項意見的嚴重程度是 blocker → `blocker`
+ * 計算整體審查結論，讓結論與「會不會擋合併」一致。依序判斷，第一個符合的就是結果：
+ * 1. 任一項意見是 blocker，或這一輪沒有收掉的上一輪討論串中有 blocker → `blocker`
  * 2. 有失敗的段落（沒審到的部分無法保證沒問題）→ `incomplete`
- * 3. 有任何意見，或任一段的結論是 changes_suggested → `changes_suggested`
- * 4. 其他 → `no_concerns`
+ * 3. 任一項意見是 warning，或這一輪沒有收掉的上一輪討論串中有 warning → `changes_suggested`
+ * 4. 其他（可以有 nit）→ `no_concerns`
+ * 模型在各段給的 verdict 不影響結果：真正會擋合併的是意見本身。
  *
- * @param {{ chunkVerdicts: Array<'blocker' | 'changes_suggested' | 'no_concerns'>, findings: Finding[], failedChunks: number }} input
- *   chunkVerdicts：審查成功的各段結論；findings：合併後的意見；failedChunks：失敗的段落數（非負整數）
+ * @param {{ findings: Finding[], failedChunks: number, openThreadSeverities?: Array<'blocker' | 'warning' | 'nit'> }} input
+ *   findings：合併後的意見；failedChunks：失敗的段落數（非負整數）；
+ *   openThreadSeverities：這一輪不會收掉的上一輪 AI 討論串的嚴重程度
  * @returns {'blocker' | 'incomplete' | 'changes_suggested' | 'no_concerns'}
  */
 export function computeVerdict(input) {
   if (!isPlainObject(input)) {
-    throw new TypeError('computeVerdict 需要 { chunkVerdicts, findings, failedChunks } 物件');
+    throw new TypeError('computeVerdict 需要 { findings, failedChunks } 物件');
   }
-  const { chunkVerdicts, findings, failedChunks } = input;
-  if (!Array.isArray(chunkVerdicts) || !chunkVerdicts.every((verdict) => CHUNK_VERDICTS.includes(verdict))) {
-    throw new TypeError(`chunkVerdicts 必須是陣列，且每一項都是 ${CHUNK_VERDICTS.join('、')} 其中之一`);
-  }
+  const { findings, failedChunks, openThreadSeverities = [] } = input;
   if (!Array.isArray(findings) || !findings.every((finding) => isPlainObject(finding) && SEVERITIES.includes(finding.severity))) {
     throw new TypeError(`findings 必須是陣列，且每一項都有 ${SEVERITIES.join('、')} 其中之一的 severity`);
   }
   if (!Number.isInteger(failedChunks) || failedChunks < 0) {
     throw new TypeError('failedChunks 必須是大於等於 0 的整數');
   }
+  if (!Array.isArray(openThreadSeverities) || !openThreadSeverities.every((severity) => SEVERITIES.includes(severity))) {
+    throw new TypeError(`openThreadSeverities 必須是陣列，且每一項都是 ${SEVERITIES.join('、')} 其中之一`);
+  }
 
-  if (chunkVerdicts.includes('blocker') || findings.some((finding) => finding.severity === 'blocker')) {
+  const severities = [...findings.map((finding) => finding.severity), ...openThreadSeverities];
+  if (severities.includes('blocker')) {
     return 'blocker';
   }
   if (failedChunks > 0) {
     return 'incomplete';
   }
-  if (findings.length > 0 || chunkVerdicts.includes('changes_suggested')) {
+  if (severities.includes('warning')) {
     return 'changes_suggested';
   }
   return 'no_concerns';
 }
 
 /**
- * 決定每一項意見要發成 inline comment，還是放進 review 本文。
- *
- * 同時符合以下三個條件才會是 inline comment，其他一律放進本文：
- * - 該檔案這一輪有實際送審成功（在 reviewedPaths 中）；
- * - 意見有指定行號（整數）；
- * - 那一行落在該檔案的可留言行區間內（GitHub 只允許在 diff 內的行留言）。
- *
- * 兩個結果陣列都維持輸入時的順序。
+ * 依嚴重程度與位置決定每一項意見的呈現方式（見 design「依嚴重程度決定意見是否擋合併」）：
+ * - inline：blocker 或 warning，路徑是這一段送審的檔案（在 reviewedPaths 中），行號是整數且落在該檔案的可留言行內
+ * - fileLevel：其他 blocker 或 warning 中，路徑是這個 PR diff 中的檔案（在 diffPaths 中）的意見，另發檔案層級留言
+ * - body：nit，以及路徑不在 diff 內的 blocker 或 warning，只列在 review 本文
+ * inline 與 fileLevel 會形成討論串、擋住合併；body 不會。三個結果陣列都維持輸入時的順序。
  *
  * @param {Finding[]} findings 意見
- * @param {{ commentable: Record<string, Array<[number, number]>>, reviewedPaths: Set<string> | string[] }} options
- *   commentable：檔案路徑 → 可留言行區間；reviewedPaths：這一輪實際送審成功的檔案路徑
- * @returns {{ inline: Finding[], body: Finding[] }}
+ * @param {{ commentable: Record<string, Array<[number, number]>>, reviewedPaths: Set<string> | string[], diffPaths: Set<string> | string[] }} options
+ *   commentable：檔案路徑 → 可留言行區間；reviewedPaths：這一段送審的檔案路徑；diffPaths：這個 PR diff 中的所有檔案路徑
+ * @returns {{ inline: Finding[], fileLevel: Finding[], body: Finding[] }}
  */
 export function routeFindings(findings, options) {
   if (!Array.isArray(findings)) {
     throw new TypeError('routeFindings 需要意見陣列');
   }
   if (!isPlainObject(options)) {
-    throw new TypeError('routeFindings 需要 { commentable, reviewedPaths } 物件');
+    throw new TypeError('routeFindings 需要 { commentable, reviewedPaths, diffPaths } 物件');
   }
-  const { commentable, reviewedPaths } = options;
+  const { commentable } = options;
   if (!isPlainObject(commentable)) {
     throw new TypeError('commentable 必須是「檔案路徑 → 可留言行區間」的物件');
   }
-  const isPathList = Array.isArray(reviewedPaths) && reviewedPaths.every((path) => typeof path === 'string');
-  if (!(reviewedPaths instanceof Set) && !isPathList) {
-    throw new TypeError('reviewedPaths 必須是字串的 Set 或字串陣列');
-  }
-  const reviewed = reviewedPaths instanceof Set ? reviewedPaths : new Set(reviewedPaths);
+  const reviewed = toPathSet(options.reviewedPaths, 'reviewedPaths');
+  const inDiff = toPathSet(options.diffPaths, 'diffPaths');
 
   /** @type {Finding[]} */
   const inline = [];
+  /** @type {Finding[]} */
+  const fileLevel = [];
   /** @type {Finding[]} */
   const body = [];
   findings.forEach((finding, index) => {
     if (!isPlainObject(finding) || typeof finding.path !== 'string') {
       throw new TypeError(`findings[${index}] 必須是有字串 path 的物件`);
+    }
+    if (!BLOCKING_SEVERITIES.includes(finding.severity)) {
+      body.push(finding);
+      return;
     }
     // 用 hasOwn 避免路徑剛好叫 constructor 之類的名字時，讀到物件內建的屬性
     const ranges = Object.hasOwn(commentable, finding.path) ? commentable[finding.path] : undefined;
@@ -398,7 +404,30 @@ export function routeFindings(findings, options) {
       Number.isInteger(finding.line) &&
       Array.isArray(ranges) &&
       isCommentable(ranges, finding.line);
-    (canInline ? inline : body).push(finding);
+    if (canInline) {
+      inline.push(finding);
+    } else if (inDiff.has(finding.path)) {
+      fileLevel.push(finding);
+    } else {
+      body.push(finding);
+    }
   });
-  return { inline, body };
+  return { inline, fileLevel, body };
+}
+
+/**
+ * 把路徑清單轉成 Set；不是字串的 Set 或字串陣列時丟出 TypeError。
+ *
+ * @param {unknown} paths
+ * @param {string} name 錯誤訊息中的參數名稱
+ * @returns {Set<string>}
+ */
+function toPathSet(paths, name) {
+  if (paths instanceof Set) {
+    return paths;
+  }
+  if (Array.isArray(paths) && paths.every((path) => typeof path === 'string')) {
+    return new Set(paths);
+  }
+  throw new TypeError(`${name} 必須是字串的 Set 或字串陣列`);
 }

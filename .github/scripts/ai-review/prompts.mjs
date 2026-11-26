@@ -27,11 +27,12 @@ export const SEVERITY_LABELS = {
 };
 
 /** 整體結論的說明 */
+// 整體結論與「會不會擋合併」一致（見 findings.mjs 的 computeVerdict）
 export const VERDICT_LABELS = {
   blocker: '🔴 有阻擋合併的問題',
   incomplete: '⚠️ 審查不完整',
-  changes_suggested: '🟡 可接受但建議調整',
-  no_concerns: '🟢 無疑慮',
+  changes_suggested: '🟡 有建議修正的問題',
+  no_concerns: '🟢 沒有擋合併的問題',
 };
 
 const REVIEW_INSTRUCTIONS = `你是本 monorepo 的資深 code reviewer。請審查下方「本段 patch」中的變更，涵蓋：
@@ -49,6 +50,7 @@ const REVIEW_INSTRUCTIONS = `你是本 monorepo 的資深 code reviewer。請審
 行號：
 - patch 每行前面「|」左邊的數字，是該行在新檔案中的行號；刪除的行沒有行號。
 - 意見對應到特定的行時，line 填那個行號，而且必須是本段 patch 中出現的行號；不對應到特定的行時填 null。
+- path 填本段 patch 中的檔案；severity 是 blocker 或 warning 的意見一定要填本段的檔案，才能以留言擋住合併。
 
 輸出格式：
 - 所有文字以正體中文撰寫，body 可以使用 Markdown。
@@ -70,8 +72,10 @@ const REVIEW_INSTRUCTIONS = `你是本 monorepo 的資深 code reviewer。請審
 }
 \`\`\`
 
-- verdict：blocker 表示有阻擋合併的問題；changes_suggested 表示可接受但建議調整；no_concerns 表示沒有疑慮。
+- verdict：blocker 表示有阻擋合併的問題；changes_suggested 表示有建議修正的問題；no_concerns 表示沒有問題或只有可選優化。
 - severity：blocker 是 ${SEVERITY_LABELS.blocker}，warning 是 ${SEVERITY_LABELS.warning}，nit 是 ${SEVERITY_LABELS.nit}。
+  - blocker 與 warning 會留下討論串，修正或由人確認之前會擋住合併；nit 只列在 review 本文，不擋合併。
+  - 只有確實需要修正的問題才標 warning；風格、命名等可有可無的建議標 nit。
 - 沒有任何意見時，findings 是空陣列。`;
 
 /**
@@ -175,7 +179,7 @@ const SYNTHESIS_INSTRUCTIONS = `你是本 monorepo 的資深 code reviewer。這
  *   verdict：程式計算的整體結論；chunks：每一段的結果（ok 為 false 表示這一段失敗）
  * @returns {string}
  */
-export function renderSynthesisPrompt({ verdict, chunks }) {
+export function renderSynthesisPrompt({ verdict, chunks, openThreadCount = 0 }) {
   const sections = chunks.map((chunk) => {
     const header = `## 第 ${chunk.index} 段（檔案：${chunk.files.join('、')}）`;
     if (!chunk.ok) {
@@ -205,6 +209,9 @@ export function renderSynthesisPrompt({ verdict, chunks }) {
     '',
     `## 程式計算的整體結論：${VERDICT_LABELS[verdict] ?? verdict}`,
     '',
+    ...(openThreadCount > 0
+      ? [`另有 ${openThreadCount} 則上一輪留下、這一輪仍未收掉的 🔴／🟡 意見，已計入整體結論。`, '']
+      : []),
     sections.join('\n\n'),
     '',
   ].join('\n');

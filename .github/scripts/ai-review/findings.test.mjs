@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  BLOCKING_SEVERITIES,
   CHUNK_VERDICTS,
   SEVERITIES,
   computeVerdict,
@@ -40,111 +41,128 @@ const answer = (data, fence = FENCE) => `審查完成，結果如下。\n\n${fen
 
 test('嚴重程度與段落結論的常數依序由重到輕', () => {
   assert.deepEqual(SEVERITIES, ['blocker', 'warning', 'nit']);
+  assert.deepEqual(BLOCKING_SEVERITIES, ['blocker', 'warning']);
   assert.deepEqual(CHUNK_VERDICTS, ['blocker', 'changes_suggested', 'no_concerns']);
 });
 
 // spectra-scenario: pr-ai-review / Synthesis failure falls back to chunk summaries / overall verdict
-test('整體結論：依各段結論、意見嚴重程度與失敗段落數計算', () => {
-  // failed 是失敗的段落數；失敗的段落不會出現在 chunks 中
+// spectra-scenario: pr-ai-review / Optional suggestions alone keep the verdict clear
+test('整體結論：只依意見與仍未收掉的上一輪討論串的嚴重程度、失敗段落數計算', () => {
+  // spec「overall verdict」的每一列；各段的 verdict 不影響結果，所以這裡不傳入
+  // failed 是失敗的段落數；open 是這一輪不會收掉的上一輪 AI 討論串的嚴重程度
   const rows = [
-    { chunks: ['no_concerns', 'no_concerns'], failed: 0, severities: [], expected: 'no_concerns' },
-    { chunks: ['no_concerns', 'changes_suggested'], failed: 0, severities: ['nit'], expected: 'changes_suggested' },
-    { chunks: ['changes_suggested', 'no_concerns'], failed: 0, severities: ['warning', 'blocker'], expected: 'blocker' },
-    { chunks: ['blocker', 'no_concerns'], failed: 0, severities: [], expected: 'blocker' },
-    { chunks: ['no_concerns'], failed: 1, severities: [], expected: 'incomplete' },
-    { chunks: ['changes_suggested'], failed: 1, severities: ['blocker'], expected: 'blocker' },
-    { chunks: [], failed: 2, severities: [], expected: 'incomplete' },
+    { failed: 0, severities: [], open: [], expected: 'no_concerns' },
+    { failed: 0, severities: ['nit'], open: [], expected: 'no_concerns' },
+    { failed: 0, severities: ['warning', 'blocker'], open: [], expected: 'blocker' },
+    { failed: 0, severities: [], open: [], expected: 'no_concerns' },
+    { failed: 0, severities: ['nit'], open: ['warning'], expected: 'changes_suggested' },
+    { failed: 0, severities: [], open: ['blocker'], expected: 'blocker' },
+    { failed: 1, severities: [], open: [], expected: 'incomplete' },
+    { failed: 1, severities: ['warning'], open: [], expected: 'incomplete' },
+    { failed: 1, severities: ['blocker'], open: [], expected: 'blocker' },
+    { failed: 2, severities: [], open: [], expected: 'incomplete' },
   ];
-  for (const { chunks, failed, severities, expected } of rows) {
+  for (const { failed, severities, open, expected } of rows) {
     const findings = severities.map((severity, index) => makeFinding({ severity, line: index + 1 }));
     assert.equal(
-      computeVerdict({ chunkVerdicts: chunks, findings, failedChunks: failed }),
+      computeVerdict({ findings, failedChunks: failed, openThreadSeverities: open }),
       expected,
-      `各段結論 ${JSON.stringify(chunks)}、失敗 ${failed} 段、意見 ${JSON.stringify(severities)}`,
+      `失敗 ${failed} 段、意見 ${JSON.stringify(severities)}、未收掉的討論串 ${JSON.stringify(open)}`,
     );
   }
 });
 
-test('整體結論：沒有任何段落也沒有意見時視為沒有疑慮；只有意見也算建議修改', () => {
-  assert.equal(computeVerdict({ chunkVerdicts: [], findings: [], failedChunks: 0 }), 'no_concerns');
-  assert.equal(
-    computeVerdict({ chunkVerdicts: ['no_concerns'], findings: [makeFinding({ severity: 'warning' })], failedChunks: 0 }),
-    'changes_suggested',
-  );
+test('整體結論：沒有意見時視為沒有疑慮；只有 nit 也一樣，上一輪的 nit 討論串也不影響', () => {
+  assert.equal(computeVerdict({ findings: [], failedChunks: 0 }), 'no_concerns');
+  assert.equal(computeVerdict({ findings: [makeFinding({ severity: 'nit' })], failedChunks: 0, openThreadSeverities: ['nit'] }), 'no_concerns');
+  assert.equal(computeVerdict({ findings: [makeFinding({ severity: 'warning' })], failedChunks: 0 }), 'changes_suggested');
 });
 
 test('整體結論：參數型別不對時丟出 TypeError', () => {
-  const valid = { chunkVerdicts: ['no_concerns'], findings: [], failedChunks: 0 };
+  const valid = { findings: [], failedChunks: 0 };
   assert.throws(() => computeVerdict(), TypeError);
   assert.throws(() => computeVerdict(null), TypeError);
-  assert.throws(() => computeVerdict({ ...valid, chunkVerdicts: 'no_concerns' }), TypeError);
-  assert.throws(() => computeVerdict({ ...valid, chunkVerdicts: ['unknown'] }), TypeError);
   assert.throws(() => computeVerdict({ ...valid, findings: undefined }), TypeError);
   assert.throws(() => computeVerdict({ ...valid, findings: ['不是物件'] }), TypeError);
   assert.throws(() => computeVerdict({ ...valid, findings: [{ severity: 'critical' }] }), TypeError);
   assert.throws(() => computeVerdict({ ...valid, failedChunks: -1 }), TypeError);
   assert.throws(() => computeVerdict({ ...valid, failedChunks: 1.5 }), TypeError);
   assert.throws(() => computeVerdict({ ...valid, failedChunks: '1' }), TypeError);
-  assert.throws(() => computeVerdict({ chunkVerdicts: [], findings: [] }), TypeError);
+  assert.throws(() => computeVerdict({ findings: [] }), TypeError);
+  assert.throws(() => computeVerdict({ ...valid, openThreadSeverities: 'warning' }), TypeError);
+  assert.throws(() => computeVerdict({ ...valid, openThreadSeverities: ['critical'] }), TypeError);
 });
 
 // spectra-scenario: pr-ai-review / Findings are routed to inline comments or the body / finding routing
-test('意見分流：只有送審成功、有行號且在可留言行內的意見才是 inline comment', () => {
-  const inRange = makeFinding({ line: 11, title: '在範圍內' });
-  const outOfRange = makeFinding({ line: 99, title: '超出範圍' });
-  const noLine = makeFinding({ line: null, title: '沒有行號' });
-  const notReviewed = makeFinding({ path: 'apps/web/pnpm-lock.yaml', line: 5, title: '沒有送審' });
+// spectra-scenario: pr-ai-review / Optional suggestions stay in the body
+test('意見分流：依 spec「finding routing」的每一列分成 inline、檔案層級留言與只列在本文', () => {
+  const inRange = makeFinding({ severity: 'warning', line: 11, title: '在範圍內' });
+  const nitInRange = makeFinding({ severity: 'nit', line: 11, title: 'nit 在範圍內' });
+  const outOfRange = makeFinding({ severity: 'warning', line: 99, title: '超出範圍' });
+  const noLine = makeFinding({ severity: 'blocker', line: null, title: '沒有行號' });
+  const generated = makeFinding({ severity: 'warning', path: 'apps/web/pnpm-lock.yaml', line: 5, title: '自動產生的檔案' });
+  const otherChunk = makeFinding({ severity: 'warning', path: 'apps/web/src/b.ts', line: 5, title: '其他段的檔案' });
+  const notInDiff = makeFinding({ severity: 'blocker', path: 'docs/missing.md', line: 3, title: '不在 diff 內' });
 
-  const result = routeFindings([inRange, outOfRange, noLine, notReviewed], {
-    commentable: { 'apps/web/src/a.ts': [[10, 12]] },
+  const result = routeFindings([inRange, nitInRange, outOfRange, noLine, generated, otherChunk, notInDiff], {
+    // b.ts 有可留言行，但不是這一段送審的檔案
+    commentable: { 'apps/web/src/a.ts': [[10, 12]], 'apps/web/src/b.ts': [[1, 20]] },
     reviewedPaths: new Set(['apps/web/src/a.ts']),
+    diffPaths: new Set(['apps/web/src/a.ts', 'apps/web/src/b.ts', 'apps/web/pnpm-lock.yaml']),
   });
 
   assert.deepEqual(result.inline, [inRange]);
-  assert.deepEqual(result.body, [outOfRange, noLine, notReviewed]);
+  assert.deepEqual(result.fileLevel, [outOfRange, noLine, generated, otherChunk]);
+  assert.deepEqual(result.body, [nitInRange, notInDiff]);
 });
 
-test('意見分流：reviewedPaths 可以是陣列，兩個結果都維持輸入順序', () => {
+test('意見分流：路徑清單可以是陣列，三個結果都維持輸入順序', () => {
   const first = makeFinding({ line: 12, title: '第一' });
   const second = makeFinding({ line: 99, title: '第二' });
-  const third = makeFinding({ line: 10, title: '第三' });
-  const fourth = makeFinding({ line: null, title: '第四' });
-  const result = routeFindings([first, second, third, fourth], {
+  const third = makeFinding({ line: 10, severity: 'nit', title: '第三' });
+  const fourth = makeFinding({ line: 10, title: '第四' });
+  const fifth = makeFinding({ line: null, title: '第五' });
+  const result = routeFindings([first, second, third, fourth, fifth], {
     commentable: { 'apps/web/src/a.ts': [[10, 12]] },
     reviewedPaths: ['apps/web/src/a.ts'],
+    diffPaths: ['apps/web/src/a.ts'],
   });
-  assert.deepEqual(
-    result.inline.map((finding) => finding.title),
-    ['第一', '第三'],
-  );
-  assert.deepEqual(
-    result.body.map((finding) => finding.title),
-    ['第二', '第四'],
-  );
+  const titles = (list) => list.map((finding) => finding.title);
+  assert.deepEqual(titles(result.inline), ['第一', '第四']);
+  assert.deepEqual(titles(result.fileLevel), ['第二', '第五']);
+  assert.deepEqual(titles(result.body), ['第三']);
 });
 
-test('意見分流：沒有可留言行資料、行號不是整數或路徑碰巧是內建屬性名稱時，都放進本文', () => {
-  const options = { commentable: { 'apps/web/src/a.ts': [[1, 5]] }, reviewedPaths: ['apps/web/src/a.ts', 'constructor'] };
+test('意見分流：沒有可留言行資料、行號不是整數或路徑碰巧是內建屬性名稱時，不會成為 inline comment', () => {
+  const options = {
+    commentable: { 'apps/web/src/a.ts': [[1, 5]] },
+    reviewedPaths: ['apps/web/src/a.ts', 'constructor'],
+    diffPaths: ['apps/web/src/a.ts'],
+  };
   const noRanges = makeFinding({ path: 'constructor', line: 1 });
   const stringLine = makeFinding({ line: '3' });
   const fractionLine = makeFinding({ line: 2.5 });
   const result = routeFindings([noRanges, stringLine, fractionLine], options);
   assert.deepEqual(result.inline, []);
-  assert.deepEqual(result.body, [noRanges, stringLine, fractionLine]);
+  // a.ts 在 diff 內，改發檔案層級留言；constructor 不在 diff 內，只列在本文
+  assert.deepEqual(result.fileLevel, [stringLine, fractionLine]);
+  assert.deepEqual(result.body, [noRanges]);
 
-  assert.deepEqual(routeFindings([], options), { inline: [], body: [] });
+  assert.deepEqual(routeFindings([], options), { inline: [], fileLevel: [], body: [] });
 });
 
 test('意見分流：參數型別不對時丟出 TypeError', () => {
-  const valid = { commentable: {}, reviewedPaths: new Set() };
+  const valid = { commentable: {}, reviewedPaths: new Set(), diffPaths: new Set() };
   assert.throws(() => routeFindings(undefined, valid), TypeError);
   assert.throws(() => routeFindings([], undefined), TypeError);
   assert.throws(() => routeFindings([], null), TypeError);
-  assert.throws(() => routeFindings([], { reviewedPaths: new Set() }), TypeError);
+  assert.throws(() => routeFindings([], { ...valid, commentable: undefined }), TypeError);
   assert.throws(() => routeFindings([], { ...valid, commentable: [] }), TypeError);
-  assert.throws(() => routeFindings([], { commentable: {} }), TypeError);
+  assert.throws(() => routeFindings([], { ...valid, reviewedPaths: undefined }), TypeError);
   assert.throws(() => routeFindings([], { ...valid, reviewedPaths: 'apps/web/src/a.ts' }), TypeError);
   assert.throws(() => routeFindings([], { ...valid, reviewedPaths: [1, 2] }), TypeError);
+  assert.throws(() => routeFindings([], { ...valid, diffPaths: undefined }), TypeError);
+  assert.throws(() => routeFindings([], { ...valid, diffPaths: [1] }), TypeError);
   assert.throws(() => routeFindings(['不是物件'], valid), TypeError);
   assert.throws(() => routeFindings([{ line: 1 }], valid), TypeError);
 });

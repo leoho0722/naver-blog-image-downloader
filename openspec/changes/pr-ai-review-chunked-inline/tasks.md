@@ -109,11 +109,12 @@
   - 自動產生檔的略過，在另開的測試 PR 上驗證：這個 change 的 PR 的 base（main）還沒有 `.gitattributes`，無法在自己的 PR 上驗證，所以從 `features/pr-ai-review-chunked-inline` 開一個測試分支，同時修改 `.agents/skills/` 底下的檔案與一個一般檔案，發 PR 到 `features/pr-ai-review-chunked-inline`。確認前者列在「已略過」、後者被審查，驗證後關閉測試 PR 並刪除分支
 
   若 `resolveReviewThread` 因權限被拒，記錄實際的錯誤，並依 design 的 Risks 更新 spec 與 design。verification：記錄 review ID、討論串的 resolve 狀態與 workflow 執行結果。
-- [ ] 5.2 [after: 5.1, 6.7] Owner 在 PR 頁面檢視 AI review；verification：四項皆符合：
+- [ ] 5.2 [after: 5.1, 6.7, 7.6] Owner 在 PR 頁面檢視 AI review；verification：五項皆符合：
   - inline comment 標在正確的程式碼行上
   - review 本文的總評與結論可以讀懂
   - 在 5.1 的測試 PR 上，自動產生的檔案列在「已略過」清單
   - 6.7 修正過的意見附上確認回覆並收掉，沒修正的維持未 resolve
+  - 7.6 的這一輪中，🟢 意見只出現在本文，🔴／🟡 意見以 inline comment 或檔案層級留言呈現
 
 ## 6. 由 AI 確認已修正後才收掉上一輪的討論串
 
@@ -144,7 +145,27 @@
 
   verification：每種情境的假 `gh` 呼叫紀錄與退出碼符合預期。
 - [x] 6.6 [after: 6.4] 更新 `README.md`「PR AI Review 的運作方式」中收掉討論串的說明：改為 AI 確認已修正才收掉並附回覆，未修正的維持未 resolve。verification：檢查文件內容，確認說明與 spec 一致。
-- [ ] 6.7 [after: 6.5, 6.6] 在 PR #36 實測：修正一則 AI 意見對應的問題後 push，以 `gh api` 確認三件事：那則討論串有確認回覆並變成 resolved；其他未修正的討論串維持未 resolve；新一輪沒有重複提出那些未修正的問題。verification：記錄 run ID、該討論串的回覆內容與各討論串的 resolve 狀態。
+- [x] 6.7 [after: 6.5, 6.6] 在 PR #36 實測：修正一則 AI 意見對應的問題後 push，以 `gh api` 確認三件事：那則討論串有確認回覆並變成 resolved；其他未修正的討論串維持未 resolve；新一輪沒有重複提出那些未修正的問題。verification：記錄 run ID、該討論串的回覆內容與各討論串的 resolve 狀態。
+
+## 7. 依嚴重程度決定意見是否擋合併
+
+- [x] 7.1 調整 `findings.mjs` 與 `prompts.mjs`（design：依嚴重程度決定意見是否擋合併），取代已完成的 2.1 中整體結論的計算方式，滿足 spec「Multi-chunk results are consolidated into one summary」與「The review is published as one pull request review with inline comments」：
+  - `computeVerdict` 只依意見與這一輪沒有收掉的上一輪討論串的嚴重程度計算，各段的 verdict 不再影響結果
+  - `routeFindings` 分成三類：inline comment、檔案層級留言（🔴／🟡，路徑在 diff 內但不能標在本段的可留言行上）、只列在本文（🟢，以及路徑不在 diff 內的 🔴／🟡）
+  - 審查提示詞說明 blocker 與 warning 會擋合併、nit 不會，blocker 與 warning 的 path 必須填本段的檔案；`VERDICT_LABELS` 的文字改為與擋合併一致
+
+  verification：`findings.test.mjs` 涵蓋 spec「overall verdict」與「finding routing」Example 的每一列，並通過 `node --test`。
+- [x] 7.2 在 `plan.mjs` 讀出上一輪討論串的嚴重程度，滿足 spec「Previous AI review threads are resolved after a new review is published」：從第一則留言開頭的標籤讀出 `severity` 寫進 `previousThreads`，讀不出來時視為 `warning`；🟢 的討論串分類為 `nit`，不放進任何提示詞。verification：`plan.test.mjs` 涵蓋 🟢、🔴、讀不出標籤三種討論串，並確認 🟢 不出現在提示詞中，通過 `node --test`。
+- [x] 7.3 [after: 7.1, 7.2] 在 `review.mjs` 與 `ai-review.mjs` 組出新的發布內容，取代已完成的 2.3 中「落在可留言行的意見都發成 inline comment」的分流：
+  - `build-review` 另外寫出 `file-comments.json`（inline 版發布後要送的檔案層級留言）與 `file-comments-fallback.json`（改發本文版時要送的，含全部路徑在 diff 內的 🔴／🟡），格式為 `[{ "path", "body" }]`
+  - 本文的「無法標在程式碼行上的意見」開頭說明 🔴／🟡 另以檔案層級留言發布、🟢 不擋合併；路徑不在 diff 內的 🔴／🟡 標示不會擋合併
+  - `nit` 的上一輪討論串列入 `threadActions`（`reason: "nit"`），回覆說明可選優化不擋合併；`threadSummary` 加上 `nit`，「上一輪意見的追蹤」列出這一項
+  - 整體結論計入這一輪沒有收掉的上一輪 🔴／🟡 討論串
+
+  verification：`review.test.mjs` 涵蓋上述四項與 spec「which threads are resolved」中的 `nit` 一列，並通過 `node --test`。
+- [x] 7.4 [after: 7.3] 改寫 `run-review.sh` 的 `publish`：review 發布成功後，依發布的版本逐則以 `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments` 送出 `subject_type: file` 的檔案層級留言（inline 版，或請求回報失敗但 review 其實已發布時，用 `file-comments.json`；改發本文版時用 `file-comments-fallback.json`）；單則失敗只發出警告；沒有任何版本發布時不送。verification：`shellcheck` 沒有新增問題；本機 e2e 情境確認 inline 版、改發本文版、單則留言失敗、兩個版本都發布失敗四種情況的假 `gh` 呼叫紀錄與退出碼符合預期。
+- [x] 7.5 [after: 7.3] 更新 `README.md`「PR AI Review 的運作方式」：說明 🔴／🟡 以 inline comment 或檔案層級留言擋合併、🟢 只列在本文不擋合併，以及整體結論的意義。verification：檢查文件內容，確認說明與 spec 一致。
+- [ ] 7.6 [after: 7.4, 7.5] 在 PR #36 實測，以 `gh api` 確認四件事：新一輪沒有 🟢 的討論串；上一輪仍未 resolve 的 🟢 討論串附上回覆並 resolve；🔴／🟡 意見以 inline comment 或檔案層級留言呈現且維持未 resolve；整體結論與未 resolve 的 🔴／🟡 一致。若這一輪沒有需要發成檔案層級留言的意見，另以 `gh api` 對 PR #36 送出一則 `subject_type: file` 的測試留言，確認 API 參數可用後刪除。verification：記錄 run ID、各討論串的嚴重程度與 resolve 狀態，以及檔案層級留言的數量。
 
 ## 變更紀錄
 
@@ -178,3 +199,18 @@
 - 收掉上一輪 AI 討論串的條件，由「新一輪發布後一律收掉」改為「新一輪的 AI 確認已修正才收掉」，見 design「由 AI 確認已修正後才收掉上一輪的討論串」（取代「發布成功後才收掉上一輪的討論串」）。
 - 已完成的 3.3 保留原文作為歷史；其中「依 `keepThreadPaths` 收掉上一輪全部討論串」的規則由 6.4 取代，`keepThreadPaths` 由 6.3 的 `threadActions` 取代。
 - 5.2 的驗收新增一項，並改為等 6.7 完成後進行。
+
+6.7 實測紀錄（2026-11-26，已完成）：
+
+- PR #36 第六輪（run 45805490677，head `efe47f3`）：收集到上一輪仍未 resolve 的 AI 討論串 7 個，7 個都交給模型判斷；模型判定 2 個已修正，兩者都先附上確認回覆再 resolve：
+  - `.github/scripts/ai-review/diff.mjs`「內部狀態的 typedef 漏了 _raw」：這次刻意修正的問題，回覆「✅ 新一輪 AI 審查（efe47f3）確認這個問題已修正：第 163 行的 JSDoc 型別已加上 `_raw: string`。」
+  - `.github/scripts/ai-review/review.mjs`「keepThreadPaths 沒有涵蓋更名檔案的舊路徑」：`keepThreadPaths` 在 6.3 已移除，更名改由 `classifyThreads` 比對舊路徑，判定正確。
+- 其餘 5 個（`plan.mjs` 2 個、`review.mjs`、`text.mjs`、`pr-ai-review.yml` 各 1 個）沒有修正，維持未 resolve，也沒有回覆。
+- 新一輪的 9 則意見沒有與這 5 個未修正的問題重複。
+
+需求變更（2026-11-26，依使用者指示「擋合併的條件 = 有 🔴 阻擋合併 或是 🟡 建議修正；不擋合併的條件 = 只剩下 🟢 可選優化」）：
+
+- 🟢 意見只列在 review 本文；🔴／🟡 意見對應不到可留言行時，改發檔案層級留言（兩者皆為使用者的選擇）。見 design「依嚴重程度決定意見是否擋合併」。
+- 已完成的 2.1（整體結論的計算方式）與 2.3（意見分流）保留原文作為歷史，由 7.1、7.3 取代；已完成的 6.1 的分類規則由 7.2 補上 `nit` 一類。
+- 依 PR #36 第六輪審查一併修正文件不一致：design 的 Risks 與 proposal 中 token 的範圍漏掉收集步驟、spec 沒有定義更名檔案上的討論串如何分類、design 補上 fetch base commit 依賴匿名存取的風險。
+- 5.2 改為等 7.6 完成後進行，並新增一項驗收。

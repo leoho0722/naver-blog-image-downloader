@@ -105,7 +105,7 @@ test('只有一段時不送彙整請求，直接使用那一段的總評，並�
   const { review, outcome } = build(plan, [chunk]);
   assert.ok(review.body.startsWith(`${REVIEW_MARKER}\n${runMarker(RUN_ID)}`));
   assert.match(review.body, /只有一段的總評/);
-  assert.match(review.body, /整體結論：🟡 可接受但建議調整/);
+  assert.match(review.body, /整體結論：🟡 有建議修正的問題/);
   assert.equal(review.commit_id, HEAD);
   assert.equal(review.event, 'COMMENT');
   assert.equal(review.comments.length, 1);
@@ -166,7 +166,7 @@ test('三段中一段失敗：列出失敗段落與檔案，結論為審查不�
   const plan = makePlan([['a.ts'], ['b.ts', 'b.test.ts'], ['c.ts']]);
   plan.previousThreads = [{ ref: 'P1', id: 'T-b', path: 'b.ts', filePath: 'b.ts', line: 1, comment: 'x', chunk: 2, disposition: 'ask' }];
   const chunks = [
-    ok({ summary: '一', verdict: 'no_concerns', findings: [finding('a.ts', 2, 'nit')] }),
+    ok({ summary: '一', verdict: 'no_concerns', findings: [finding('a.ts', 2)] }),
     { status: '1', out: '' },
     ok({ summary: '三', verdict: 'no_concerns', findings: [] }),
   ];
@@ -235,7 +235,7 @@ test('head SHA 與規劃不一致時不產出 review，命令列以 1 結束', (
   });
 });
 
-test('命令列 build-review 寫出四個檔案', () => {
+test('命令列 build-review 寫出六個檔案', () => {
   const plan = makePlan([['a.ts']]);
   withResults([ok({ summary: 's', verdict: 'no_concerns', findings: [finding('a.ts', 99)] })], (dir) => {
     const planPath = join(dir, 'plan.json');
@@ -247,13 +247,17 @@ test('命令列 build-review 寫出四個檔案', () => {
       { encoding: 'utf8' },
     );
     assert.equal(result.status, 0, result.stderr);
-    for (const name of ['review.json', 'review-body-only.json', 'summary.md', 'outcome.json']) {
+    for (const name of ['review.json', 'review-body-only.json', 'file-comments.json', 'file-comments-fallback.json', 'summary.md', 'outcome.json']) {
       assert.equal(existsSync(join(out, name)), true, name);
     }
     const review = JSON.parse(readFileSync(join(out, 'review.json'), 'utf8'));
-    // 第 99 行不在可留言行內：放進本文
+    // 第 99 行不在可留言行內：🟡 改發檔案層級留言，也列在本文
     assert.equal(review.comments.length, 0);
     assert.match(review.body, /#### 無法標在程式碼行上的意見[\s\S]*`a\.ts:99`/);
+    const fileComments = JSON.parse(readFileSync(join(out, 'file-comments.json'), 'utf8'));
+    assert.deepEqual(fileComments.map((comment) => comment.path), ['a.ts']);
+    const fallback = JSON.parse(readFileSync(join(out, 'file-comments-fallback.json'), 'utf8'));
+    assert.deepEqual(fallback.map((comment) => comment.path), ['a.ts']);
     const bodyOnly = JSON.parse(readFileSync(join(out, 'review-body-only.json'), 'utf8'));
     assert.equal(bodyOnly.comments, undefined);
     assert.match(bodyOnly.body, /inline comment 無法發布/);
@@ -350,9 +354,9 @@ test('失敗原因中的模型原文會被清理後才放進本文', () => {
 });
 
 // spectra-scenario: pr-ai-review / Findings are routed to inline comments or the body / finding routing
-test('意見指向其他段的檔案時放進本文：模型沒看過那個檔案的內容', () => {
+test('意見指向其他段的檔案時不發成 inline comment：模型沒看過那個檔案的內容，🟡 改發檔案層級留言', () => {
   const plan = makePlan([['a.ts'], ['b.ts']]);
-  const { review } = build(
+  const { review, fileComments } = build(
     plan,
     [
       ok({ summary: '一', verdict: 'changes_suggested', findings: [finding('b.ts', 5, 'warning', '猜測的問題'), finding('a.ts', 3)] }),
@@ -365,6 +369,7 @@ test('意見指向其他段的檔案時放進本文：模型沒看過那個檔�
     ['a.ts:3'],
   );
   assert.match(review.body, /猜測的問題\*\*（`b\.ts:5`）/);
+  assert.deepEqual(fileComments.map((comment) => comment.path), ['b.ts']);
 });
 
 test('標題的換行換成空白，內文未閉合的 code fence 會補上，不會吞掉後面的本文', () => {
@@ -427,7 +432,9 @@ test('上一輪的討論串：只有確認已修正與檔案已沒有變更的�
   assert.match(fixedReply, /^✅ 新一輪 AI 審查（aaaaaaa）確認這個問題已修正：已改用 @\u200Boctocat 建議的寫法 &lt;!-- x --&gt;$/);
   assert.match(outcome.threadActions[1].reply, /沒有可審查的內容（aaaaaaa）/);
   assert.match(outcome.threadActions[2].reply, /已在最新的變更中刪除（aaaaaaa）/);
-  assert.deepEqual(outcome.threadSummary, { fixed: 1, notFixed: 2, noLongerChanged: 2, kept: 2 });
+  assert.deepEqual(outcome.threadSummary, { fixed: 1, notFixed: 2, noLongerChanged: 2, kept: 2, nit: 0 });
+  // 仍未收掉的討論串（未修正、沒有判斷、失敗段落、保留）都是 warning，計入整體結論
+  assert.equal(outcome.verdict, 'incomplete');
   assert.match(review.body, /#### 上一輪意見的追蹤/);
   assert.match(review.body, /- 確認已修正並收掉：1 則/);
   assert.match(review.body, /- 仍未修正或沒有判斷（維持未 resolve）：2 則（`a\.ts:7`、`a\.ts:9`）/);
@@ -440,5 +447,117 @@ test('沒有上一輪的討論串時，本文不出現追蹤區塊', () => {
   const { review, outcome } = build(plan, [ok({ summary: 's', verdict: 'no_concerns', findings: [] })]);
   assert.doesNotMatch(review.body, /上一輪意見的追蹤/);
   assert.deepEqual(outcome.threadActions, []);
-  assert.deepEqual(outcome.threadSummary, { fixed: 0, notFixed: 0, noLongerChanged: 0, kept: 0 });
+  assert.deepEqual(outcome.threadSummary, { fixed: 0, notFixed: 0, noLongerChanged: 0, kept: 0, nit: 0 });
+});
+
+// spectra-scenario: pr-ai-review / Findings are routed to inline comments or the body / finding routing
+// spectra-scenario: pr-ai-review / Optional suggestions stay in the body
+// spectra-scenario: pr-ai-review / Rejected review falls back to a body-only review
+test('依嚴重程度分流：🟢 只列在本文，🔴／🟡 不能標在行上時改發檔案層級留言，改發本文版時路徑在 diff 內的 🔴／🟡 都改發', () => {
+  const plan = makePlan([['a.ts'], ['b.ts']], [
+    { path: 'gen.yaml', oldPath: null, status: 'modified', category: 'generated', lines: 0, chunk: null, truncated: false },
+  ]);
+  const { review, bodyOnly, fileComments, fallbackFileComments, outcome } = build(
+    plan,
+    [
+      ok({
+        summary: '一',
+        verdict: 'changes_suggested',
+        findings: [
+          finding('a.ts', 5, 'warning', '可以標在行上'),
+          finding('a.ts', 6, 'nit', '可選的建議'),
+          finding('a.ts', null, 'blocker', '整個檔案的問題'),
+          finding('gen.yaml', 3, 'warning', '自動產生檔的問題'),
+          finding('docs/missing.md', 1, 'blocker', '不在 diff 內'),
+        ],
+      }),
+      ok({ summary: '二', verdict: 'no_concerns', findings: [] }),
+    ],
+    { synthesisRaw: answer({ summary: '彙整', conclusion: '結論' }) },
+  );
+
+  assert.deepEqual(review.comments.map((comment) => `${comment.path}:${comment.line}`), ['a.ts:5']);
+  assert.deepEqual(fileComments.map((comment) => comment.path), ['a.ts', 'gen.yaml']);
+  assert.match(fileComments[0].body, /^\*\*🔴 阻擋合併｜整個檔案的問題\*\*/);
+  assert.ok(fileComments.every((comment) => comment.body.endsWith(COMMENT_MARKER)));
+  // 改發本文版時：inline 的那一則也改發檔案層級留言；不在 diff 內與 🟢 的不發
+  assert.deepEqual(
+    fallbackFileComments.map((comment) => comment.body.split('\n')[0]),
+    ['**🔴 阻擋合併｜整個檔案的問題**', '**🟡 建議修正｜可以標在行上**', '**🟡 建議修正｜自動產生檔的問題**'],
+  );
+  assert.equal(outcome.fileCommentCount, 2);
+  assert.equal(outcome.verdict, 'blocker');
+
+  // 本文：說明三種情況，不在 diff 內的 🔴 標上 ⚠️；inline 的意見不重複列出
+  assert.match(review.body, /🔴／🟡 的意見另外以檔案層級留言發布，resolve 前會擋合併。/);
+  assert.match(review.body, /🟢 可選優化只列在這裡，不擋合併。/);
+  assert.match(review.body, /標示 ⚠️ 的意見找不到對應的檔案，無法留言，不會擋合併，請人工判斷。/);
+  assert.match(review.body, /- ⚠️ 🔴 阻擋合併｜\*\*不在 diff 內\*\*（`docs\/missing\.md:1`）/);
+  assert.match(review.body, /- 🟢 可選優化｜\*\*可選的建議\*\*（`a\.ts:6`）/);
+  assert.doesNotMatch(review.body, /可以標在行上/);
+  assert.match(bodyOnly.body, /可以標在行上\*\*（`a\.ts:5`）/);
+});
+
+test('只有 🟢 意見時沒有檔案層級留言，本文只說明 🟢 不擋合併，結論為沒有擋合併的問題', () => {
+  const plan = makePlan([['a.ts']]);
+  const { review, fileComments, fallbackFileComments, outcome } = build(plan, [
+    ok({ summary: 's', verdict: 'changes_suggested', findings: [finding('a.ts', 2, 'nit', '小建議')] }),
+  ]);
+  assert.deepEqual(review.comments, []);
+  assert.deepEqual(fileComments, []);
+  assert.deepEqual(fallbackFileComments, []);
+  assert.equal(outcome.verdict, 'no_concerns');
+  assert.match(review.body, /整體結論：🟢 沒有擋合併的問題/);
+  assert.match(review.body, /🟢 可選優化只列在這裡，不擋合併。/);
+  assert.doesNotMatch(review.body, /檔案層級留言/);
+});
+
+// spectra-scenario: pr-ai-review / Earlier optional suggestion is resolved without a judgement
+// spectra-scenario: pr-ai-review / Synthesis failure falls back to chunk summaries / overall verdict
+test('上一輪的 🟢 討論串直接回覆並收掉；這一輪沒有收掉的 🔴／🟡 討論串計入整體結論', () => {
+  const thread = (ref, severity, disposition, chunk = null) => ({
+    ref, id: `T-${ref}`, path: 'a.ts', filePath: 'a.ts', line: 3, comment: 'x', severity, chunk, disposition,
+  });
+  const run = (judgement, severity) => {
+    const plan = makePlan([['a.ts']]);
+    plan.previousThreads = [thread('P1', 'nit', 'nit'), thread('P2', severity, 'ask', 1)];
+    return build(plan, [
+      ok({ summary: 's', verdict: 'no_concerns', findings: [finding('a.ts', 2, 'nit')], previousThreads: [{ ref: 'P2', fixed: judgement, note: '說明' }] }),
+    ]);
+  };
+
+  const notFixed = run(false, 'warning');
+  assert.deepEqual(notFixed.outcome.threadActions.map((action) => [action.id, action.reason]), [['T-P1', 'nit']]);
+  assert.match(notFixed.outcome.threadActions[0].reply, /^✅ 🟢 可選優化不擋合併，收掉這則討論串（aaaaaaa）/);
+  assert.equal(notFixed.outcome.threadSummary.nit, 1);
+  assert.match(notFixed.review.body, /- 🟢 可選優化不擋合併而收掉：1 則/);
+  assert.equal(notFixed.outcome.verdict, 'changes_suggested');
+
+  assert.equal(run(false, 'blocker').outcome.verdict, 'blocker');
+  // 確認已修正的討論串會被收掉，不再計入；只剩 🟢 意見
+  const fixed = run(true, 'blocker');
+  assert.deepEqual(fixed.outcome.threadActions.map((action) => action.reason), ['nit', 'fixed']);
+  assert.equal(fixed.outcome.verdict, 'no_concerns');
+});
+
+test('彙整提示詞的整體結論計入仍未收掉的上一輪討論串，並說明有幾則', () => {
+  const plan = makePlan([['a.ts'], ['b.ts']]);
+  plan.previousThreads = [
+    { ref: 'P1', id: 'T-1', path: 'a.ts', filePath: 'a.ts', line: 1, comment: 'x', severity: 'warning', chunk: null, disposition: 'keep' },
+  ];
+  const chunks = [ok({ summary: '一', verdict: 'no_concerns', findings: [] }), ok({ summary: '二', verdict: 'no_concerns', findings: [] })];
+  withResults(chunks, (dir) => {
+    const planPath = join(dir, 'plan.json');
+    writeFileSync(planPath, JSON.stringify(plan));
+    const prompt = join(dir, 'synthesis.md');
+    const result = spawnSync(process.execPath, [CLI, 'synthesis-prompt', '--plan', planPath, '--results', dir, '--out', prompt], {
+      encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const text = readFileSync(prompt, 'utf8');
+    assert.match(text, /程式計算的整體結論：🟡 有建議修正的問題/);
+    assert.match(text, /另有 1 則上一輪留下、這一輪仍未收掉的 🔴／🟡 意見，已計入整體結論。/);
+  });
+  const { outcome } = build(plan, chunks, { synthesisRaw: answer({ summary: '彙整', conclusion: '結論' }) });
+  assert.equal(outcome.verdict, 'changes_suggested');
 });

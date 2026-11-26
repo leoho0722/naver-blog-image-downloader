@@ -5,7 +5,7 @@
 #   collect  收集上一輪仍未 resolve 的 AI 討論串，寫出 threads.json（需要 GH_TOKEN）
 #   plan     fetch base commit，產生 diff、替檔案分類並切段，並把要判斷的討論串放進提示詞（ai-review.mjs plan）
 #   review   分批送審每一段、需要時送彙整請求，最後組出要發布的 review（ai-review.mjs build-review）
-#   publish  發布 review（被拒時改發只有本文的版本），對 AI 確認已修正的討論串回覆並收掉，並判定結果（需要 GH_TOKEN）
+#   publish  發布 review（被拒時改發只有本文的版本）與檔案層級留言，對要收掉的討論串回覆並 resolve，並判定結果（需要 GH_TOKEN）
 #
 # 環境變數：
 #   BASE_SHA、HEAD_SHA            PR 的 base 與 head commit（head 必須是 PR head，不是 merge commit）
@@ -212,10 +212,13 @@ command_review() {
 # ---------------------------------------------------------------------------
 
 # 發布 review：先送含 inline comment 的版本；失敗時確認沒有帶著這次 run 標記的 review，
-# 才改送只有本文的版本。回傳 0 表示有一個版本已發布
+# 才改送只有本文的版本。回傳 0 表示有一個版本已發布，並把發布的版本寫進 published_version：
+# inline（含 inline comment 的版本）或 fallback（只有本文的版本）
+published_version=""
 post_review() {
   if gh api --method POST "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --input "${review_dir}/review.json" >/dev/null; then
     echo "已發布含 inline comment 的 review"
+    published_version=inline
     return 0
   fi
 
@@ -236,14 +239,40 @@ post_review() {
   fi
   if [ -n "$existing" ]; then
     echo "發布請求回報失敗，但這次 run 的 review 已經存在，不重複發布"
+    published_version=inline
     return 0
   fi
 
   if gh api --method POST "repos/${REPO}/pulls/${PR_NUMBER}/reviews" --input "${review_dir}/review-body-only.json" >/dev/null; then
-    warn "含 inline comment 的 review 發布失敗，已改發只有本文的版本（所有意見列在本文）"
+    warn "含 inline comment 的 review 發布失敗，已改發只有本文的版本（所有意見列在本文，🔴／🟡 改發檔案層級留言）"
+    published_version=fallback
     return 0
   fi
   return 1
+}
+
+# 逐則送出檔案層級留言（🔴／🟡 但不能標在程式碼行上的意見），讓它們形成討論串、擋住合併。
+# 建立 review 的 API 不接受檔案層級的留言，所以 review 發布後另外送（見 design「依嚴重程度決定意見是否擋合併」）。
+# 單則失敗只發出警告：意見仍列在 review 本文
+post_file_comments() {
+  local file="$1" total i path body commit_id posted=0
+  [ -f "$file" ] || return 0
+  total="$(jq 'length' "$file")" || total=0
+  [ "$total" -gt 0 ] || return 0
+  commit_id="$(jq -r '.commit_id' "${review_dir}/review.json")"
+  i=0
+  while [ "$i" -lt "$total" ]; do
+    path="$(jq -r ".[${i}].path" "$file")"
+    body="$(jq -r ".[${i}].body" "$file")"
+    if gh api --method POST "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
+      -f body="$body" -f commit_id="$commit_id" -f path="$path" -f subject_type=file >/dev/null; then
+      posted=$((posted + 1))
+    else
+      warn "無法對 ${path} 發布檔案層級留言，這則意見仍列在 review 本文"
+    fi
+    i=$((i + 1))
+  done
+  echo "已發布檔案層級留言 ${posted} 則（預計 ${total} 則）"
 }
 
 # 依 outcome.json 的 threadActions，對每個討論串先回覆說明、再標為 resolved。
@@ -279,6 +308,11 @@ command_publish() {
   local published=false
   if post_review; then
     published=true
+    if [ "$published_version" = fallback ]; then
+      post_file_comments "${review_dir}/file-comments-fallback.json"
+    else
+      post_file_comments "${review_dir}/file-comments.json"
+    fi
     apply_thread_actions "$outcome"
   fi
 

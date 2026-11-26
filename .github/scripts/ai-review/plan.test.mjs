@@ -301,3 +301,38 @@ test('threads 資料格式不正確時規劃失敗', () => {
     assert.throws(() => buildPlan({ cwd: dir, base, head, threads: {} }), PlanError);
   });
 });
+
+// spectra-scenario: pr-ai-review / Earlier optional suggestion is resolved without a judgement
+test('上一輪討論串的嚴重程度從留言開頭的標籤讀出；🟢 分類為 nit、不放進提示詞，讀不出來時視為 warning', () => {
+  withRepo(({ dir, write, commit }) => {
+    write('a.ts', 'export const a = 1;\n');
+    const base = commit('base');
+    write('a.ts', 'export const a = 2;\n');
+    const head = commit('head');
+
+    const threads = [
+      { id: 'T-nit', path: 'a.ts', line: 1, comment: '**🟢 可選優化｜命名可以更清楚**\n\n細節 <!-- lkai-review-comment -->' },
+      { id: 'T-blocker', path: 'a.ts', line: 1, comment: '**🔴 阻擋合併｜會讓資料遺失**\n\n細節' },
+      { id: 'T-plain', path: 'a.ts', line: 1, comment: '沒有標籤的留言' },
+      // 檔案已不在 diff 內的 🟢 也是 nit：不擋合併，與檔案狀態無關
+      { id: 'T-nit-gone', path: 'gone.ts', line: null, comment: '**🟢 可選優化｜其他檔案**' },
+    ];
+    const { plan, prompts } = buildPlan({ cwd: dir, base, head, threads });
+
+    assert.deepEqual(
+      plan.previousThreads.map((thread) => [thread.id, thread.severity, thread.disposition, thread.chunk]),
+      [
+        ['T-nit', 'nit', 'nit', null],
+        ['T-blocker', 'blocker', 'ask', 1],
+        ['T-plain', 'warning', 'ask', 1],
+        ['T-nit-gone', 'nit', 'nit', null],
+      ],
+    );
+    assert.equal(prompts.length, 1);
+    assert.match(prompts[0], /### P2｜a\.ts/);
+    assert.match(prompts[0], /### P3｜a\.ts/);
+    assert.doesNotMatch(prompts[0], /### P1｜/);
+    assert.doesNotMatch(prompts[0], /命名可以更清楚/);
+    assert.doesNotMatch(prompts[0], /### P4｜/);
+  });
+});

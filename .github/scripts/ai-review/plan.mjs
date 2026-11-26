@@ -16,7 +16,7 @@ import { join } from 'node:path';
 
 import { packChunks } from './chunk.mjs';
 import { annotateFile, parseDiff } from './diff.mjs';
-import { renderChunkPrompt, renderOverview } from './prompts.mjs';
+import { SEVERITY_LABELS, renderChunkPrompt, renderOverview } from './prompts.mjs';
 
 // 上一輪 inline comment 結尾的識別標記；放進提示詞前先去掉（與 review.mjs 的 COMMENT_MARKER 相同）
 const COMMENT_MARKER = '<!-- lkai-review-comment -->';
@@ -265,7 +265,8 @@ function validateThreads(threads) {
 }
 
 /**
- * 依討論串所在的檔案在這次 diff 中的狀態分類（見 design「由 AI 確認已修正後才收掉上一輪的討論串」）：
+ * 依討論串的嚴重程度與所在檔案在這次 diff 中的狀態分類（見 design「由 AI 確認已修正後才收掉上一輪的討論串」）：
+ * - nit：🟢 可選優化不擋合併，不交給模型判斷，發布後直接收掉（見 design「依嚴重程度決定意見是否擋合併」）
  * - ask：檔案屬於某一段且沒有被截斷，交給那一段的模型判斷是否已修正
  * - no-longer-changed：檔案已不在這次 diff 內
  * - deleted：檔案在這次 diff 中被刪除
@@ -274,13 +275,16 @@ function validateThreads(threads) {
  *
  * @param {Array<{ id: string, path: string, line: number | null, comment: string }>} threads
  * @param {Array<{ path: string, oldPath: string | null, category: string, chunk: number | null, truncated: boolean }>} files
- * @returns {Array<{ ref: string, id: string, path: string, filePath: string | null, line: number | null, comment: string, chunk: number | null, disposition: string }>}
+ * @returns {Array<{ ref: string, id: string, path: string, filePath: string | null, line: number | null, comment: string, severity: string, chunk: number | null, disposition: string }>}
  */
 function classifyThreads(threads, files) {
   return threads.map((thread, index) => {
     const file = files.find((entry) => entry.path === thread.path) ?? files.find((entry) => entry.oldPath === thread.path);
+    const severity = severityOf(thread.comment);
     let disposition = 'keep';
-    if (!file) {
+    if (severity === 'nit') {
+      disposition = 'nit';
+    } else if (!file) {
       disposition = 'no-longer-changed';
     } else if (file.category === 'deleted') {
       disposition = 'deleted';
@@ -294,10 +298,24 @@ function classifyThreads(threads, files) {
       filePath: file ? file.path : null,
       line: thread.line,
       comment: thread.comment.replaceAll(COMMENT_MARKER, '').trim(),
+      severity,
       chunk: disposition === 'ask' ? file.chunk : null,
       disposition,
     };
   });
+}
+
+/**
+ * 從留言開頭的嚴重程度標籤（例如「**🟢 可選優化｜標題**」）讀出嚴重程度；
+ * 讀不出來時視為 warning，照會擋合併的意見處理，不會因為格式不符就被直接收掉。
+ *
+ * @param {string} comment
+ * @returns {'blocker' | 'warning' | 'nit'}
+ */
+function severityOf(comment) {
+  const head = comment.trimStart().replace(/^\*\*/, '');
+  const found = Object.entries(SEVERITY_LABELS).find(([, label]) => head.startsWith(`${label}｜`));
+  return found ? found[0] : 'warning';
 }
 
 /**
