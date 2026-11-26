@@ -186,7 +186,13 @@
 - [x] 7.15 `text.mjs` 的 `sanitizeModelText` 也把 `<details`、`</details`（不分大小寫）跳脫成 `&lt;details`、`&lt;/details`（design：清理模型文字後才發布），滿足 spec「Published text is sanitized and kept within GitHub limits」，所有模型寫的意見、總評與回覆都適用。verification：`text.test.mjs` 涵蓋 spec「sanitizing」Example 新增的一列，`review.test.mjs` 確認意見內文的 `<details>` 不會在本文中形成摺疊區塊，並通過 `node --test`。
 - [x] 7.16 [after: 7.15] 在 PR #36 實測：push 後確認 proposal 的失敗情境與 `<details>` 跳脫兩則討論串的處理結果。verification：記錄 run ID、兩則討論串的回覆內容與 resolve 狀態，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串；若有新的 🟡，先交給使用者決定修正或手動 resolve。
 - [x] 7.17 規劃時的錯誤改為清楚的訊息（design：以 .gitattributes 的 linguist-generated 標記自動產生的檔案、審查結果的判定規則），滿足 spec「Generated, deleted, and binary files are excluded from review content」：`plan.mjs` 的 `git check-attr --source` 執行失敗時丟出 `PlanError`，訊息說明需要 Git 2.40 以上與 git 的錯誤內容；`ai-review.mjs` 讀取 `plan.json` 時 JSON 無法解讀也丟出可讀的錯誤。兩者都以退出碼 1 結束、不印出 stack trace。verification：`plan.test.mjs` 以假的 `git` 讓 `check-attr` 失敗，確認丟出 `PlanError`；`review.test.mjs` 以壞掉的 `plan.json` 執行命令列，確認退出碼 1 與錯誤訊息；並通過 `node --test`。
-- [ ] 7.18 [after: 7.17] 在 PR #36 實測：push 後確認 proposal、`git check-attr`、spec「One chunk fails」三則討論串的處理結果。verification：記錄 run ID、三則討論串的回覆內容與 resolve 狀態，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串；若有新的 🟡，先交給使用者決定。
+- [x] 7.18 [after: 7.17] 在 PR #36 實測：push 後確認 proposal、`git check-attr`、spec「One chunk fails」三則討論串的處理結果。verification：記錄 run ID、三則討論串的回覆內容與 resolve 狀態，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串；若有新的 🟡，先交給使用者決定。
+- [x] 7.19 整理第十五輪審查中使用者選擇優化的三項 🟢：
+  - `<!-- lkai-review-comment -->` 只在 `text.mjs` 定義一次，`plan.mjs` 與 `review.mjs` 都從那裡匯入（`review.mjs` 照舊匯出，給測試與其他模組使用）
+  - `README.md` 說明「上一輪留下的 🟢 討論串會收掉」只適用於這個規則生效前留下的討論串；整體結論的列舉補上「審查不完整」；刪除檔案上的討論串改為與 7.12 一致的說法（留言建立時檔案還存在才收掉）
+  - proposal 的整體結論列舉補上「審查不完整」
+
+  verification：`node --test '.github/scripts/ai-review/*.test.mjs'` 通過；`grep` 確認 `<!-- lkai-review-comment -->` 在 `.github/scripts/ai-review/` 的 `.mjs` 中只定義一次；檢查 README 與 proposal 的文字和 spec 一致。
 
 ## 變更紀錄
 
@@ -304,3 +310,6 @@
 
 - PR #36 第十四輪（run 45826838730，head `509f707`）：`git check-attr` 與 spec「One chunk fails」兩則判定已修正，回覆後 resolve；這一輪沒有新的 🔴／🟡，9 項意見都是 🟢，只列在本文。`github-scripts-test` 通過。
 - proposal 的討論串仍判定未修正：留言的三項建議中，「把『review 完全發布不了』與『發布已取得的內容』拆成兩句」沒有做到。已拆成兩句，並依同一輪總評，在 spec「Review run outcome reflects missing review content」的失敗條件補上 `git check-attr` 無法執行與 `plan.json` 無法解讀（與 7.17 的實作一致），待下一輪確認。
+- PR #36 第十五輪（run 45827627638，head `284eff2`）：proposal 的討論串判定已修正，回覆「✅ 新一輪 AI 審查（284eff2）確認這個問題已修正：三項建議都已處理…」並 resolve。整體結論為「🟢 沒有擋合併的問題」，8 項意見都是 🟢；PR #36 沒有任何未 resolve 的討論串，`github-scripts-test` 通過。7.18 完成。
+
+依 PR #36 第十五輪審查（2026-11-26）：整體結論已是「🟢 沒有擋合併的問題」，使用者選擇再優化其中三項 🟢，由 7.19 處理。整理 README 時另外發現兩處與 spec 不一致（整體結論沒有列出「審查不完整」、刪除檔案上的討論串仍寫成一律收掉），一併修正。

@@ -15,6 +15,7 @@ import { BLOCKING_SEVERITIES, computeVerdict, mergeFindings, parseChunkResult, p
 import { SEVERITY_LABELS, VERDICT_LABELS } from './prompts.mjs';
 import {
   COMMENT_LIMIT,
+  COMMENT_MARKER,
   fenceRawAnswer,
   fitReviewBody,
   closeOpenFences,
@@ -27,8 +28,8 @@ import {
 
 /** review 本文開頭的識別標記 */
 export const REVIEW_MARKER = '<!-- lkai-review -->';
-/** 每則 inline comment 與檔案層級留言結尾的識別標記；收掉舊討論串時用它辨認 AI 留下的討論串 */
-export const COMMENT_MARKER = '<!-- lkai-review-comment -->';
+// 識別標記定義在 text.mjs（plan.mjs 也用它），這裡照舊匯出，讓測試與其他模組沿用
+export { COMMENT_MARKER };
 /** 這次 run 的識別標記；inline 版發布失敗時，用它確認是否其實已經發布過 */
 export const runMarker = (runId) => `<!-- lkai-review-run: ${runId} -->`;
 

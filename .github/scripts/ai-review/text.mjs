@@ -10,6 +10,9 @@
 //
 // 只使用 Node 內建功能，相容 Node 20 以上。
 
+/** 每則 inline comment 與檔案層級留言結尾的識別標記；收掉舊討論串時用它辨認 AI 留下的討論串 */
+export const COMMENT_MARKER = '<!-- lkai-review-comment -->';
+
 /** review 本文的長度上限（字元數，以 JS 字串的 .length 計算）。 */
 export const BODY_LIMIT = 60000;
 

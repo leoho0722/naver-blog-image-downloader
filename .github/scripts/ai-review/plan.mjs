@@ -18,9 +18,8 @@ import { join } from 'node:path';
 import { packChunks } from './chunk.mjs';
 import { annotateFile, parseDiff } from './diff.mjs';
 import { SEVERITY_LABELS, renderChunkPrompt, renderOverview } from './prompts.mjs';
-
-// 上一輪 inline comment 結尾的識別標記；放進提示詞前先去掉（與 review.mjs 的 COMMENT_MARKER 相同）
-const COMMENT_MARKER = '<!-- lkai-review-comment -->';
+// 上一輪留言結尾的識別標記；放進提示詞前先去掉
+import { COMMENT_MARKER } from './text.mjs';
 
 /** 每段預設的行數上限（估計值，見 design「依元件區域分組、原始碼與測試相鄰的分段裝箱規則」） */
 export const DEFAULT_MAX_CHUNK_LINES = 6000;
