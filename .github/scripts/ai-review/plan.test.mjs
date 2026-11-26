@@ -250,7 +250,8 @@ test('上一輪的討論串依檔案狀態分類，只有要判斷的討論串�
     const threads = [
       { id: 'T-a', path: 'a.ts', line: 1, comment: '請改成常數 <!-- lkai-review-comment -->' },
       { id: 'T-keep', path: 'keep.ts', line: 1, comment: '沒有變更的檔案' },
-      { id: 'T-gone', path: 'gone.ts', line: 1, comment: '被刪除的檔案' },
+      // 留言建立時（base）檔案還存在，現在被刪除：留言講的程式碼已不存在
+      { id: 'T-gone', path: 'gone.ts', line: 1, comment: '被刪除的檔案', commit: base },
       { id: 'T-big', path: 'big.ts', line: 3, comment: '被截斷的檔案' },
       { id: 'T-lock', path: 'pnpm-lock.yaml', line: 1, comment: '自動產生的檔案' },
       { id: 'T-renamed', path: 'old/name.ts', line: null, comment: '更名前的路徑 ```含反引號```' },
@@ -365,4 +366,36 @@ test('精簡總覽：本段全部列出，其他檔案最多 100 筆並附上沒
   assert.equal(listed.filter((line) => line.startsWith('- b/')).length, 98);
   assert.match(second, /- 另有 52 個檔案沒有列出：第 2 段 52 個/);
   assert.doesNotMatch(second, /自動產生/);
+});
+
+// spectra-scenario: pr-ai-review / Thread about a deletion stays open
+// spectra-scenario: pr-ai-review / Unfixed issue keeps the thread open / which threads are resolved
+test('刪除檔案上的討論串：留言建立時檔案還存在才分類為 deleted，否則與 commit 取不到時一樣保留', () => {
+  withRepo(({ write, remove, commit, dir }) => {
+    write('code.ts', 'export const c = 1;\n');
+    write('tests.ts', 'export const t = 1;\n');
+    write('keep.ts', 'export const k = 1;\n');
+    const base = commit('base');
+    // 第一個 commit：刪除 tests.ts（AI 對這個刪除留言），code.ts 仍存在（AI 對程式碼留言）
+    remove('tests.ts');
+    write('keep.ts', 'export const k = 2;\n');
+    const first = commit('first');
+    // 第二個 commit：code.ts 也被刪除
+    remove('code.ts');
+    const head = commit('head');
+
+    const threads = [
+      { id: 'T-code', path: 'code.ts', line: 1, comment: '**🟡 建議修正｜程式碼的問題**', commit: first },
+      { id: 'T-deletion', path: 'tests.ts', line: null, comment: '**🔴 阻擋合併｜整個測試檔被移除**', commit: first },
+      { id: 'T-missing', path: 'code.ts', line: 1, comment: '**🟡 建議修正｜commit 已不在**', commit: 'f'.repeat(40) },
+      { id: 'T-none', path: 'code.ts', line: 1, comment: '**🟡 建議修正｜沒有 commit**', commit: null },
+      { id: 'T-bad', path: 'code.ts', line: 1, comment: '**🟡 建議修正｜不是 SHA**', commit: '--output=x' },
+    ];
+    const { plan } = buildPlan({ cwd: dir, base, head, threads });
+    assert.deepEqual(
+      Object.fromEntries(plan.previousThreads.map((thread) => [thread.id, thread.disposition])),
+      { 'T-code': 'deleted', 'T-deletion': 'keep', 'T-missing': 'keep', 'T-none': 'keep', 'T-bad': 'keep' },
+    );
+    assert.equal(plan.files.find((file) => file.path === 'tests.ts').category, 'deleted');
+  });
 });

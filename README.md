@@ -93,6 +93,7 @@ pnpm dev      # 開發伺服器 http://localhost:5173
 ### PR AI Review 的運作方式
 
 - **排除自動產生的檔案**：依 PR base commit 的 `.gitattributes` 中標記為 `linguist-generated` 的路徑（Spectra 產生的 skill、archify 輸出、lockfile）略過，只列在 review 的「已略過」清單；在 PR 中修改 `.gitattributes` 對該 PR 本身不生效。已刪除與二進位的檔案也只列出、不審查內容。
+- **只防誤標，不防修改審查流程**：workflow 執行的是 PR 中的審查 script，同 repo 的 PR 可以直接修改它，讓自己的程式碼跳過審查，也能用改過的 script 取得有寫入權限的 token。上面「修改 `.gitattributes` 不生效」只防止藉由這個檔案略過。同 repo 的 PR 只有具寫入權限的協作者能開，fork 的 PR 拿不到 secret 與寫入權限；修改 `.github/scripts/ai-review/` 或 workflow 的 PR 需要人工審查。
 - **依相關性分段並全部審查**：剩下的 patch 超過每段 6000 行時，依元件區域與功能分段（原始碼與對應的測試放在同一段），每段都會送審，一次最多同時送出 3 段；超過 6 段時照樣全部審查，但會提醒可以拆小 PR。多段時最後再彙整成一份總評。
 - **以一次 PR review 發布，依嚴重程度決定是否擋合併**：
   - 🔴 阻擋合併與 🟡 建議修正：能對應到 diff 行的以 inline comment 標在該行，對應不到行的改發檔案層級留言（不指定行號、標在檔案上）。兩者都會形成討論串，main 要求所有對話 resolve 才能合併，所以修正或由人確認之前會擋住合併。

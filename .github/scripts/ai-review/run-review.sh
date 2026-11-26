@@ -70,8 +70,9 @@ require_positive_integer() {
 # ---------------------------------------------------------------------------
 
 # 收集上一輪仍未 resolve 的 AI 討論串：第一則留言是 github-actions 寫的，而且含有識別標記。
-# 寫出 threads.json：[{ id, path, line, comment }]，line 優先用目前的行號，討論串已過時則用原本的行號；
+# 寫出 threads.json：[{ id, path, line, comment, commit }]，line 優先用目前的行號，討論串已過時則用原本的行號；
 # 檔案層級的討論串沒有行號，寫成 null（GraphQL 對它回傳的 line 是 1，不能直接使用）。
+# commit 是第一則留言建立時的 commit，規劃時用來判斷刪除檔案上的討論串是不是在講「刪除這件事」。
 # 查詢失敗時只發出警告並寫出空清單，這一輪不收掉任何討論串，審查照常進行。
 command_collect() {
   rm -rf "$work_dir"
@@ -84,7 +85,7 @@ command_collect() {
     pullRequest(number: $number) {
       reviewThreads(first: 100, after: $endCursor) {
         pageInfo { hasNextPage endCursor }
-        nodes { id isResolved path line originalLine subjectType comments(first: 1) { nodes { author { login } body } } }
+        nodes { id isResolved path line originalLine subjectType comments(first: 1) { nodes { author { login } body originalCommit { oid } } } }
       }
     }
   }
@@ -100,7 +101,8 @@ command_collect() {
         | select(.isResolved | not)
         | select((.comments.nodes[0].author.login // "") == "github-actions")
         | select((.comments.nodes[0].body // "") | contains($marker))
-        | { id, path, line: (if .subjectType == "FILE" then null else (.line // .originalLine) end), comment: .comments.nodes[0].body } ]' \
+        | { id, path, line: (if .subjectType == "FILE" then null else (.line // .originalLine) end), comment: .comments.nodes[0].body,
+            commit: (.comments.nodes[0].originalCommit.oid // null) } ]' \
     "${work_dir}/threads-raw.json" >"${work_dir}/threads.json"; then
     warn "解析上一輪的 AI 討論串失敗，這一輪不收掉任何討論串"
     printf '[]\n' >"${work_dir}/threads.json"

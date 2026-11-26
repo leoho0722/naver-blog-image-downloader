@@ -8,7 +8,8 @@
 // 只有 reviewed 的檔案會送出內容，其他分類只出現在檔案總覽（自動產生的檔案只寫數量）。
 //
 // 自動產生檔一律依 base commit 的 .gitattributes 判斷，PR 無法藉由修改 .gitattributes
-// 讓自己的程式碼跳過審查。
+// 讓自己的程式碼跳過審查。這只防止藉由 .gitattributes 略過：這個 script 本身取自 PR，
+// 同 repo 的 PR 仍可直接修改它（見 design 的 Risks「這個機制防的是誤標，不防惡意修改審查流程」）。
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -118,7 +119,7 @@ function generatedPaths(cwd, baseSha, paths) {
 /**
  * 規劃一次審查。
  *
- * @param {{ cwd: string, base: string, head: string, maxChunkLines?: number, threads?: Array<{ id: string, path: string, line: number | null, comment: string }> }} options
+ * @param {{ cwd: string, base: string, head: string, maxChunkLines?: number, threads?: Array<{ id: string, path: string, line: number | null, comment: string, commit?: string | null }> }} options
  *   threads：上一輪仍未 resolve 的 AI 討論串（run-review.sh collect 產生的 threads.json）
  * @returns {{ plan: object, prompts: string[] }} plan 是 plan.json 的內容；prompts[i] 是第 i+1 段的提示詞
  */
@@ -211,7 +212,7 @@ export function buildPlan({ cwd, base, head, maxChunkLines = DEFAULT_MAX_CHUNK_L
     }
   }
 
-  const previousThreads = classifyThreads(threads, files);
+  const previousThreads = classifyThreads(threads, files, (commit, path) => fileExistsAt(cwd, commit, path));
 
   const prompts = chunks.map((chunk) =>
     renderChunkPrompt({
@@ -256,7 +257,8 @@ function validateThreads(threads) {
       typeof thread.path === 'string' &&
       thread.path !== '' &&
       (thread.line === null || (Number.isInteger(thread.line) && thread.line >= 1)) &&
-      typeof thread.comment === 'string';
+      typeof thread.comment === 'string' &&
+      (thread.commit === undefined || thread.commit === null || typeof thread.commit === 'string');
     if (!ok) {
       throw new PlanError(`上一輪討論串的第 ${index + 1} 筆資料格式不正確：${JSON.stringify(thread)}`);
     }
@@ -268,15 +270,17 @@ function validateThreads(threads) {
  * - nit：🟢 可選優化不擋合併，不交給模型判斷，發布後直接收掉（見 design「依嚴重程度決定意見是否擋合併」）
  * - ask：檔案屬於某一段且沒有被截斷，交給那一段的模型判斷是否已修正
  * - no-longer-changed：檔案已不在這次 diff 內
- * - deleted：檔案在這次 diff 中被刪除
- * - keep：檔案被截斷、是自動產生或二進位檔案，維持未 resolve
+ * - deleted：檔案在這次 diff 中被刪除，而且留言建立時檔案還存在（留言講的是現在已不存在的程式碼）；
+ *   留言建立時檔案已經是刪除狀態，代表留言講的就是這個刪除，與 commit 取不到時一樣分類為 keep
+ * - keep：檔案被截斷、是自動產生或二進位檔案，或是上述講刪除本身的討論串，維持未 resolve
  * 檔案被更名時，討論串記錄的是舊路徑，所以也比對更名前的路徑。
  *
  * @param {Array<{ id: string, path: string, line: number | null, comment: string }>} threads
  * @param {Array<{ path: string, oldPath: string | null, category: string, chunk: number | null, truncated: boolean }>} files
+ * @param {(commit: string, path: string) => boolean} existsAt 檔案在某個 commit 是否存在
  * @returns {Array<{ ref: string, id: string, path: string, filePath: string | null, line: number | null, comment: string, severity: string, chunk: number | null, disposition: string }>}
  */
-function classifyThreads(threads, files) {
+function classifyThreads(threads, files, existsAt) {
   return threads.map((thread, index) => {
     const file = files.find((entry) => entry.path === thread.path) ?? files.find((entry) => entry.oldPath === thread.path);
     const severity = severityOf(thread.comment);
@@ -286,7 +290,7 @@ function classifyThreads(threads, files) {
     } else if (!file) {
       disposition = 'no-longer-changed';
     } else if (file.category === 'deleted') {
-      disposition = 'deleted';
+      disposition = thread.commit && existsAt(thread.commit, thread.path) ? 'deleted' : 'keep';
     } else if (file.category === 'reviewed' && file.chunk !== null && !file.truncated) {
       disposition = 'ask';
     }
@@ -302,6 +306,27 @@ function classifyThreads(threads, files) {
       disposition,
     };
   });
+}
+
+/**
+ * 檔案在某個 commit 是否存在。commit 不是完整的 SHA、不在本機（例如 force push 後）或檔案不存在時都回傳 false。
+ *
+ * @param {string} cwd
+ * @param {string} commit
+ * @param {string} path
+ * @returns {boolean}
+ */
+function fileExistsAt(cwd, commit, path) {
+  // 只接受完整的 SHA，避免把來自 API 的字串當成 git 的選項或其他 ref 解讀
+  if (!/^[0-9a-f]{40}([0-9a-f]{24})?$/.test(commit)) {
+    return false;
+  }
+  try {
+    git(cwd, ['cat-file', '-e', `${commit}:${path}`]);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**

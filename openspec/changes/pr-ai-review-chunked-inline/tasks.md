@@ -176,6 +176,13 @@
 
   verification：`review.test.mjs` 確認檔案層級留言含 run 標記；`shellcheck` 沒有新增問題；本機 e2e 確認三種情況：重試後成功時退出碼 0；回應遺失但留言已存在時不重試；兩次都失敗時其他留言與收掉討論串照常、退出碼 1。
 - [x] 7.11 [after: 7.10] 在 PR #36 實測：push 後確認 `run-review.sh`「檔案層級留言發布失敗時只發警告」的討論串由 AI 確認已修正並收掉。verification：記錄 run ID、該討論串的回覆內容，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。
+- [x] 7.12 刪除檔案上的討論串只在「留言建立時檔案還存在」才收掉（design：由 AI 確認已修正後才收掉上一輪的討論串），取代已完成的 6.1 中「檔案在這次 diff 中被刪除就分類為 `deleted`」的規則，滿足 spec「Previous AI review threads are resolved after a new review is published」：
+  - `run-review.sh` 的 `collect` 另外記錄第一則留言的 `originalCommit`，寫進 `threads.json` 的 `commit`
+  - `plan.mjs` 對刪除的檔案以 `git cat-file -e <commit>:<path>` 檢查留言建立時檔案是否存在：存在才分類為 `deleted`，不存在或 commit 取不到時分類為 `keep`
+
+  verification：`plan.test.mjs` 以暫存 repo 涵蓋 spec「which threads are resolved」中刪除檔案的三列（留言時存在、留言時已刪除、commit 取不到），並通過 `node --test`；`shellcheck` 沒有新增問題；e2e 的假資料加上 `originalCommit`，確認寫進 `threads.json`。
+- [x] 7.13 修正「PR 無法讓自己的程式碼跳過審查」的說法（design：Risks「這個機制防的是誤標，不防惡意修改審查流程」）：`README.md`、`.gitattributes` 與 `plan.mjs` 的說明改為只防止藉由修改 `.gitattributes` 略過，並註明同 repo 的 PR 可以直接修改審查 script。verification：檢查三處文字與 design 一致。
+- [ ] 7.14 [after: 7.12, 7.13] 在 PR #36 實測：push 後確認 `plan.mjs`「刪除檔案上的 🔴／🟡 討論串在下一輪會被直接收掉」與 `pr-ai-review.yml`「審查腳本取自 PR head」兩則討論串的處理結果；後者若 AI 仍判定未修正，依使用者的選擇以 owner 帳號回覆理由（只防誤標、從 base 執行不在這次範圍，見 design 的 Risks）後 resolve。verification：記錄 run ID、兩則討論串的回覆內容與 resolve 狀態，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串。
 
 ## 變更紀錄
 
@@ -269,3 +276,9 @@
 - 測試 PR #37 上，自動產生的檔案列在「已略過」清單
 - 6.7 修正的 `diff.mjs`「內部狀態的 typedef 漏了 _raw」討論串附上確認回覆並 resolve（因為已修正、行號已變更，GitHub 把它標為過時並收合）；沒修正的維持未 resolve
 - 第七輪的 🟢 意見只出現在本文，🔴／🟡 以 inline comment 呈現
+
+依 PR #36 最後一輪審查（2026-11-26，在 5.2 驗收之後）：
+
+- 新增 7.12：刪除檔案上的討論串只在留言建立時檔案還存在才收掉（使用者選擇根本解，而不是一律保留）。已完成的 6.1 中「被刪除就分類為 `deleted`」的規則由 7.12 取代。
+- 新增 7.13：修正「PR 無法讓自己的程式碼跳過審查」的說法（使用者選擇只修正文件，從 base 執行 script 不在這次範圍）。
+- 新增 7.14 實測。5.2 的驗收結果不受影響：這兩項只改變刪除檔案上討論串的收掉條件與文件說法。
