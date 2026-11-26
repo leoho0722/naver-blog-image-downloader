@@ -4,9 +4,11 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-# 建立 review 與 resolve 討論串都只需要 pull-requests: write；不再發一般留言，所以不需要 issues: write
+# 建立 review 需要 pull-requests: write；不再發一般留言，所以不需要 issues: write。
+# 實驗中：只有 pull-requests: write 時，resolveReviewThread 會回 Resource not accessible by integration，
+# 這裡試試加上 contents: write 是否能讓 GITHUB_TOKEN 收掉上一輪的討論串（見 change pr-ai-review-chunked-inline 的 5.1 實測紀錄）
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 # 同一個 PR 有新的 push 時，取消還在執行的舊審查。

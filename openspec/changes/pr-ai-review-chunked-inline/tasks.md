@@ -88,7 +88,7 @@
   - 沒有可審查內容：不呼叫 lkai，script 成功
 
   verification：每種情況的假 `lkai`／`gh` 呼叫紀錄與退出碼符合上述預期。
-- [ ] 3.5 [after: 1.2, 1.3, 2.1, 2.2] 新增 `.github/workflows/github-scripts-test.yml`：`pull_request` 與 push 到 main 時，若 `.github/scripts/**` 或這個 workflow 有變動，在 `ubuntu-latest` 執行 `node --test .github/scripts/ai-review/`。verification：`actionlint` 沒有問題，這個 change 的 PR 上該 workflow 執行並通過。
+- [x] 3.5 [after: 1.2, 1.3, 2.1, 2.2] 新增 `.github/workflows/github-scripts-test.yml`：`pull_request` 與 push 到 main 時，若 `.github/scripts/**` 或這個 workflow 有變動，在 `ubuntu-latest` 執行 `node --test .github/scripts/ai-review/`。verification：`actionlint` 沒有問題，這個 change 的 PR 上該 workflow 執行並通過。
 
 ## 4. 文件
 
@@ -130,3 +130,10 @@
 實作期間的調整：
 
 - 各 task 中的 `node --test .github/scripts/ai-review/` 在 CI 改為 `node --test '.github/scripts/ai-review/*.test.mjs'`：Node 24 的 `--test` 不接受資料夾參數（本機的 Node 26 可以），第一次在 PR 上執行時因此失敗。
+
+5.1 實測紀錄（2026-11-26，尚未完成）：
+
+- PR #36 第一輪（run 45764746864）：發布含 5 則 inline comment 的 review，行號皆對應到正確的程式碼行。
+- PR #36 第二輪（run 45765429797）：收集到上一輪的 5 個 AI 討論串，新的 review（9 則 inline comment）發布成功，但 5 次 `resolveReviewThread` 全部失敗，錯誤為 `gh: Resource not accessible by integration`。workflow 權限為 `contents: read`、`pull-requests: write`，PR 不是 fork 發出。依 design 的 Risks，需要決定改用其他 token 或改為手動 resolve，再更新 spec 與 design。
+- `github-scripts-test`：第一次因 Node 24 不接受資料夾參數而失敗，改為 glob 後通過（run 45765429799）。
+- 自動產生檔的略過：測試 PR #37（base 為 `features/pr-ai-review-chunked-inline`）中，`.agents/skills/spectra-apply/SKILL.md` 列在「已略過」，一般檔案正常送審（run 45765867496）；驗證後已關閉 PR 並刪除分支。
