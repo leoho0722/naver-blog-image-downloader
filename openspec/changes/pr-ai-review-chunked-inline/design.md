@@ -194,7 +194,7 @@ GitHub 拒絕整個 review（回應不是 2xx）時，改送一個不含 inline 
 | 🔴／🟡 | 路徑不在這個 PR 的 diff 內 | 只列在本文，標示不會擋合併 | 否 |
 | 🟢 | 任何位置 | 只列在本文 | 否 |
 
-- **檔案層級留言**：建立 review 的 API 不接受檔案層級的留言（REST 的 `comments` 沒有 `subject_type`，GraphQL 的 `DraftPullRequestReviewThread` 也沒有 `subjectType`，實測查詢 schema 與文件），所以在 review 發布成功之後，逐則以 `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments` 送出 `subject_type: file`、`commit_id`（PR 的 head commit）、`path` 與內文。每則會在 PR 時間軸上多一筆 review 紀錄；這類意見一輪通常只有 0～2 則（估計，7.6 實測時記錄實際數量）。單則失敗只發出警告，意見仍列在本文，不會遺失。
+- **檔案層級留言**：建立 review 的 API 不接受檔案層級的留言（REST 的 `comments` 沒有 `subject_type`，GraphQL 的 `DraftPullRequestReviewThread` 也沒有 `subjectType`，實測查詢 schema 與文件），所以在 review 發布成功之後，逐則以 `POST /repos/{owner}/{repo}/pulls/{pull_number}/comments` 送出 `subject_type: file`、`commit_id`（PR 的 head commit）、`path` 與內文。每則會在 PR 時間軸上多一筆 review 紀錄；這類意見一輪通常只有 0～2 則（估計，7.6 實測時記錄實際數量）。內文在識別標記之前另加這次 run 的標記。請求失敗時，先列出 PR 的留言，確認有沒有路徑與內文完全相同的留言（請求可能其實成功了、只是回應沒收到；內文含有 run 標記，不會誤認成其他輪的留言），沒有才重試一次；仍然失敗時發出 error，其他留言與收掉討論串照常處理，最後讓 workflow 失敗：這則意見沒能擋住合併，屬於審查內容的缺漏，不只是呈現方式降級（使用者選擇）。意見仍列在本文，不會遺失。
 - **改發只有本文的版本時**：inline 版被拒時，全部 🔴／🟡 中路徑在 diff 內的意見都改發檔案層級留言，讓它們仍然擋合併。沒有任何版本發布時，不送檔案層級留言。
 - **本文**：「無法標在程式碼行上的意見」區塊列出所有不是 inline comment 的意見，開頭說明 🔴／🟡 另以檔案層級留言發布、🟢 不擋合併；路徑不在 diff 內的 🔴／🟡 標示「不會擋合併，請人工判斷」。
 - **上一輪留下的 🟢 討論串**（這個規則生效前留下的）：不交給模型判斷，發布成功後回覆「🟢 可選優化不擋合併」再 resolve。討論串的嚴重程度從第一則留言開頭的標籤讀出；讀不出來時視為 🟡，照一般規則處理。
@@ -292,8 +292,8 @@ diff 解析、行號標註、裝箱、文字清理與 JSON 驗證，都放在 `.
 
 原則是「審查內容有缺漏才算失敗，只是呈現方式降級只發出警告」：
 
-- **workflow 失敗**：任一段送審失敗、回答不完整、JSON 無法解讀；review 完全發布不了；base commit 取不到；`build-review` 的 head SHA 與 `plan.json` 不一致。第一種情況仍要發布已經取得的部分，並列出失敗的段落。
-- **只發出警告**：彙整請求失敗（改為依段落順序列出各段總評）、inline 版本被拒而改發只有本文的版本、檔案層級留言發布失敗、回覆或 resolve 舊討論串失敗、段數超過 `WARN_CHUNKS`、本文超過長度而被截斷。
+- **workflow 失敗**：任一段送審失敗、回答不完整、JSON 無法解讀；review 完全發布不了；檔案層級留言重試後仍發布不了（這則 🔴／🟡 沒能擋住合併）；base commit 取不到；`build-review` 的 head SHA 與 `plan.json` 不一致。第一種情況仍要發布已經取得的部分，並列出失敗的段落。
+- **只發出警告**：彙整請求失敗（改為依段落順序列出各段總評）、inline 版本被拒而改發只有本文的版本、回覆或 resolve 舊討論串失敗、段數超過 `WARN_CHUNKS`、本文超過長度而被截斷。
 - **整體結論**：依序判斷，有 🔴 意見或這一輪沒有收掉的上一輪 🔴 討論串時為「有阻擋合併的問題」；否則有段落失敗時為「審查不完整」；否則有 🟡 意見或這一輪沒有收掉的上一輪 🟡 討論串時為「有建議修正的問題」；否則為「沒有擋合併的問題」（可以有 🟢）。意見的嚴重程度不影響 workflow 的成敗。
 - **不送審**：沒有任何可審查的檔案（全部是自動產生、已刪除或二進位）時，不送出模型請求，發布一則說明沒有可審查內容的 review，workflow 成功。
 
