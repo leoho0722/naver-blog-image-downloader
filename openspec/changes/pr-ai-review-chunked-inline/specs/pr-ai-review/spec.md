@@ -6,7 +6,7 @@ The PR AI review reviews every pull request's diff with an AI model through LKAI
 
 ### Requirement: Generated, deleted, and binary files are excluded from review content
 
-The review SHALL NOT send the patch content of a file when the file is marked `linguist-generated` by the `.gitattributes` of the pull request's base commit, when the file is deleted in the pull request, or when the file is binary. The review SHALL evaluate `linguist-generated` against the base commit, so a pull request that changes `.gitattributes` SHALL NOT exclude its own files by doing so. When the pull request changes `.gitattributes`, the published review SHALL state that generated files were determined by the base commit's rules. Each excluded file SHALL still appear in the file overview given to the model and in the published review, labelled with the reason it was skipped.
+The review SHALL NOT send the patch content of a file when the file is marked `linguist-generated` by the `.gitattributes` of the pull request's base commit, when the file is deleted in the pull request, or when the file is binary. The review SHALL evaluate `linguist-generated` against the base commit, so a pull request that changes `.gitattributes` SHALL NOT exclude its own files by doing so. When the pull request changes `.gitattributes`, the published review SHALL state that generated files were determined by the base commit's rules. Each excluded file SHALL still appear in the file overview given to the model and in the published review, labelled with the reason it was skipped. The workflow SHALL fetch the base commit before planning, and when the base commit is not available locally, planning SHALL fail without classifying any file, and the run SHALL NOT send any model request, publish any review, or resolve any thread.
 
 #### Scenario: Files are classified before chunking
 
@@ -31,6 +31,11 @@ The review SHALL NOT send the patch content of a file when the file is marked `l
 - **AND** `.gitattributes` itself is sent for review
 - **AND** the published review states that generated files were determined by the base commit's `.gitattributes`
 
+#### Scenario: Base commit is unavailable
+
+- **WHEN** the base commit of the pull request cannot be found locally after fetching
+- **THEN** planning fails, no model request is sent, no review is published, no thread is resolved, and the workflow fails
+
 #### Scenario: Nothing is reviewable
 
 - **WHEN** every changed file in the pull request is generated, deleted, or binary
@@ -40,7 +45,7 @@ The review SHALL NOT send the patch content of a file when the file is marked `l
 
 ### Requirement: Reviewable files are packed into relevance-grouped chunks
 
-The review SHALL count each reviewable file's annotated patch lines, including the file's heading line, and pack files into chunks whose size does not exceed `MAX_CHUNK_LINES` (default 6000). Files SHALL be grouped by component area: the first two path segments under `apps/`, the first path segment elsewhere, and a single area named by the empty string for files at the repository root. Areas SHALL be processed in name order, so the repository root area comes first. Within an area, files sharing a feature key SHALL form one feature group. The feature key is the path with every `src`, `__tests__`, `tests`, and `test` directory segment removed, and with the file name stripped of a `.test` or `.spec` suffix before the extension, a `test_` prefix, and a `_test` suffix before the extension. Feature groups SHALL be ordered by feature key, and files within a group by path. An area SHALL be appended to the current chunk when it fits the remaining space, SHALL start a new chunk when it fits an empty chunk, and SHALL otherwise be split by feature group, each group appended to the current chunk when it fits or starting a new chunk otherwise. A feature group larger than `MAX_CHUNK_LINES` SHALL be split by file in group order, each file appended to the current chunk when it fits or starting a new chunk otherwise. A single file larger than `MAX_CHUNK_LINES` SHALL form its own chunk truncated to `MAX_CHUNK_LINES` lines and SHALL be marked truncated.
+The review SHALL count each reviewable file's annotated patch lines, including the file's heading line, and pack files into chunks whose size does not exceed `MAX_CHUNK_LINES` (default 6000). Files SHALL be grouped by component area: the first two path segments under `apps/`, the first path segment elsewhere, and a single area named by the empty string for files at the repository root. Areas SHALL be processed in name order, so the repository root area comes first. Within an area, files sharing a feature key SHALL form one feature group. The feature key is the path with every `src`, `__tests__`, `tests`, and `test` directory segment removed, and with the file name stripped of its extension and then of a `.test` or `.spec` suffix, a `test_` prefix, and a `_test` suffix. Feature groups SHALL be ordered by feature key, and files within a group by path. Every ordering SHALL compare strings by Unicode code point. An area SHALL be appended to the current chunk when it fits the remaining space, SHALL start a new chunk when it fits an empty chunk, and SHALL otherwise be split by feature group, each group appended to the current chunk when it fits or starting a new chunk otherwise. A feature group larger than `MAX_CHUNK_LINES` SHALL be split by file in group order, each file appended to the current chunk when it fits or starting a new chunk otherwise. A single file larger than `MAX_CHUNK_LINES` SHALL form its own chunk truncated to `MAX_CHUNK_LINES` lines and SHALL be marked truncated.
 
 #### Scenario: Small diff stays in one chunk
 
@@ -72,12 +77,13 @@ The review SHALL count each reviewable file's annotated patch lines, including t
 
 | Path | Feature key |
 | ---- | ----------- |
-| `apps/web/src/__tests__/lib/x.test.ts` | `apps/web/lib/x.ts` |
-| `apps/web/src/lib/x.ts` | `apps/web/lib/x.ts` |
-| `apps/backend/tests/test_app.py` | `apps/backend/app.py` |
-| `apps/backend/src/app.py` | `apps/backend/app.py` |
-| `apps/backend/src/handler_test.py` | `apps/backend/handler.py` |
-| `README.md` | `README.md` |
+| `apps/web/src/__tests__/lib/x.test.ts` | `apps/web/lib/x` |
+| `apps/web/src/__tests__/lib/x.test.tsx` | `apps/web/lib/x` |
+| `apps/web/src/lib/x.ts` | `apps/web/lib/x` |
+| `apps/backend/tests/test_app.py` | `apps/backend/app` |
+| `apps/backend/src/app.py` | `apps/backend/app` |
+| `apps/backend/src/handler_test.py` | `apps/backend/handler` |
+| `README.md` | `README` |
 
 #### Scenario: File larger than one chunk is truncated
 
@@ -138,7 +144,7 @@ The review SHALL produce the diff with `core.quotePath` disabled and SHALL decod
 
 ### Requirement: Multi-chunk results are consolidated into one summary
 
-When two or more chunks produced a valid result, the review SHALL send one synthesis request containing each chunk's summary, verdict, and findings list without code, together with the overall verdict computed by the script, and SHALL require the returned `summary` and `conclusion` to be consistent with that verdict. When only one chunk produced a valid result, the review SHALL NOT send a synthesis request and SHALL use that chunk's summary. Findings from all chunks SHALL be merged by the script, ordered by severity (`blocker`, `warning`, `nit`), then path, then line. The overall verdict SHALL be computed by the script in this order: `blocker` when any chunk verdict is `blocker` or any finding has severity `blocker`; otherwise `incomplete` when any chunk failed; otherwise `changes_suggested` when any finding exists or any chunk verdict is `changes_suggested`; otherwise `no_concerns`. The published review SHALL show the script's verdict as the authoritative result. When the synthesis request fails, the review SHALL list each chunk's summary in chunk order instead and SHALL emit a workflow warning.
+When two or more chunks produced a valid result, the review SHALL send one synthesis request containing each chunk's summary, verdict, and findings list without code, together with the overall verdict computed by the script, and SHALL require the returned `summary` and `conclusion` to be consistent with that verdict. When only one chunk produced a valid result, the review SHALL NOT send a synthesis request and SHALL use that chunk's summary. When no chunk produced a valid result, the review SHALL NOT send a synthesis request, and its summary SHALL state that no chunk produced a valid result and list the failure of each chunk. Findings from all chunks SHALL be merged by the script, ordered by severity (`blocker`, `warning`, `nit`), then path, then line. The overall verdict SHALL be computed by the script in this order: `blocker` when any chunk verdict is `blocker` or any finding has severity `blocker`; otherwise `incomplete` when any chunk failed; otherwise `changes_suggested` when any finding exists or any chunk verdict is `changes_suggested`; otherwise `no_concerns`. The published review SHALL show the script's verdict as the authoritative result. When the synthesis request fails, the review SHALL list each chunk's summary in chunk order instead and SHALL emit a workflow warning.
 
 #### Scenario: Single chunk skips synthesis
 
@@ -161,10 +167,11 @@ When two or more chunks produced a valid result, the review SHALL send one synth
 | `blocker`, `no_concerns` | none | `blocker` |
 | `no_concerns`, failed chunk | none | `incomplete` |
 | `changes_suggested`, failed chunk | `blocker` | `blocker` |
+| failed chunk, failed chunk | none | `incomplete` |
 
 ### Requirement: The review is published as one pull request review with inline comments
 
-The review SHALL publish its result as one pull request review created with event `COMMENT` and with `commit_id` equal to the head commit from which the diff was produced. The plan SHALL record that head commit, and building the review SHALL fail without producing a review when the head commit given to it differs from the recorded one. A finding SHALL become an inline comment on the `RIGHT` side when its path was sent for review and its line is one of that file's commentable lines. Every other finding SHALL be listed in the review body with its `path:line` location. The review body SHALL start with the marker `<!-- lkai-review -->` and contain the overall verdict computed by the script, the overall summary, the synthesis conclusion when a synthesis result exists, the skipped and truncated files, and any warning and failure notes. Each inline comment body SHALL contain the severity label, the title, the finding body, and end with the marker `<!-- lkai-review-comment -->`. When GitHub rejects the review, the workflow SHALL publish a second review without inline comments that lists every finding in the body together with a note that inline comments could not be published, and SHALL emit a workflow warning.
+The review SHALL publish its result as one pull request review created with event `COMMENT` and with `commit_id` equal to the pull request's head commit, which is also the commit the diff was produced from as `<base>...<head>`. The review SHALL NOT use the merge commit that GitHub creates for the pull request. The plan SHALL record that head commit, and building the review SHALL fail without producing a review when the head commit given to it differs from the recorded one. A finding SHALL become an inline comment on the `RIGHT` side when its path was sent for review and its line is one of that file's commentable lines. Every other finding SHALL be listed in the review body with its `path:line` location. The review body SHALL start with the marker `<!-- lkai-review -->`, followed by a line `<!-- lkai-review-run: <run id> -->` that identifies the workflow run attempt, and SHALL contain the overall verdict computed by the script, the overall summary, the synthesis conclusion when a synthesis result exists, the skipped and truncated files, and any warning and failure notes. Each inline comment body SHALL contain the severity label, the title, the finding body, and end with the marker `<!-- lkai-review-comment -->`. When GitHub rejects the review, the workflow SHALL publish a second review without inline comments that lists every finding in the body together with a note that inline comments could not be published, and SHALL emit a workflow warning. Before publishing that second review, the workflow SHALL check the pull request's reviews and SHALL NOT publish it when a review carrying the current run's marker already exists.
 
 #### Scenario: Findings are routed to inline comments or the body
 
@@ -185,6 +192,11 @@ The review SHALL publish its result as one pull request review created with even
 - **WHEN** the head commit given to the review builder differs from the head commit recorded in the plan
 - **THEN** no review is published and the workflow fails
 
+#### Scenario: Lost response does not duplicate the review
+
+- **WHEN** the request that publishes the review with inline comments reports a failure but a review carrying the current run's marker exists on the pull request
+- **THEN** the workflow does not publish the body-only review
+
 #### Scenario: Rejected review falls back to a body-only review
 
 - **WHEN** GitHub rejects the review that contains inline comments
@@ -193,7 +205,7 @@ The review SHALL publish its result as one pull request review created with even
 
 ### Requirement: Published text is sanitized and kept within GitHub limits
 
-Before publishing, the review SHALL sanitize every model-written text placed in the review body or an inline comment. It SHALL insert U+200B ZERO WIDTH SPACE between `@` and a following account or team name, and SHALL replace `<!--` with `&lt;!--` and `-->` with `--&gt;`. A raw answer of a failed chunk SHALL be placed inside a `<details>` section in a code fence whose backtick count exceeds the longest backtick run in the answer, with `</details` in the answer replaced by `&lt;/details`. When the review body exceeds 60,000 characters, the review SHALL first remove raw-answer sections and then shorten the end of the list of findings that are not inline comments, SHALL append a note that the content was truncated, and SHALL emit a workflow warning. The complete, untruncated body SHALL be written to the workflow job summary. An inline comment body longer than 60,000 characters SHALL be truncated with a note.
+Before publishing, the review SHALL sanitize every model-written text placed in the review body or an inline comment. It SHALL insert U+200B ZERO WIDTH SPACE between `@` and a following account or team name when the `@` is not preceded by an ASCII letter or digit, and SHALL replace `<!--` with `&lt;!--` and `-->` with `--&gt;`. A raw answer of a failed chunk SHALL be placed inside a `<details>` section in a code fence whose backtick count exceeds the longest backtick run in the answer, with `</details` in the answer replaced by `&lt;/details`. When the review body exceeds 60,000 characters, the review SHALL first remove raw-answer sections and then shorten the end of the list of findings that are not inline comments, SHALL append a note that the content was truncated, and SHALL emit a workflow warning. The complete, untruncated body SHALL be written to the workflow job summary, truncated with a note only when it exceeds 1,000,000 bytes. An inline comment body longer than 60,000 characters SHALL be truncated with a note.
 
 #### Scenario: Model text is sanitized
 
@@ -205,6 +217,7 @@ Before publishing, the review SHALL sanitize every model-written text placed in 
 | Model text | Published text |
 | ---------- | -------------- |
 | `cc @octocat` | `cc @` followed by U+200B and `octocat` |
+| `user@example.com` | `user@example.com` |
 | `<!-- lkai-review-comment -->` | `&lt;!-- lkai-review-comment --&gt;` |
 | raw answer containing three consecutive backticks | raw answer inside a fence of four backticks |
 | raw answer containing `</details>` | raw answer containing `&lt;/details>` |
@@ -218,11 +231,11 @@ Before publishing, the review SHALL sanitize every model-written text placed in 
 
 ### Requirement: Previous AI review threads are resolved after a new review is published
 
-Before publishing a new review, the workflow SHALL collect every unresolved review thread of the pull request whose first comment was written by the `github-actions` bot, contains `<!-- lkai-review-comment -->`, and is on a file that this run reviewed completely, meaning the file belongs to a chunk whose request succeeded and the file is not truncated. After the new review is published, either with inline comments or as the body-only fallback, the workflow SHALL resolve every collected thread. The workflow SHALL NOT resolve any thread whose first comment was written by another author, any thread without the marker, or any thread on a file that this run did not review completely. When no review could be published, the workflow SHALL NOT resolve any thread. A failure to resolve a thread SHALL produce a workflow warning and SHALL NOT fail the workflow.
+Before publishing a new review, the workflow SHALL collect every unresolved review thread of the pull request whose first comment was written by the `github-actions` bot, contains `<!-- lkai-review-comment -->`, and is not on a file that this run kept open. A file is kept open when it is in this run's diff but was not reviewed completely: it belongs to a failed chunk, it is truncated, or it is generated or binary. A file that this run reviewed completely, a file that is no longer in this run's diff, and a file deleted in this run's diff are not kept open. After the new review is published, either with inline comments or as the body-only fallback, the workflow SHALL resolve every collected thread. The workflow SHALL NOT resolve any thread whose first comment was written by another author, any thread without the marker, or any thread on a file that this run kept open. When no review could be published, the workflow SHALL NOT resolve any thread. A failure to resolve a thread SHALL produce a workflow warning and SHALL NOT fail the workflow.
 
 #### Scenario: New push resolves the previous round
 
-- **WHEN** a pull request has unresolved inline comment threads from an earlier AI review on files that this run reviewed completely, and a new review is published
+- **WHEN** a pull request has unresolved inline comment threads from an earlier AI review on files that this run did not keep open, and a new review is published
 - **THEN** those earlier AI threads become resolved and the threads from the new review stay unresolved
 
 ##### Example: which threads are resolved
@@ -232,7 +245,9 @@ Before publishing a new review, the workflow SHALL collect every unresolved revi
 | `github-actions` | yes | reviewed in a successful chunk, not truncated | yes |
 | `github-actions` | yes | in a failed chunk | no |
 | `github-actions` | yes | truncated | no |
-| `github-actions` | yes | not in this diff | no |
+| `github-actions` | yes | not in this diff | yes |
+| `github-actions` | yes | deleted in this diff | yes |
+| `github-actions` | yes | generated | no |
 | `github-actions` | no | reviewed in a successful chunk, not truncated | no |
 | a person | no | reviewed in a successful chunk, not truncated | no |
 
@@ -244,11 +259,11 @@ Before publishing a new review, the workflow SHALL collect every unresolved revi
 #### Scenario: Threads left by a cancelled run are resolved later
 
 - **WHEN** a run was cancelled after publishing its review but before resolving the earlier threads, and a later run publishes a new review
-- **THEN** the later run resolves the still unresolved AI threads from every earlier round on files it reviewed completely
+- **THEN** the later run resolves the still unresolved AI threads from every earlier round on files it did not keep open
 
 ### Requirement: Review run outcome reflects missing review content
 
-The workflow SHALL fail when any chunk request fails, returns an incomplete answer, or returns an answer that cannot be parsed, when the head commit check stops publication, and when no review can be published. Even when a chunk fails, the workflow SHALL publish the results it obtained and SHALL list the failed chunks with their files in the review body. The severity of findings SHALL NOT affect the workflow result. A newer run for the same pull request SHALL cancel an older run that is still in progress. The workflow SHALL request only the `contents: read` and `pull-requests: write` permissions and SHALL stop after 60 minutes.
+The workflow SHALL fail when any chunk request fails, returns an incomplete answer, or returns an answer that cannot be parsed, when the base commit is unavailable, when the head commit check stops publication, and when no review can be published. Even when a chunk fails, the workflow SHALL publish the results it obtained and SHALL list the failed chunks with their files in the review body. The severity of findings SHALL NOT affect the workflow result. A newer run for the same pull request SHALL cancel an older run that is still in progress. The workflow SHALL request only the `contents: read` and `pull-requests: write` permissions and SHALL stop after 60 minutes.
 
 #### Scenario: One chunk fails
 

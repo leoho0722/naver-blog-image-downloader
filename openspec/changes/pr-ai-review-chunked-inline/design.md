@@ -48,6 +48,8 @@ job 在 `xcode-27` macOS runner 上執行（`lkai` 只能在 macOS 執行）。�
 
 審查 script 以 `git check-attr --source=<base sha> linguist-generated` 判斷，**依據是 base commit 的 `.gitattributes`**，不是 PR 分支的版本。否則 PR 只要把 `apps/web/** linguist-generated` 寫進 `.gitattributes`，自己的程式碼就會被跳過。`--source` 需要 git 2.40 以上，`xcode-27` 的 git 是 2.56。PR 有修改 `.gitattributes` 時，這個檔案本身照常送審，review 本文另外註明「本次以 base 版本的規則判斷自動產生檔」。
 
+base commit 必須存在於本機：workflow 在執行 `plan` 前先 `git fetch` base SHA，`plan` 再以 `git cat-file -e <base>^{commit}` 確認。取不到時 `plan` 以非 0 退出碼結束，整個 run 判定為失敗，不送審、不發布、不 resolve。這樣不會在拿不到規則的情況下，悄悄把所有檔案當成可審查或全部略過。
+
 標記為 `set` 或 `true` 的檔案不送內容，只在檔案總覽中列為「已略過（自動產生）」。
 
 純刪除的檔案也不送內容，只在總覽列為「已刪除」。這和現行做法不同：現行做法只在超過上限時才排除。理由是被刪除的內容已不在新版程式碼中，逐行審查的價值較低；總覽仍會列出被刪除的檔案，讓模型能指出可疑的刪除，例如整個測試檔或安全檢查被移除。修改中的檔案，其刪除的行照樣會出現在 hunk 內。二進位檔案同樣只列在總覽。
@@ -63,9 +65,9 @@ job 在 `xcode-27` macOS runner 上執行（`lkai` 只能在 macOS 執行）。�
 1. **元件區域**：`apps/` 底下取前兩段路徑（例如 `apps/web`），其他檔案取第一段（例如 `.github`、`openspec`）。repo 根目錄的檔案歸在同一區，區域名稱是空字串。區域依名稱排序，所以根目錄的區域永遠排第一。
 2. **功能鍵**：
    - 去掉路徑中名為 `src`、`__tests__`、`tests`、`test` 的目錄
-   - 檔名去掉副檔名前的 `.test`、`.spec`，以及 `test_` 前綴、`_test` 後綴
+   - 檔名去掉副檔名，再去掉 `.test`、`.spec` 後綴，以及 `test_` 前綴、`_test` 後綴
 
-   例如 `apps/web/src/__tests__/lib/x.test.ts` 與 `apps/web/src/lib/x.ts` 的功能鍵都是 `apps/web/lib/x.ts`；`apps/backend/tests/test_app.py` 與 `apps/backend/src/app.py` 的功能鍵都是 `apps/backend/app.py`。功能鍵相同的檔案組成一個功能群組，群組內依原始路徑排序，區域內的群組依功能鍵排序。
+   例如 `apps/web/src/__tests__/lib/x.test.tsx` 與 `apps/web/src/lib/x.ts` 的功能鍵都是 `apps/web/lib/x`；`apps/backend/tests/test_app.py` 與 `apps/backend/src/app.py` 的功能鍵都是 `apps/backend/app`。去掉副檔名，讓副檔名不同的原始碼與測試（`.ts` 與 `.test.tsx`），以及同名的樣式檔也能配在一起。功能鍵相同的檔案組成一個功能群組，群組內依原始路徑排序，區域內的群組依功能鍵排序。所有排序都以 Unicode code point 順序比較字串，不受語系影響。
 3. **裝箱**：依序處理每個區域。
    - 整個區域放得進目前這段的剩餘空間，就加入目前這段。
    - 放不進、但不超過上限，就開新的一段。
@@ -74,6 +76,8 @@ job 在 `xcode-27` macOS runner 上執行（`lkai` 只能在 macOS 執行）。�
    - 單一檔案超過上限時自成一段，截斷到上限並標記為「已截斷」。
 
 總行數不超過上限時，只會有一段，送審次數和現在一樣是一次。
+
+沒有 hunk 的檔案（只有更名或只改了檔案權限）仍歸為可審查，只送出標題行（1 行），沒有可留言行；模型可以從標題得知檔案被更名。
 
 替代方案：
 
@@ -122,7 +126,7 @@ job 在 `xcode-27` macOS runner 上執行（`lkai` 只能在 macOS 執行）。�
 - 同時附上 script 算出的整體結論，要求模型寫出的總評與最終結論必須與它一致
 - 模型同樣以 JSON 回傳；review 本文以 script 的結論為準
 
-只有一段取得有效結果時，直接使用那一段的總評，不送彙整請求。
+只有一段取得有效結果時，直接使用那一段的總評，不送彙整請求。所有段落都失敗時，不送彙整請求，總評寫明「沒有任何段落取得有效的審查結果」並列出各段的失敗原因，整體結論為 `incomplete`。沒有可審查內容時不送任何請求，整體結論為 `no_concerns`。
 
 `lkai` 沒有結構化輸出的選項，所以靠提示詞約束格式，並以驗證兜底。
 
@@ -132,7 +136,7 @@ job 在 `xcode-27` macOS runner 上執行（`lkai` 只能在 macOS 執行）。�
 
 模型的文字可能受到 diff 內容的間接影響（prompt injection），發布前一律經過清理：
 
-- **`@mention`**：在 `@` 與接著的帳號或團隊名稱之間插入零寬空白（U+200B），避免對大量帳號發出通知
+- **`@mention`**：`@` 前面不是英文字母或數字時，在 `@` 與接著的帳號或團隊名稱之間插入零寬空白（U+200B），避免對大量帳號發出通知；`user@example.com` 這類 email 不受影響
 - **HTML 註解**：把 `<!--` 與 `-->` 改為不會被當成註解的寫法，避免文字混入識別用的標記或藏起內容
 - **原始回答**：無法解讀的回答放在 `<details>` 內的 code fence。fence 的反引號數比內文中最長的連續反引號多一個，內文的 `</details>` 也會被跳脫，摺疊區塊不會被提早關閉
 
@@ -141,14 +145,14 @@ GitHub 對 review 本文與每則留言的上限都是 65,536 字元。本文超
 1. 原始回答的摺疊區塊
 2. 「無法標在程式碼行上的意見」清單的尾端
 
-完整本文另外寫進 workflow 的 job summary（`$GITHUB_STEP_SUMMARY`）。單則 inline comment 超過 60,000 字元時同樣截斷。
+完整本文另外寫進 workflow 的 job summary（`$GITHUB_STEP_SUMMARY`）；job summary 每個 step 上限 1 MiB，超過 1,000,000 bytes 時同樣截斷並註明。單則 inline comment 超過 60,000 字元時同樣截斷。
 
 ### 以單一 PR review 發布 inline comment
 
 用 REST API `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews` 一次建立 review：
 
 - `event`：`COMMENT`
-- `commit_id`：產生 diff 時的 head SHA。`plan` 把它記錄在 `plan.json` 的 `headSha`，`build-review` 收到的 `--head-sha` 與它不同時直接失敗、不產出 review，避免 inline comment 對到錯的 commit
+- `commit_id`：PR 的 head commit，也就是 `github.event.pull_request.head.sha`。workflow checkout 這個 commit，diff 一律以 `<base>...<head>` 產生，不使用 GitHub 為 PR 建立的 merge commit（`refs/pull/<n>/merge`）：merge commit 不屬於 PR 的 commit，以它為 `commit_id` 會被拒絕，行號也會和 PR 頁面的 diff 對不上。`plan` 把 head SHA 記錄在 `plan.json` 的 `headSha`，`build-review` 收到的 `--head-sha` 與它不同時直接失敗、不產出 review
 - `body`：總評
 - `comments`：inline comment 清單，每則為 `{path, line, side: "RIGHT", body}`
 
@@ -158,10 +162,10 @@ GitHub 對 review 本文與每則留言的上限都是 65,536 字元。本文超
 
 識別用的隱藏標記：
 
-- review 本文開頭放 `<!-- lkai-review -->`
+- review 本文開頭放 `<!-- lkai-review -->`，下一行放 `<!-- lkai-review-run: <run id> -->`（`<run id>` 是 `GITHUB_RUN_ID` 加上 `GITHUB_RUN_ATTEMPT`）
 - 每則 inline comment 結尾放 `<!-- lkai-review-comment -->`
 
-GitHub 拒絕整個 review（回應不是 2xx）時，改送一個不含 inline comment 的 review，全部意見放進本文，並註明 inline comment 發布失敗。
+GitHub 拒絕整個 review（回應不是 2xx）時，改送一個不含 inline comment 的 review，全部意見放進本文，並註明 inline comment 發布失敗。改送之前，先列出這個 PR 的 review，確認沒有帶著這次 run 標記的 review：第一次請求可能其實成功了、只是回應沒收到，這時不再改送，避免重複發布。
 
 ### 發布成功後才收掉上一輪的討論串
 
@@ -171,17 +175,20 @@ GitHub 拒絕整個 review（回應不是 2xx）時，改送一個不含 inline 
    - 還沒 resolve
    - 第一則留言的作者是 `github-actions`
    - 第一則留言含有 `<!-- lkai-review-comment -->`
-   - 所在的檔案在這一輪有完整審查過：屬於成功的段落，而且沒有被截斷
+   - 所在的檔案不在 `outcome.json` 的 `keepThreadPaths` 內。`keepThreadPaths` 是這次 diff 內、但這一輪沒有完整審查的檔案：屬於失敗的段落、被截斷、自動產生或二進位。因此可以收掉的，是這一輪完整審查過的檔案，以及已經沒有變更可審的檔案（已不在這次 diff 內，例如改動被還原；或在這次 diff 中被刪除）
 2. **發布新一輪 review**（inline 版本或只有本文的版本）。
 3. **發布成功後才 resolve**：對收集到的每個討論串呼叫 `resolveReviewThread`。
 
 這個順序保證三件事：
 
 - 新 review 發布失敗時，上一輪的意見仍然留著。
-- 這一輪送審失敗、被截斷，或已不在這次 diff 內的檔案，其上的舊意見不會在沒有重新審查的情況下被收掉。
+- 這一輪送審失敗或被截斷的檔案，其上的舊意見不會在沒有重新審查的情況下被收掉。
+- 已經沒有變更可審的檔案，其上的舊意見會被收掉，不會因為意見失去對象而永遠卡住合併。
 - 由人開啟的討論串一律不動。
 
 已經有人回覆的 AI 討論串，仍會被收掉：新一輪審查會重新提出仍然存在的問題。resolve 失敗只發出警告，因為新的 review 已經發布了。
+
+一直被截斷的檔案（單一檔案超過 `MAX_CHUNK_LINES`），其上的 AI 討論串不會被自動收掉，需要由人 resolve；README 會說明這一點。
 
 concurrency 可能在「發布之後、resolve 之前」取消舊的執行，留下沒收掉的討論串。下一輪執行會收集所有仍未 resolve 的 AI 討論串，包含更早幾輪的，所以會自動補上。
 
@@ -216,7 +223,7 @@ diff 解析、行號標註、裝箱、文字清理與 JSON 驗證，都放在 `.
 
 原則是「審查內容有缺漏才算失敗，只是呈現方式降級只發出警告」：
 
-- **workflow 失敗**：任一段送審失敗、回答不完整、JSON 無法解讀；review 完全發布不了；`build-review` 的 head SHA 與 `plan.json` 不一致。前兩種情況仍要發布已經取得的部分，並列出失敗的段落。
+- **workflow 失敗**：任一段送審失敗、回答不完整、JSON 無法解讀；review 完全發布不了；base commit 取不到；`build-review` 的 head SHA 與 `plan.json` 不一致。第一種情況仍要發布已經取得的部分，並列出失敗的段落。
 - **只發出警告**：彙整請求失敗（改為依段落順序列出各段總評）、inline 版本被拒而改發只有本文的版本、resolve 舊討論串失敗、段數超過 `WARN_CHUNKS`、本文超過長度而被截斷。
 - **不送審**：沒有任何可審查的檔案（全部是自動產生、已刪除或二進位）時，不送出模型請求，發布一則說明沒有可審查內容的 review，workflow 成功。
 
@@ -238,17 +245,18 @@ workflow 另外加上三項設定：
 
 - `node .github/scripts/ai-review/ai-review.mjs plan --base <sha> --head <sha> --out <dir> [--max-chunk-lines <n>]`
   - 在 `<dir>` 寫出 `plan.json`，以及各段的提示詞 `chunk-<n>.md`（含審查指示、完整檔案總覽、該段標註後的 patch）
+  - base commit 不存在於本機時，以非 0 退出碼結束，不寫出任何檔案
   - `plan.json` 的格式：`{ "baseSha", "headSha", "gitattributesChanged": <bool>, "files": [{ "path", "status": "added|modified|renamed|deleted", "category": "reviewed|generated|deleted|binary", "lines", "chunk": <n|null>, "truncated": <bool> }], "chunks": [{ "index", "files": [<path>], "lines" }], "commentable": { "<path>": [[<起始行>, <結束行>], ...] } }`
 - 每段模型輸出的 JSON：`{ "summary": <字串>, "verdict": "blocker|changes_suggested|no_concerns", "findings": [{ "path": <字串>, "line": <整數|null>, "severity": "blocker|warning|nit", "title": <字串>, "body": <字串> }] }`
 - `node .github/scripts/ai-review/ai-review.mjs synthesis-prompt --plan <plan.json> --results <dir> --out <檔案>`：產出彙整用的提示詞，內含 script 計算的整體結論；彙整的模型輸出為 `{ "summary": <字串>, "conclusion": <字串> }`
-- `node .github/scripts/ai-review/ai-review.mjs build-review --plan <plan.json> --results <dir> [--synthesis <檔案>] --head-sha <sha> --warn-chunks <n> --out <dir>`
+- `node .github/scripts/ai-review/ai-review.mjs build-review --plan <plan.json> --results <dir> [--synthesis <檔案>] --head-sha <sha> --run-id <id> --warn-chunks <n> --out <dir>`
   - `--head-sha` 與 `plan.json` 的 `headSha` 不同時，以非 0 退出碼結束，不寫出任何 review
   - 寫出四個檔案：
     - `review.json`：含 inline comment 的 REST request body
     - `review-body-only.json`：不含 inline comment 的版本
     - `summary.md`：完整、未截斷的本文，供寫入 job summary
     - `outcome.json`
-  - `outcome.json` 的格式：`{ "verdict": "blocker|incomplete|changes_suggested|no_concerns", "failedChunks": [<n>], "warnings": [<字串>], "inlineCount", "bodyOnlyCount", "resolvablePaths": [<path>] }`；`resolvablePaths` 是這一輪完整審查過的檔案（成功的段落、未截斷）
+  - `outcome.json` 的格式：`{ "verdict": "blocker|incomplete|changes_suggested|no_concerns", "failedChunks": [<n>], "warnings": [<字串>], "inlineCount", "bodyOnlyCount", "keepThreadPaths": [<path>] }`；`keepThreadPaths` 是這次 diff 內、但這一輪沒有完整審查的檔案（失敗的段落、被截斷、自動產生、二進位），這些檔案上的舊討論串不會被收掉
   - `--results <dir>` 內每段有 `chunk-<n>.out`（lkai 的 stdout）與 `chunk-<n>.status`（lkai 的退出碼）
 - `lkai-helpers.sh` 新增 `run_lkai <提示詞檔案> <輸出檔案> [lkai 選項...]`：回傳 lkai 的退出碼，stderr 寫到 `<輸出檔案>.err`，不印出任何內容
 - workflow 的設定值：`MAX_CHUNK_LINES`（6000）、`MAX_PARALLEL_CHUNKS`（3）、`WARN_CHUNKS`（6）
@@ -288,5 +296,10 @@ workflow 另外加上三項設定：
   - 緩解：`MAX_PARALLEL_CHUNKS` 限制同時的請求數；失敗的段落會被標註、workflow 判定為失敗，可以重跑。
 - **有人回覆過的 AI 討論串也會被收掉**
   - 取捨：避免舊意見累積而卡住合併；新一輪審查會重新提出仍然存在的問題。沒有重新審查到的檔案則不收掉。
+- **這個機制防的是誤標，不防惡意修改審查流程**
+  - workflow 執行的是 PR head 的 script 與 action，同 repo 的 PR 可以直接修改審查 script 讓自己跳過審查；放進自動產生路徑（例如 `.archify/`）或取名為 lockfile 的檔案也會被略過。
+  - 取捨：同 repo 的 PR 只有具寫入權限的協作者能開，fork 的 PR 拿不到 secret；要防止惡意修改，需要改從 base commit 取出 script 執行，這也會讓修改審查流程的 PR 無法用自己的新 script 自測，不在這次範圍內。
+- **整個 job 逾時時沒有任何部分結果**
+  - 緩解：`timeout-minutes: 60` 依估計可容納 40 段以上；逾時時重跑即可，舊討論串不會被收掉。
 - **`linguist-generated` 讓 GitHub PR 頁面預設摺疊這些檔案**
   - 取捨：這些檔案本來就不需要人逐行審查，摺疊也是預期中的效果。
