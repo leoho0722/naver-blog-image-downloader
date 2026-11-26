@@ -244,7 +244,7 @@ The review SHALL publish its result as one pull request review created with even
 
 ### Requirement: Published text is sanitized and kept within GitHub limits
 
-Before publishing, the review SHALL sanitize every model-written text placed in the review body, an inline comment, a file-level comment, or a reply to an earlier AI review thread. It SHALL insert U+200B ZERO WIDTH SPACE between `@` and a following account or team name when the `@` is not preceded by an ASCII letter or digit, and SHALL replace `<!--` with `&lt;!--` and `-->` with `--&gt;`. A raw answer of a failed chunk SHALL be placed inside a `<details>` section in a code fence whose backtick count exceeds the longest backtick run in the answer, with `</details` in the answer replaced by `&lt;/details`. When the review body exceeds 60,000 characters, the review SHALL first remove raw-answer sections and then shorten the end of the list of findings that are not inline comments, SHALL append a note that the content was truncated, and SHALL emit a workflow warning. The complete, untruncated body SHALL be written to the workflow job summary, truncated with a note only when it exceeds 1,000,000 bytes. An inline comment or file-level comment body longer than 60,000 characters SHALL be truncated with a note, and a reply SHALL contain at most 1,000 characters of the model's note.
+Before publishing, the review SHALL sanitize every model-written text placed in the review body, an inline comment, a file-level comment, or a reply to an earlier AI review thread. It SHALL insert U+200B ZERO WIDTH SPACE between `@` and a following account or team name when the `@` is not preceded by an ASCII letter or digit, SHALL replace `<!--` with `&lt;!--` and `-->` with `--&gt;`, and SHALL replace `<details` with `&lt;details` and `</details` with `&lt;/details` regardless of letter case, so model text can neither open nor close a collapsed section. A raw answer of a failed chunk SHALL be placed inside a `<details>` section in a code fence whose backtick count exceeds the longest backtick run in the answer, with `</details` in the answer replaced by `&lt;/details`. When the review body exceeds 60,000 characters, the review SHALL first remove raw-answer sections and then shorten the end of the list of findings that are not inline comments, SHALL append a note that the content was truncated, and SHALL emit a workflow warning. The complete, untruncated body SHALL be written to the workflow job summary, truncated with a note only when it exceeds 1,000,000 bytes. An inline comment or file-level comment body longer than 60,000 characters SHALL be truncated with a note, and a reply SHALL contain at most 1,000 characters of the model's note.
 
 #### Scenario: Model text is sanitized
 
@@ -260,6 +260,7 @@ Before publishing, the review SHALL sanitize every model-written text placed in 
 | `<!-- lkai-review-comment -->` | `&lt;!-- lkai-review-comment --&gt;` |
 | raw answer containing three consecutive backticks | raw answer inside a fence of four backticks |
 | raw answer containing `</details>` | raw answer containing `&lt;/details>` |
+| finding body containing `<details>` and `</DETAILS>` | finding body containing `&lt;details>` and `&lt;/details>` |
 
 #### Scenario: Oversized body is truncated
 
