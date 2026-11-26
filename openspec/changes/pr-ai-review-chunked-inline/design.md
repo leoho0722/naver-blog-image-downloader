@@ -266,7 +266,7 @@ workflow 另外加上三項設定：
 
 **驗收條件：**
 
-- `node --test .github/scripts/ai-review/` 全部通過，涵蓋：
+- `node --test '.github/scripts/ai-review/*.test.mjs'` 全部通過（Node 24 的 `--test` 不接受資料夾參數，所以以 glob 指定測試檔），涵蓋：
   - spec 中裝箱、功能鍵、行號標註、意見分流、整體結論、可 resolve 的討論串的 Example
   - JSON 擷取與驗證失敗的情況、文字清理、本文截斷
 - 新增的 `github-scripts-test.yml` 在 PR 上執行這些測試並通過

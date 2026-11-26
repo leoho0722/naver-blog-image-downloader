@@ -31,5 +31,6 @@ jobs:
         with:
           node-version: 24
 
+      # 以 glob 指定測試檔：Node 24 的 --test 不接受資料夾參數（會把資料夾當成要執行的模組）
       - name: Run ai-review tests
-        run: node --test .github/scripts/ai-review/
+        run: node --test '.github/scripts/ai-review/*.test.mjs'

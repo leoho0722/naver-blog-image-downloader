@@ -13,6 +13,7 @@ import {
   fenceRawAnswer,
   fitReviewBody,
   sanitizeModelText,
+  toInlineCode,
   truncateComment,
   truncateUtf8,
 } from './text.mjs';
@@ -609,5 +610,25 @@ describe('truncateUtf8', () => {
     assert.throws(() => truncateUtf8('abc', '10'), { name: 'TypeError' });
     assert.throws(() => truncateUtf8('abc', Infinity), { name: 'RangeError' });
     assert.throws(() => truncateUtf8('abc', 10), { name: 'RangeError' });
+  });
+});
+
+describe('toInlineCode', () => {
+  it('一般路徑以單一反引號包住', () => {
+    assert.equal(toInlineCode('apps/web/src/a.ts:12'), '`apps/web/src/a.ts:12`');
+  });
+
+  it('含反引號的文字改用更長的反引號，並在需要時補空白，無法跳出 code span', () => {
+    assert.equal(toInlineCode('a`b'), '``a`b``');
+    assert.equal(toInlineCode('`x`'), '`` `x` ``');
+    assert.equal(toInlineCode('``` @org/team <!--'), '```` ``` @org/team <!-- ````');
+  });
+
+  it('換行換成空白', () => {
+    assert.equal(toInlineCode('a\nb\r\nc'), '`a b c`');
+  });
+
+  it('傳入非字串時丟出 TypeError', () => {
+    assert.throws(() => toInlineCode(1), TypeError);
   });
 });

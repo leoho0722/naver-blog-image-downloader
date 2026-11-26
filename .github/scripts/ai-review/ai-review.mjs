@@ -101,6 +101,11 @@ function commandPlan(options) {
   const reviewed = files.filter((file) => file.category === 'reviewed').length;
   const lines = chunks.map((chunk) => chunk.lines).join('、') || '無';
   console.log(`規劃完成：共 ${files.length} 個檔案，其中 ${reviewed} 個送審，分成 ${chunks.length} 段（各段行數：${lines}）`);
+  if (result.prompts.length > 0) {
+    // 提示詞還包含審查指示與整個 PR 的檔案總覽；印出實際行數，供核對每段上限的估計值
+    const promptLines = result.prompts.map((prompt) => prompt.split('\n').length).join('、');
+    console.log(`各段提示詞的實際行數（含審查指示與檔案總覽）：${promptLines}`);
+  }
 }
 
 /**

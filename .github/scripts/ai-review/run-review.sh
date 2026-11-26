@@ -202,9 +202,21 @@ post_review() {
     return 0
   fi
 
-  local existing
-  existing="$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
-    --jq ".[] | select((.body // \"\") | contains(\"${run_marker}\")) | .id" 2>/dev/null)" || existing=""
+  # 確認這次 run 的 review 是否其實已經發布（請求成功、只是回應沒收到）。
+  # 查詢失敗時重試一次；仍然失敗就無法確認，寧可不改發也不要重複發布
+  local existing="" listed=false attempt
+  for attempt in 1 2; do
+    if existing="$(gh api --paginate "repos/${REPO}/pulls/${PR_NUMBER}/reviews" \
+      --jq ".[] | select((.body // \"\") | contains(\"${run_marker}\")) | .id")"; then
+      listed=true
+      break
+    fi
+    echo "查詢既有的 review 失敗（第 ${attempt} 次）"
+  done
+  if [ "$listed" != true ]; then
+    warn "含 inline comment 的 review 發布失敗，且無法確認是否其實已經發布，為避免重複發布，不改發只有本文的版本"
+    return 1
+  fi
   if [ -n "$existing" ]; then
     echo "發布請求回報失敗，但這次 run 的 review 已經存在，不重複發布"
     return 0

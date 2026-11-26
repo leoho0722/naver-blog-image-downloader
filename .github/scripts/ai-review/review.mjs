@@ -11,7 +11,15 @@ import { join } from 'node:path';
 
 import { computeVerdict, mergeFindings, parseChunkResult, parseSynthesisResult, routeFindings } from './findings.mjs';
 import { SEVERITY_LABELS, VERDICT_LABELS } from './prompts.mjs';
-import { fenceRawAnswer, fitReviewBody, sanitizeModelText, truncateComment, truncateUtf8 } from './text.mjs';
+import {
+  COMMENT_LIMIT,
+  fenceRawAnswer,
+  fitReviewBody,
+  sanitizeModelText,
+  toInlineCode,
+  truncateComment,
+  truncateUtf8,
+} from './text.mjs';
 
 /** review 本文開頭的識別標記 */
 export const REVIEW_MARKER = '<!-- lkai-review -->';
@@ -111,7 +119,8 @@ function bodyItem(finding) {
     .split('\n')
     .map((line) => (line === '' ? '' : `  ${line}`))
     .join('\n');
-  const head = `- ${SEVERITY_LABELS[finding.severity]}｜**${title}**（\`${locationOf(finding)}\`）`;
+  // 落到本文的意見，path 可能不是真實檔案（模型可以寫任意文字），一律放進無法跳出的 code span
+  const head = `- ${SEVERITY_LABELS[finding.severity]}｜**${title}**（${toInlineCode(locationOf(finding))}）`;
   return detail.trim() === '' ? head : `${head}\n\n${detail}`;
 }
 
@@ -124,7 +133,7 @@ function bodyItem(finding) {
 function commentBody(finding) {
   const content = `**${SEVERITY_LABELS[finding.severity]}｜${sanitizeModelText(finding.title)}**\n\n${sanitizeModelText(finding.body)}`;
   const suffix = `\n\n${COMMENT_MARKER}`;
-  return `${truncateComment(content, 60000 - suffix.length)}${suffix}`;
+  return `${truncateComment(content, COMMENT_LIMIT - suffix.length)}${suffix}`;
 }
 
 /**
@@ -138,7 +147,7 @@ function fileListBlock(title, paths) {
   if (paths.length === 0) {
     return '';
   }
-  return [`<details>`, `<summary>${title}（${paths.length} 個）</summary>`, '', ...paths.map((path) => `- \`${path}\``), '', `</details>`].join('\n');
+  return [`<details>`, `<summary>${title}（${paths.length} 個）</summary>`, '', ...paths.map((path) => `- ${toInlineCode(path)}`), '', `</details>`].join('\n');
 }
 
 /**
@@ -230,12 +239,14 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
     headSections.push(`#### 最終結論\n\n${conclusion}`);
   }
   if (failed.length > 0) {
-    const lines = failed.map((result) => `- 第 ${result.index} 段（${result.files.map((path) => `\`${path}\``).join('、')}）：${result.error}`);
+    // 失敗原因可能含有模型原文（JSON.parse 的錯誤訊息會引用一段輸入），清理後才放進本文
+    const reason = (result) => sanitizeModelText(result.error.replace(/\s*[\r\n]+\s*/g, ' '));
+    const lines = failed.map((result) => `- 第 ${result.index} 段（${result.files.map(toInlineCode).join('、')}）：${reason(result)}`);
     headSections.push(`#### 審查失敗的段落\n\n${lines.join('\n')}`);
   }
   const scope = [`送審 ${reviewedCount} 個檔案，分成 ${plan.chunks.length} 段。`];
   if (truncatedFiles.length > 0) {
-    scope.push(`以下檔案超過每段上限，只審查了前段：${truncatedFiles.map((path) => `\`${path}\``).join('、')}`);
+    scope.push(`以下檔案超過每段上限，只審查了前段：${truncatedFiles.map(toInlineCode).join('、')}`);
   }
   headSections.push(
     [`#### 審查範圍`, '', scope.join('\n'), fileListBlock('已略過的自動產生檔案', skipped), fileListBlock('只列出、不審查內容的刪除或二進位檔案', listed)]

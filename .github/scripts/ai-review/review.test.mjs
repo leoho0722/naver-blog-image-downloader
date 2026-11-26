@@ -322,3 +322,24 @@ test('PR 修改 .gitattributes 時本文會提示；截斷、自動產生、二�
   assert.match(review.body, /只審查了前段：`big\.ts`/);
   assert.deepEqual(outcome.keepThreadPaths.sort(), ['big.ts', 'gen.yaml', 'img.png']);
 });
+
+// spectra-scenario: pr-ai-review / Model text is sanitized
+test('落到本文的意見：模型給的 path 放進無法跳出的 code span', () => {
+  const plan = makePlan([['a.ts']]);
+  const { review } = build(plan, [
+    ok({ summary: 's', verdict: 'changes_suggested', findings: [finding('x` @org/team <!-- y', null, 'nit', 't', 'b')] }),
+  ]);
+  // 路徑含一個反引號，所以用兩個反引號包住；@ 與 <!-- 都在 code span 內，不會生效
+  assert.match(review.body, /（``x` @org\/team <!-- y``）/);
+  assert.equal(review.comments.length, 0);
+});
+
+test('失敗原因中的模型原文會被清理後才放進本文', () => {
+  const plan = makePlan([['a.ts']]);
+  const { review } = build(plan, [{ status: '0', out: '```json\n@octocat <!-- 偷藏\n```' }]);
+  const line = review.body.split('\n').find((text) => text.startsWith('- 第 1 段'));
+  assert.ok(line, review.body);
+  assert.match(line, /回答格式不合格/);
+  assert.doesNotMatch(line, /@octocat/);
+  assert.doesNotMatch(line, /<!--/);
+});

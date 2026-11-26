@@ -342,3 +342,23 @@ export function truncateUtf8(text, maxBytes = SUMMARY_BYTE_LIMIT) {
     truncated: true,
   };
 }
+
+/**
+ * 把一段文字安全地放進 Markdown 的行內程式碼（code span），例如模型回傳的檔案路徑。
+ *
+ * - 反引號數量比文字中最長的連續反引號多一個，文字無法提早結束 code span；
+ * - 文字以反引號開頭或結尾時，前後各補一個空白（Markdown 規則：這個空白不會顯示）；
+ * - 換行換成空白，避免破壞清單等版面。
+ * code span 內的 `@` 不會通知任何人，HTML 註解也不會生效，所以不需要另外清理。
+ *
+ * @param {string} text 要顯示的文字
+ * @returns {string} 例如 `` `a.ts` `` 或 ``` `` a`b `` ```
+ * @throws {TypeError} text 不是字串時。
+ */
+export function toInlineCode(text) {
+  assertString(text, 'text');
+  const singleLine = text.replace(/[\r\n]+/g, ' ');
+  const fence = '`'.repeat(longestBacktickRun(singleLine) + 1);
+  const pad = singleLine.startsWith('`') || singleLine.endsWith('`') ? ' ' : '';
+  return `${fence}${pad}${singleLine}${pad}${fence}`;
+}

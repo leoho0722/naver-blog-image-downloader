@@ -154,6 +154,7 @@ test('命令列：寫出 plan.json 與各段提示詞，並印出各段行數', 
     );
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /規劃完成：共 3 個檔案，其中 3 個送審，分成 2 段（各段行數：7、4）/);
+    assert.match(result.stdout, /各段提示詞的實際行數（含審查指示與檔案總覽）：\d+、\d+/);
 
     const plan = JSON.parse(readFileSync(join(out, 'plan.json'), 'utf8'));
     assert.deepEqual(plan.chunks.map((chunk) => chunk.files), [

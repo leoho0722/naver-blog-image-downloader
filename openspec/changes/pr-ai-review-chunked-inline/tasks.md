@@ -126,3 +126,7 @@
 
 - `outcome.json` 的 `resolvablePaths` 改為 `keepThreadPaths`：已不在 diff 內或已刪除的檔案上的舊討論串也會被收掉，2.3、3.3 依此調整。
 - 5.1 新增以測試 PR 驗證自動產生檔的略過；5.2 的「已略過」檢查改在該測試 PR 上進行。
+
+實作期間的調整：
+
+- 各 task 中的 `node --test .github/scripts/ai-review/` 在 CI 改為 `node --test '.github/scripts/ai-review/*.test.mjs'`：Node 24 的 `--test` 不接受資料夾參數（本機的 Node 26 可以），第一次在 PR 上執行時因此失敗。
