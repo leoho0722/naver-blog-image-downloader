@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # run-review.sh：PR AI 審查的流程控制，由 .github/workflows/pr-ai-review.yml 分三個 step 呼叫。
 #
-# 用法：bash run-review.sh <plan | review | publish>
-#   plan     fetch base commit，產生 diff、替檔案分類並切段（ai-review.mjs plan）
+# 用法：bash run-review.sh <collect | plan | review | publish>
+#   collect  收集上一輪仍未 resolve 的 AI 討論串，寫出 threads.json（需要 GH_TOKEN）
+#   plan     fetch base commit，產生 diff、替檔案分類並切段，並把要判斷的討論串放進提示詞（ai-review.mjs plan）
 #   review   分批送審每一段、需要時送彙整請求，最後組出要發布的 review（ai-review.mjs build-review）
-#   publish  收集上一輪 AI 的討論串、發布 review（被拒時改發只有本文的版本）、收掉舊討論串，並判定結果
+#   publish  發布 review（被拒時改發只有本文的版本），對 AI 確認已修正的討論串回覆並收掉，並判定結果（需要 GH_TOKEN）
 #
 # 環境變數：
 #   BASE_SHA、HEAD_SHA            PR 的 base 與 head commit（head 必須是 PR head，不是 merge commit）
 #   PR_NUMBER、REPO               PR 編號與 owner/name
-#   GH_TOKEN                      gh 使用的 token（這個 script 不讀、不印）
+#   GH_TOKEN                      gh 使用的 token，只有 collect 與 publish 需要（這個 script 不讀、不印）
 #   LKAI_PROVIDER、LKAI_MODEL     setup-lkai 輸出的供應商與模型；API 金鑰由 lkai 自己讀取
 #   MAX_CHUNK_LINES               每段的行數上限（預設 6000）
 #   MAX_PARALLEL_CHUNKS           同時送審的段數上限（預設 3）
@@ -65,6 +66,49 @@ require_positive_integer() {
 }
 
 # ---------------------------------------------------------------------------
+# collect
+# ---------------------------------------------------------------------------
+
+# 收集上一輪仍未 resolve 的 AI 討論串：第一則留言是 github-actions 寫的，而且含有識別標記。
+# 寫出 threads.json：[{ id, path, line, comment }]，line 優先用目前的行號，討論串已過時則用原本的行號。
+# 查詢失敗時只發出警告並寫出空清單，這一輪不收掉任何討論串，審查照常進行。
+command_collect() {
+  rm -rf "$work_dir"
+  mkdir -p "$work_dir" || fail "無法建立工作資料夾 ${work_dir}"
+
+  local query
+  # shellcheck disable=SC2016  # $owner 等是 GraphQL 變數，不是 shell 變數
+  query='query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      reviewThreads(first: 100, after: $endCursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes { id isResolved path line originalLine comments(first: 1) { nodes { author { login } body } } }
+      }
+    }
+  }
+}'
+  if ! gh api graphql --paginate -f query="$query" -f owner="${REPO%%/*}" -f name="${REPO#*/}" -F number="$PR_NUMBER" \
+    >"${work_dir}/threads-raw.json"; then
+    warn "查詢上一輪的 AI 討論串失敗，這一輪不收掉任何討論串"
+    printf '[]\n' >"${work_dir}/threads.json"
+    return 0
+  fi
+  if ! jq -s --arg marker "$comment_marker" '
+      [ .[].data.repository.pullRequest.reviewThreads.nodes[]
+        | select(.isResolved | not)
+        | select((.comments.nodes[0].author.login // "") == "github-actions")
+        | select((.comments.nodes[0].body // "") | contains($marker))
+        | { id, path, line: (.line // .originalLine), comment: .comments.nodes[0].body } ]' \
+    "${work_dir}/threads-raw.json" >"${work_dir}/threads.json"; then
+    warn "解析上一輪的 AI 討論串失敗，這一輪不收掉任何討論串"
+    printf '[]\n' >"${work_dir}/threads.json"
+    return 0
+  fi
+  echo "上一輪仍未 resolve 的 AI 討論串：$(jq 'length' "${work_dir}/threads.json") 個"
+}
+
+# ---------------------------------------------------------------------------
 # plan
 # ---------------------------------------------------------------------------
 command_plan() {
@@ -72,15 +116,21 @@ command_plan() {
   [ -n "${BASE_SHA:-}" ] || fail "沒有 BASE_SHA"
   [ -n "${HEAD_SHA:-}" ] || fail "沒有 HEAD_SHA"
 
-  rm -rf "$work_dir"
+  # 工作資料夾由 collect 建立；這裡只清掉自己與之後步驟的輸出，保留 collect 寫出的 threads.json
   mkdir -p "$work_dir" || fail "無法建立工作資料夾 ${work_dir}"
+  rm -rf "$plan_dir" "$results_dir" "$review_dir"
 
   # base commit 必須在本機；fetch 失敗時仍交給 plan 確認（checkout 時可能已經取得）
   if ! git fetch --no-tags --quiet origin "$BASE_SHA" 2>/dev/null; then
     echo "fetch base commit 失敗，改用本機已有的資料"
   fi
 
-  if ! node "$cli" plan --base "$BASE_SHA" --head "$HEAD_SHA" --out "$plan_dir" --max-chunk-lines "$max_chunk_lines"; then
+  local thread_args=()
+  if [ -f "${work_dir}/threads.json" ]; then
+    thread_args=(--threads "${work_dir}/threads.json")
+  fi
+  if ! node "$cli" plan --base "$BASE_SHA" --head "$HEAD_SHA" --out "$plan_dir" --max-chunk-lines "$max_chunk_lines" \
+    ${thread_args[@]+"${thread_args[@]}"}; then
     fail "規劃審查失敗（原因見上方訊息），不送審、不發布、不收掉任何討論串"
   fi
 }
@@ -161,39 +211,6 @@ command_review() {
 # publish
 # ---------------------------------------------------------------------------
 
-# 列出可以收掉的上一輪 AI 討論串 ID：未 resolve、第一則留言是 github-actions 寫的、含識別標記、
-# 所在檔案不在 outcome.json 的 keepThreadPaths 內。結果寫到 threads.txt
-collect_threads() {
-  local query
-  # shellcheck disable=SC2016  # $owner 等是 GraphQL 變數，不是 shell 變數
-  query='query($owner: String!, $name: String!, $number: Int!, $endCursor: String) {
-  repository(owner: $owner, name: $name) {
-    pullRequest(number: $number) {
-      reviewThreads(first: 100, after: $endCursor) {
-        pageInfo { hasNextPage endCursor }
-        nodes { id isResolved path comments(first: 1) { nodes { author { login } body } } }
-      }
-    }
-  }
-}'
-  if ! gh api graphql --paginate -f query="$query" -f owner="${REPO%%/*}" -f name="${REPO#*/}" -F number="$PR_NUMBER" \
-    >"${work_dir}/threads.json"; then
-    warn "查詢上一輪的 AI 討論串失敗，這次不收掉任何討論串"
-    : >"${work_dir}/threads.txt"
-    return 0
-  fi
-  if ! jq -r --arg marker "$comment_marker" --slurpfile outcome "${review_dir}/outcome.json" '
-      .data.repository.pullRequest.reviewThreads.nodes[]
-      | select(.isResolved | not)
-      | select((.comments.nodes[0].author.login // "") == "github-actions")
-      | select((.comments.nodes[0].body // "") | contains($marker))
-      | select(.path as $path | ($outcome[0].keepThreadPaths | index($path)) | not)
-      | .id' "${work_dir}/threads.json" >"${work_dir}/threads.txt"; then
-    warn "解析上一輪的 AI 討論串失敗，這次不收掉任何討論串"
-    : >"${work_dir}/threads.txt"
-  fi
-}
-
 # 發布 review：先送含 inline comment 的版本；失敗時確認沒有帶著這次 run 標記的 review，
 # 才改送只有本文的版本。回傳 0 表示有一個版本已發布
 post_review() {
@@ -229,32 +246,40 @@ post_review() {
   return 1
 }
 
-resolve_threads() {
-  local id resolved=0
-  # shellcheck disable=SC2016  # $id 是 GraphQL 變數
-  local mutation='mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { isResolved } } }'
-  while IFS= read -r id; do
-    [ -n "$id" ] || continue
-    if gh api graphql -f query="$mutation" -f id="$id" >/dev/null; then
+# 依 outcome.json 的 threadActions，對每個討論串先回覆說明、再標為 resolved。
+# threadActions 只包含 AI 確認已修正的討論串，以及檔案已沒有可審查變更的討論串（見 review.mjs 的 planThreadActions）
+apply_thread_actions() {
+  local outcome="$1" total i id reply resolved=0
+  # shellcheck disable=SC2016  # $id、$body 是 GraphQL 變數
+  local reply_mutation='mutation($id: ID!, $body: String!) { addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $id, body: $body }) { comment { id } } }'
+  # shellcheck disable=SC2016
+  local resolve_mutation='mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { isResolved } } }'
+  total="$(jq '.threadActions | length' "$outcome")" || total=0
+  i=0
+  while [ "$i" -lt "$total" ]; do
+    id="$(jq -r ".threadActions[${i}].id" "$outcome")"
+    reply="$(jq -r ".threadActions[${i}].reply" "$outcome")"
+    if ! gh api graphql -f query="$reply_mutation" -f id="$id" -f body="$reply" >/dev/null; then
+      warn "無法回覆 AI 討論串 ${id}，仍會嘗試把它標為 resolved"
+    fi
+    if gh api graphql -f query="$resolve_mutation" -f id="$id" >/dev/null; then
       resolved=$((resolved + 1))
     else
-      warn "無法把上一輪的 AI 討論串 ${id} 標為 resolved，請手動處理"
+      warn "無法把 AI 討論串 ${id} 標為 resolved，請手動處理"
     fi
-  done <"${work_dir}/threads.txt"
-  echo "已收掉上一輪的 AI 討論串 ${resolved} 個"
+    i=$((i + 1))
+  done
+  echo "已回覆並收掉 AI 討論串 ${resolved} 個（預計 ${total} 個）"
 }
 
 command_publish() {
   local outcome="${review_dir}/outcome.json"
   [ -f "$outcome" ] || fail "找不到 ${outcome}，不發布 review"
 
-  collect_threads
-  echo "上一輪可以收掉的 AI 討論串：$(grep -c . "${work_dir}/threads.txt" || true) 個"
-
   local published=false
   if post_review; then
     published=true
-    resolve_threads
+    apply_thread_actions "$outcome"
   fi
 
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -f "${review_dir}/summary.md" ]; then
@@ -279,8 +304,9 @@ command_publish() {
 }
 
 case "${1:-}" in
+  collect) command_collect ;;
   plan) command_plan ;;
   review) command_review ;;
   publish) command_publish ;;
-  *) fail "用法：run-review.sh <plan | review | publish>" ;;
+  *) fail "用法：run-review.sh <collect | plan | review | publish>" ;;
 esac

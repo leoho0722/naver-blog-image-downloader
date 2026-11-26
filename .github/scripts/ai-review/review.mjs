@@ -4,7 +4,7 @@
 // - review.json：含 inline comment 的 REST request body（POST /repos/{owner}/{repo}/pulls/{n}/reviews）
 // - review-body-only.json：不含 inline comment、全部意見放進本文的版本（inline 版被拒時改用）
 // - summary.md：未截斷、含全部意見的完整本文，寫進 workflow 的 job summary
-// - outcome.json：整體結論、失敗段落、警告，以及這一輪不收掉舊討論串的檔案（keepThreadPaths）
+// - outcome.json：整體結論、失敗段落、警告，以及發布後要回覆並收掉的上一輪討論串（threadActions）
 
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -210,16 +210,7 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
     notes.push('> ℹ️ 這個 PR 修改了 `.gitattributes`；本次仍以 base commit 的 `.gitattributes` 判斷哪些是自動產生的檔案，新的規則要等合併後才會生效。');
   }
 
-  // 這一輪沒有完整審查的檔案：它們上面的舊討論串不收掉
-  const failedFiles = new Set(failed.flatMap((result) => result.files));
-  const keepThreadPaths = plan.files
-    .filter(
-      (file) =>
-        file.category === 'generated' ||
-        file.category === 'binary' ||
-        (file.category === 'reviewed' && (file.truncated || file.chunk === null || failedFiles.has(file.path))),
-    )
-    .map((file) => file.path);
+  const { threadActions, threadSummary, notFixedThreads } = planThreadActions(plan, succeeded);
 
   // 意見分流以「產生這項意見的那一段」為準：模型只看得到本段的內容，對其他段的檔案只看過總覽，
   // 就算給了剛好落在可留言行內的行號，也只是猜測，所以一律放進本文
@@ -244,6 +235,17 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
   ];
   if (conclusion) {
     headSections.push(`#### 最終結論\n\n${conclusion}`);
+  }
+  if ((plan.previousThreads ?? []).length > 0) {
+    const lines = [
+      `- 確認已修正並收掉：${threadSummary.fixed} 則`,
+      `- 仍未修正或沒有判斷（維持未 resolve）：${threadSummary.notFixed} 則${
+        notFixedThreads.length > 0 ? `（${notFixedThreads.map(toInlineCode).join('、')}）` : ''
+      }`,
+      `- 檔案已沒有可審查的變更而收掉：${threadSummary.noLongerChanged} 則`,
+      `- 這一輪沒有重新審查而維持不動：${threadSummary.kept} 則`,
+    ];
+    headSections.push(`#### 上一輪意見的追蹤\n\n${lines.join('\n')}`);
   }
   if (failed.length > 0) {
     // 失敗原因可能含有模型原文（JSON.parse 的錯誤訊息會引用一段輸入），清理後才放進本文
@@ -307,7 +309,74 @@ export function buildReview({ plan, results, synthesisRaw, headSha, runId, warnC
     warnings,
     inlineCount: inline.length,
     bodyOnlyCount: findings.length,
-    keepThreadPaths,
+    threadActions,
+    threadSummary,
   };
   return { review, bodyOnly, summaryMarkdown, outcome };
+}
+
+/** 回覆中模型說明的長度上限（字元） */
+const REPLY_NOTE_LIMIT = 1000;
+
+/**
+ * 依規劃時的分類與各段模型的判斷，決定上一輪的 AI 討論串要不要收掉
+ * （見 design「由 AI 確認已修正後才收掉上一輪的討論串」）：
+ * - ask：只有在那一段送審成功、而且那一段的模型回報 fixed 為 true 時才收掉
+ * - no-longer-changed、deleted：檔案已沒有可審查的變更，直接收掉
+ * - keep，或 ask 但那一段失敗：維持不動
+ * 模型回報的代號必須屬於它自己那一段，其他段的代號一律忽略。
+ *
+ * @param {object} plan
+ * @param {ChunkResult[]} succeeded 送審成功的段落
+ * @returns {{ threadActions: Array<{ id: string, reason: string, reply: string }>, threadSummary: { fixed: number, notFixed: number, noLongerChanged: number, kept: number }, notFixedThreads: string[] }}
+ */
+export function planThreadActions(plan, succeeded) {
+  const shortSha = plan.headSha.slice(0, 7);
+  const previous = plan.previousThreads ?? [];
+  const succeededChunks = new Set(succeeded.map((result) => result.index));
+
+  /** @type {Map<string, { fixed: boolean, note: string }>} */
+  const judgements = new Map();
+  for (const result of succeeded) {
+    for (const judgement of result.value.previousThreads ?? []) {
+      const thread = previous.find((entry) => entry.ref === judgement.ref);
+      if (thread && thread.disposition === 'ask' && thread.chunk === result.index) {
+        judgements.set(judgement.ref, judgement);
+      }
+    }
+  }
+
+  const threadActions = [];
+  const threadSummary = { fixed: 0, notFixed: 0, noLongerChanged: 0, kept: 0 };
+  const notFixedThreads = [];
+  for (const thread of previous) {
+    if (thread.disposition === 'no-longer-changed' || thread.disposition === 'deleted') {
+      threadSummary.noLongerChanged += 1;
+      const what = thread.disposition === 'deleted' ? '已在最新的變更中刪除' : '在最新的變更中已沒有可審查的內容';
+      threadActions.push({
+        id: thread.id,
+        reason: thread.disposition,
+        reply: `✅ 這個檔案${what}（${shortSha}），收掉這則意見。`,
+      });
+      continue;
+    }
+    if (thread.disposition !== 'ask' || !succeededChunks.has(thread.chunk)) {
+      threadSummary.kept += 1;
+      continue;
+    }
+    const judgement = judgements.get(thread.ref);
+    if (judgement?.fixed) {
+      threadSummary.fixed += 1;
+      const note = sanitizeModelText(toSingleLine(judgement.note)).slice(0, REPLY_NOTE_LIMIT).trim();
+      threadActions.push({
+        id: thread.id,
+        reason: 'fixed',
+        reply: `✅ 新一輪 AI 審查（${shortSha}）確認這個問題已修正${note ? `：${note}` : '。'}`,
+      });
+    } else {
+      threadSummary.notFixed += 1;
+      notFixedThreads.push(thread.line === null ? thread.filePath : `${thread.filePath}:${thread.line}`);
+    }
+  }
+  return { threadActions, threadSummary, notFixedThreads };
 }

@@ -223,3 +223,81 @@ test('命令列參數錯誤時以 64 結束', () => {
   const unknown = spawnSync(process.execPath, [CLI, 'nope'], { encoding: 'utf8' });
   assert.equal(unknown.status, 64);
 });
+
+// spectra-scenario: pr-ai-review / Confirmed fix resolves the thread with a reply
+// spectra-scenario: pr-ai-review / Unfixed issue keeps the thread open
+test('上一輪的討論串依檔案狀態分類，只有要判斷的討論串放進它所屬段落的提示詞', () => {
+  withRepo(({ dir, git, write, remove, commit }) => {
+    write('.gitattributes', '**/pnpm-lock.yaml linguist-generated\n');
+    write('a.ts', 'export const a = 1;\n');
+    write('keep.ts', 'export const k = 1;\n');
+    write('gone.ts', 'export const g = 1;\n');
+    write('big.ts', 'export const b = 0;\n');
+    write('pnpm-lock.yaml', '1\n');
+    write('old/name.ts', 'export const n = 1;\nexport const m = 2;\nexport const o = 3;\n');
+    const base = commit('base');
+
+    write('a.ts', 'export const a = 2;\n');
+    remove('gone.ts');
+    write('big.ts', Array.from({ length: 20 }, (_, i) => `export const b${i} = ${i};`).join('\n') + '\n');
+    write('pnpm-lock.yaml', '2\n');
+    mkdirSync(join(dir, 'new'));
+    git('mv', 'old/name.ts', 'new/name.ts');
+    const head = commit('head');
+
+    const threads = [
+      { id: 'T-a', path: 'a.ts', line: 1, comment: '請改成常數 <!-- lkai-review-comment -->' },
+      { id: 'T-keep', path: 'keep.ts', line: 1, comment: '沒有變更的檔案' },
+      { id: 'T-gone', path: 'gone.ts', line: 1, comment: '被刪除的檔案' },
+      { id: 'T-big', path: 'big.ts', line: 3, comment: '被截斷的檔案' },
+      { id: 'T-lock', path: 'pnpm-lock.yaml', line: 1, comment: '自動產生的檔案' },
+      { id: 'T-renamed', path: 'old/name.ts', line: null, comment: '更名前的路徑 ```含反引號```' },
+    ];
+    // 每段上限 6 行：根目錄區域的 a.ts（4 行）一段、big.ts 超過上限自成一段並被截斷；new/name.ts 屬於 new 區域，另成一段
+    const { plan, prompts } = buildPlan({ cwd: dir, base, head, maxChunkLines: 6, threads });
+
+    const byId = Object.fromEntries(plan.previousThreads.map((thread) => [thread.id, thread]));
+    assert.deepEqual(
+      Object.fromEntries(plan.previousThreads.map((thread) => [thread.id, thread.disposition])),
+      {
+        'T-a': 'ask',
+        'T-keep': 'no-longer-changed',
+        'T-gone': 'deleted',
+        'T-big': 'keep',
+        'T-lock': 'keep',
+        'T-renamed': 'ask',
+      },
+    );
+    assert.deepEqual(plan.previousThreads.map((thread) => thread.ref), ['P1', 'P2', 'P3', 'P4', 'P5', 'P6']);
+    assert.equal(byId['T-renamed'].filePath, 'new/name.ts');
+    // 識別標記不會放進提示詞
+    assert.equal(byId['T-a'].comment, '請改成常數');
+
+    const chunkOf = (path) => plan.files.find((file) => file.path === path).chunk;
+    const promptA = prompts[chunkOf('a.ts') - 1];
+    assert.match(promptA, /## 上一輪仍未解決的意見（本段的檔案）/);
+    assert.match(promptA, /### P1｜a\.ts 第 1 行（上一輪標記時的行號）/);
+    assert.doesNotMatch(promptA, /### P6/);
+    assert.doesNotMatch(promptA, /lkai-review-comment/);
+    // 更名的檔案：討論串放進新路徑所在的段落，並註明原路徑
+    const promptRenamed = prompts[chunkOf('new/name.ts') - 1];
+    assert.match(promptRenamed, /### P6｜new\/name\.ts（原路徑 old\/name\.ts）/);
+    assert.match(promptRenamed, /````\n更名前的路徑 ```含反引號```\n````/);
+    assert.doesNotMatch(promptRenamed, /### P1/);
+    // 被截斷的 big.ts 所在的段落不列出任何討論串
+    const promptBig = prompts[chunkOf('big.ts') - 1];
+    assert.doesNotMatch(promptBig, /上一輪仍未解決的意見/);
+    assert.ok(plan.files.find((file) => file.path === 'big.ts').truncated);
+  });
+});
+
+test('threads 資料格式不正確時規劃失敗', () => {
+  withRepo(({ dir, write, commit }) => {
+    write('a.txt', 'a\n');
+    const base = commit('base');
+    write('a.txt', 'b\n');
+    const head = commit('head');
+    assert.throws(() => buildPlan({ cwd: dir, base, head, threads: [{ id: 'x', path: 'a.txt', line: '3', comment: '' }] }), PlanError);
+    assert.throws(() => buildPlan({ cwd: dir, base, head, threads: {} }), PlanError);
+  });
+});

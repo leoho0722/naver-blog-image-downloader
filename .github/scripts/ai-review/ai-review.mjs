@@ -84,20 +84,39 @@ function positiveInteger(value, name, fallback) {
 }
 
 /**
+ * 讀取 threads.json；檔案不是合法 JSON 時視為規劃失敗。
+ *
+ * @param {string} path
+ * @returns {unknown}
+ */
+function readThreads(path) {
+  if (!existsSync(path)) {
+    throw new PlanError(`找不到上一輪討論串的資料 ${path}`);
+  }
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch (error) {
+    throw new PlanError(`上一輪討論串的資料不是合法的 JSON：${error.message}`);
+  }
+}
+
+/**
  * plan 子命令。
  *
  * @param {Record<string, string>} options
  */
 function commandPlan(options) {
+  const threads = options.threads ? readThreads(options.threads) : [];
   const result = buildPlan({
     cwd: process.cwd(),
     base: required(options, 'base'),
     head: required(options, 'head'),
     maxChunkLines: positiveInteger(options['max-chunk-lines'], 'max-chunk-lines', DEFAULT_MAX_CHUNK_LINES),
+    threads,
   });
   writePlan(required(options, 'out'), result);
 
-  const { files, chunks } = result.plan;
+  const { files, chunks, previousThreads } = result.plan;
   const reviewed = files.filter((file) => file.category === 'reviewed').length;
   const lines = chunks.map((chunk) => chunk.lines).join('、') || '無';
   console.log(`規劃完成：共 ${files.length} 個檔案，其中 ${reviewed} 個送審，分成 ${chunks.length} 段（各段行數：${lines}）`);
@@ -105,6 +124,12 @@ function commandPlan(options) {
     // 提示詞還包含審查指示與整個 PR 的檔案總覽；印出實際行數，供核對每段上限的估計值
     const promptLines = result.prompts.map((prompt) => prompt.split('\n').length).join('、');
     console.log(`各段提示詞的實際行數（含審查指示與檔案總覽）：${promptLines}`);
+  }
+  if (previousThreads.length > 0) {
+    const count = (disposition) => previousThreads.filter((thread) => thread.disposition === disposition).length;
+    console.log(
+      `上一輪仍未 resolve 的 AI 討論串 ${previousThreads.length} 個：交給模型判斷 ${count('ask')} 個、檔案已沒有變更 ${count('no-longer-changed') + count('deleted')} 個、維持不動 ${count('keep')} 個`,
+    );
   }
 }
 

@@ -7,7 +7,7 @@ on:
 # - pull-requests: write：建立 review。不再發一般留言，所以不需要 issues: write。
 # - contents: write：GITHUB_TOKEN 收掉（resolve）上一輪的 AI 討論串需要它；只有 pull-requests: write 時，
 #   resolveReviewThread 會回 Resource not accessible by integration（PR #36 實測）。
-# 有寫入權限的 token 只以 GH_TOKEN 交給「發布審查結果」這一步，checkout 也不保留 git 憑證，
+# 有寫入權限的 token 只以 GH_TOKEN 交給「收集上一輪的 AI 討論串」與「發布審查結果」這兩步，checkout 也不保留 git 憑證，
 # 所以建置 lkai、規劃與送審的 script 環境中沒有 token（action 仍可自行引用 github.token，
 # 這裡使用的 action 只有 actions/checkout 與以 SHA 固定的 LKAIKit）。
 permissions:
@@ -15,7 +15,7 @@ permissions:
   pull-requests: write
 
 # 同一個 PR 有新的 push 時，取消還在執行的舊審查。
-# 舊的執行若在「發布之後、收掉舊討論串之前」被取消，下一輪會一併收掉那些討論串。
+# 舊的執行若在「發布之後、收掉舊討論串之前」被取消，下一輪會重新收集並判斷那些討論串。
 concurrency:
   group: pr-ai-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
@@ -55,6 +55,12 @@ jobs:
         with:
           profile: review
 
+      # 收集上一輪仍未 resolve 的 AI 討論串；規劃時交給對應段落的模型判斷是否已修正
+      - name: 收集上一輪的 AI 討論串
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/ai-review/run-review.sh collect
+
       # 產生 diff、依 base commit 的 .gitattributes 排除自動產生的檔案，並依相關性切段
       - name: 規劃審查
         run: bash .github/scripts/ai-review/run-review.sh plan
@@ -70,7 +76,7 @@ jobs:
           LKAI_GEMINI_API_KEY: ${{ secrets.LKAI_GEMINI_API_KEY }}
         run: bash .github/scripts/ai-review/run-review.sh review
 
-      # 發布 review（被拒時改發只有本文的版本）、收掉上一輪 AI 的討論串，並依審查結果判定成敗
+      # 發布 review（被拒時改發只有本文的版本），對 AI 確認已修正的討論串回覆並收掉，並依審查結果判定成敗
       - name: 發布審查結果
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

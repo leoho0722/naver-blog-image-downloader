@@ -192,7 +192,33 @@ export function parseChunkResult(text) {
     }
     findings.push(checked.value);
   }
-  return { ok: true, value: { summary: data.summary, verdict: data.verdict, findings } };
+
+  // previousThreads：提示詞列出上一輪的 AI 討論串時，模型逐一回報是否已修正；沒有這個欄位時視為全部沒有判斷
+  /** @type {Array<{ ref: string, fixed: boolean, note: string }>} */
+  const previousThreads = [];
+  if (data.previousThreads !== undefined) {
+    if (!Array.isArray(data.previousThreads)) {
+      return { ok: false, error: 'previousThreads 必須是陣列' };
+    }
+    for (let index = 0; index < data.previousThreads.length; index += 1) {
+      const item = data.previousThreads[index];
+      const where = `previousThreads[${index}]`;
+      if (!isPlainObject(item)) {
+        return { ok: false, error: `${where} 必須是物件` };
+      }
+      if (!isNonEmptyString(item.ref)) {
+        return { ok: false, error: `${where}.ref 必須是非空字串` };
+      }
+      if (typeof item.fixed !== 'boolean') {
+        return { ok: false, error: `${where}.fixed 必須是 true 或 false` };
+      }
+      if (typeof item.note !== 'string') {
+        return { ok: false, error: `${where}.note 必須是字串` };
+      }
+      previousThreads.push({ ref: item.ref, fixed: item.fixed, note: item.note });
+    }
+  }
+  return { ok: true, value: { summary: data.summary, verdict: data.verdict, findings, previousThreads } };
 }
 
 /**

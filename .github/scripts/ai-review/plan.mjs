@@ -18,6 +18,9 @@ import { packChunks } from './chunk.mjs';
 import { annotateFile, parseDiff } from './diff.mjs';
 import { renderChunkPrompt, renderOverview } from './prompts.mjs';
 
+// 上一輪 inline comment 結尾的識別標記；放進提示詞前先去掉（與 review.mjs 的 COMMENT_MARKER 相同）
+const COMMENT_MARKER = '<!-- lkai-review-comment -->';
+
 /** 每段預設的行數上限（估計值，見 design「依元件區域分組、原始碼與測試相鄰的分段裝箱規則」） */
 export const DEFAULT_MAX_CHUNK_LINES = 6000;
 
@@ -115,13 +118,15 @@ function generatedPaths(cwd, baseSha, paths) {
 /**
  * 規劃一次審查。
  *
- * @param {{ cwd: string, base: string, head: string, maxChunkLines?: number }} options
+ * @param {{ cwd: string, base: string, head: string, maxChunkLines?: number, threads?: Array<{ id: string, path: string, line: number | null, comment: string }> }} options
+ *   threads：上一輪仍未 resolve 的 AI 討論串（run-review.sh collect 產生的 threads.json）
  * @returns {{ plan: object, prompts: string[] }} plan 是 plan.json 的內容；prompts[i] 是第 i+1 段的提示詞
  */
-export function buildPlan({ cwd, base, head, maxChunkLines = DEFAULT_MAX_CHUNK_LINES }) {
+export function buildPlan({ cwd, base, head, maxChunkLines = DEFAULT_MAX_CHUNK_LINES, threads = [] }) {
   if (!Number.isInteger(maxChunkLines) || maxChunkLines < 2) {
     throw new PlanError('每段的行數上限必須是 2 以上的整數');
   }
+  validateThreads(threads);
   const baseSha = resolveCommit(cwd, base, 'base');
   const headSha = resolveCommit(cwd, head, 'head');
 
@@ -206,6 +211,8 @@ export function buildPlan({ cwd, base, head, maxChunkLines = DEFAULT_MAX_CHUNK_L
     }
   }
 
+  const previousThreads = classifyThreads(threads, files);
+
   const overview = renderOverview(files);
   const prompts = chunks.map((chunk) =>
     renderChunkPrompt({
@@ -213,6 +220,7 @@ export function buildPlan({ cwd, base, head, maxChunkLines = DEFAULT_MAX_CHUNK_L
       total: chunks.length,
       overview,
       patch: chunk.files.map((path) => patchText.get(path)).join('\n\n'),
+      previousThreads: previousThreads.filter((thread) => thread.disposition === 'ask' && thread.chunk === chunk.index),
     }),
   );
 
@@ -226,8 +234,70 @@ export function buildPlan({ cwd, base, head, maxChunkLines = DEFAULT_MAX_CHUNK_L
     files,
     chunks,
     commentable,
+    previousThreads,
   };
   return { plan, prompts };
+}
+
+/**
+ * 確認 threads.json 的格式；不符合時丟出 PlanError（代表收集步驟有問題，不應猜測）。
+ *
+ * @param {unknown} threads
+ */
+function validateThreads(threads) {
+  if (!Array.isArray(threads)) {
+    throw new PlanError('上一輪討論串的資料必須是陣列');
+  }
+  threads.forEach((thread, index) => {
+    const ok =
+      thread !== null &&
+      typeof thread === 'object' &&
+      typeof thread.id === 'string' &&
+      thread.id !== '' &&
+      typeof thread.path === 'string' &&
+      thread.path !== '' &&
+      (thread.line === null || (Number.isInteger(thread.line) && thread.line >= 1)) &&
+      typeof thread.comment === 'string';
+    if (!ok) {
+      throw new PlanError(`上一輪討論串的第 ${index + 1} 筆資料格式不正確：${JSON.stringify(thread)}`);
+    }
+  });
+}
+
+/**
+ * 依討論串所在的檔案在這次 diff 中的狀態分類（見 design「由 AI 確認已修正後才收掉上一輪的討論串」）：
+ * - ask：檔案屬於某一段且沒有被截斷，交給那一段的模型判斷是否已修正
+ * - no-longer-changed：檔案已不在這次 diff 內
+ * - deleted：檔案在這次 diff 中被刪除
+ * - keep：檔案被截斷、是自動產生或二進位檔案，維持未 resolve
+ * 檔案被更名時，討論串記錄的是舊路徑，所以也比對更名前的路徑。
+ *
+ * @param {Array<{ id: string, path: string, line: number | null, comment: string }>} threads
+ * @param {Array<{ path: string, oldPath: string | null, category: string, chunk: number | null, truncated: boolean }>} files
+ * @returns {Array<{ ref: string, id: string, path: string, filePath: string | null, line: number | null, comment: string, chunk: number | null, disposition: string }>}
+ */
+function classifyThreads(threads, files) {
+  return threads.map((thread, index) => {
+    const file = files.find((entry) => entry.path === thread.path) ?? files.find((entry) => entry.oldPath === thread.path);
+    let disposition = 'keep';
+    if (!file) {
+      disposition = 'no-longer-changed';
+    } else if (file.category === 'deleted') {
+      disposition = 'deleted';
+    } else if (file.category === 'reviewed' && file.chunk !== null && !file.truncated) {
+      disposition = 'ask';
+    }
+    return {
+      ref: `P${index + 1}`,
+      id: thread.id,
+      path: thread.path,
+      filePath: file ? file.path : null,
+      line: thread.line,
+      comment: thread.comment.replaceAll(COMMENT_MARKER, '').trim(),
+      chunk: disposition === 'ask' ? file.chunk : null,
+      disposition,
+    };
+  });
 }
 
 /**

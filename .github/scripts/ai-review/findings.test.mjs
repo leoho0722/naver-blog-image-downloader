@@ -198,7 +198,7 @@ test('回答格式合格：line 可以是 null，findings 可以是空陣列', (
   assert.equal(nullLine.value.findings[0].line, null);
 
   const empty = parseChunkResult(answer({ summary: '沒問題', verdict: 'no_concerns', findings: [] }));
-  assert.deepEqual(empty, { ok: true, value: { summary: '沒問題', verdict: 'no_concerns', findings: [] } });
+  assert.deepEqual(empty, { ok: true, value: { summary: '沒問題', verdict: 'no_concerns', findings: [], previousThreads: [] } });
 });
 
 test('有多個 json 區塊時只取最後一個，其他語言的區塊不影響', () => {
@@ -271,9 +271,9 @@ test('回答格式合格時，只保留規定的欄位，多餘欄位被丟掉',
     }),
   );
   assert.equal(result.ok, true);
-  assert.deepEqual(Object.keys(result.value), ['summary', 'verdict', 'findings']);
+  assert.deepEqual(Object.keys(result.value), ['summary', 'verdict', 'findings', 'previousThreads']);
   assert.deepEqual(Object.keys(result.value.findings[0]), ['path', 'line', 'severity', 'title', 'body']);
-  assert.deepEqual(result.value, { summary: '摘要', verdict: 'changes_suggested', findings: [makeFinding()] });
+  assert.deepEqual(result.value, { summary: '摘要', verdict: 'changes_suggested', findings: [makeFinding()], previousThreads: [] });
 });
 
 test('parseSynthesisResult：成功與失敗', () => {
@@ -367,4 +367,45 @@ test('mergeFindings：參數型別不對時丟出 TypeError', () => {
   assert.throws(() => mergeFindings([[{ ...makeFinding(), path: 1 }]]), TypeError);
   assert.throws(() => mergeFindings([[{ ...makeFinding(), severity: 'critical' }]]), TypeError);
   assert.throws(() => mergeFindings([[{ ...makeFinding(), line: '3' }]]), TypeError);
+});
+
+// spectra-scenario: pr-ai-review / Answer without a valid JSON block fails the chunk
+test('previousThreads：合格時保留 ref、fixed、note，沒有這個欄位時是空陣列', () => {
+  const withThreads = parseChunkResult(
+    `\`\`\`json\n${JSON.stringify({
+      summary: 's',
+      verdict: 'no_concerns',
+      findings: [],
+      previousThreads: [
+        { ref: 'P1', fixed: true, note: '已改用 COMMENT_LIMIT', extra: 1 },
+        { ref: 'P2', fixed: false, note: '' },
+      ],
+    })}\n\`\`\``,
+  );
+  assert.equal(withThreads.ok, true, withThreads.error);
+  assert.deepEqual(withThreads.value.previousThreads, [
+    { ref: 'P1', fixed: true, note: '已改用 COMMENT_LIMIT' },
+    { ref: 'P2', fixed: false, note: '' },
+  ]);
+
+  const without = parseChunkResult(`\`\`\`json\n${JSON.stringify({ summary: 's', verdict: 'no_concerns', findings: [] })}\n\`\`\``);
+  assert.equal(without.ok, true);
+  assert.deepEqual(without.value.previousThreads, []);
+});
+
+test('previousThreads 格式不合格時這一段視為失敗，錯誤訊息指出欄位', () => {
+  const cases = [
+    ['不是陣列', { ref: 'P1', fixed: true, note: '' }, 'previousThreads'],
+    ['項目不是物件', ['P1'], 'previousThreads[0]'],
+    ['ref 是空字串', [{ ref: ' ', fixed: true, note: '' }], 'ref'],
+    ['fixed 不是布林', [{ ref: 'P1', fixed: 'true', note: '' }], 'fixed'],
+    ['缺少 note', [{ ref: 'P1', fixed: false }], 'note'],
+  ];
+  for (const [name, previousThreads, field] of cases) {
+    const result = parseChunkResult(
+      `\`\`\`json\n${JSON.stringify({ summary: 's', verdict: 'no_concerns', findings: [], previousThreads })}\n\`\`\``,
+    );
+    assert.equal(result.ok, false, name);
+    assert.ok(result.error.includes(field), `${name}：${result.error}`);
+  }
 });

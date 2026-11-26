@@ -98,22 +98,60 @@ export function renderOverview(files) {
 /**
  * 產生一段的審查提示詞。
  *
- * @param {{ index: number, total: number, overview: string, patch: string }} input
- *   index：第幾段；total：總段數；overview：renderOverview 的結果；patch：這一段標註後的 patch
+ * @param {{ index: number, total: number, overview: string, patch: string, previousThreads?: Array<object> }} input
+ *   index：第幾段；total：總段數；overview：renderOverview 的結果；patch：這一段標註後的 patch；
+ *   previousThreads：這一段要請模型判斷是否已修正的上一輪討論串（見 renderPreviousThreads）
  * @returns {string}
  */
-export function renderChunkPrompt({ index, total, overview, patch }) {
-  return [
+export function renderChunkPrompt({ index, total, overview, patch, previousThreads = [] }) {
+  const sections = [
     REVIEW_INSTRUCTIONS,
     '',
     `## 檔案總覽（共 ${total} 段，本段是第 ${index} 段）`,
     '',
     overview,
     '',
-    `## 本段 patch（第 ${index} 段）`,
+  ];
+  if (previousThreads.length > 0) {
+    sections.push(renderPreviousThreads(previousThreads), '');
+  }
+  sections.push(`## 本段 patch（第 ${index} 段）`, '', patch, '');
+  return sections.join('\n');
+}
+
+/** 上一輪留言內容放進提示詞時的長度上限（字元）；只需要讓模型知道是什麼問題 */
+const PREVIOUS_COMMENT_LIMIT = 1500;
+
+/**
+ * 產生「上一輪仍未解決的意見」區塊：請模型逐一判斷這些問題是否已在本段的程式碼中修正。
+ *
+ * @param {Array<{ ref: string, path: string, filePath: string, line: number | null, comment: string }>} threads
+ *   ref：代號（P1、P2…）；path：討論串記錄的路徑；filePath：這次 diff 中對應的檔案（更名時與 path 不同）；
+ *   line：上一輪標記的行號；comment：上一輪的留言內容
+ * @returns {string}
+ */
+export function renderPreviousThreads(threads) {
+  const items = threads.map((thread) => {
+    const where = thread.line === null ? thread.filePath : `${thread.filePath} 第 ${thread.line} 行（上一輪標記時的行號）`;
+    const renamed = thread.path === thread.filePath ? '' : `（原路徑 ${thread.path}）`;
+    const comment =
+      thread.comment.length > PREVIOUS_COMMENT_LIMIT ? `${thread.comment.slice(0, PREVIOUS_COMMENT_LIMIT)}…` : thread.comment;
+    // 留言內容可能含有反引號，fence 要比內容中最長的連續反引號更長
+    const longest = Math.max(0, ...(comment.match(/`+/g) ?? []).map((run) => run.length));
+    const fence = '`'.repeat(Math.max(3, longest + 1));
+    return [`### ${thread.ref}｜${where}${renamed}`, '', fence, comment, fence].join('\n');
+  });
+  return [
+    '## 上一輪仍未解決的意見（本段的檔案）',
     '',
-    patch,
+    '以下是之前的 AI 審查留下、還沒有 resolve 的意見。請依本段 patch 的程式碼逐一判斷問題是否已經修正，結果寫在 JSON 的 previousThreads，每個代號都要回報：',
+    '- 已修正：fixed 為 true，note 用一句話說明怎麼修正的',
+    '- 仍然存在或無法判斷：fixed 為 false，note 說明原因',
+    '- 仍然存在的問題不要再列進 findings，避免重複',
     '',
+    'previousThreads 的格式：`"previousThreads": [{ "ref": "P1", "fixed": true, "note": "一句話說明" }]`，和 summary、verdict、findings 放在同一個 JSON 物件中。',
+    '',
+    items.join('\n\n'),
   ].join('\n');
 }
 

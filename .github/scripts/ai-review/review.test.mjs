@@ -164,6 +164,7 @@ test('兩段以上且彙整成功時，使用彙整的總評與結論；彙整�
 // spectra-scenario: pr-ai-review / One chunk fails
 test('三段中一段失敗：列出失敗段落與檔案，結論為審查不完整，該段檔案的舊討論串保留', () => {
   const plan = makePlan([['a.ts'], ['b.ts', 'b.test.ts'], ['c.ts']]);
+  plan.previousThreads = [{ ref: 'P1', id: 'T-b', path: 'b.ts', filePath: 'b.ts', line: 1, comment: 'x', chunk: 2, disposition: 'ask' }];
   const chunks = [
     ok({ summary: '一', verdict: 'no_concerns', findings: [finding('a.ts', 2, 'nit')] }),
     { status: '1', out: '' },
@@ -174,7 +175,9 @@ test('三段中一段失敗：列出失敗段落與檔案，結論為審查不�
   assert.equal(outcome.verdict, 'incomplete');
   assert.match(review.body, /整體結論：⚠️ 審查不完整/);
   assert.match(review.body, /#### 審查失敗的段落\n\n- 第 2 段（`b\.ts`、`b\.test\.ts`）：lkai 執行失敗（退出碼 1）/);
-  assert.deepEqual(outcome.keepThreadPaths.sort(), ['b.test.ts', 'b.ts']);
+  // 失敗段落上的舊討論串維持不動
+  assert.deepEqual(outcome.threadActions, []);
+  assert.equal(outcome.threadSummary.kept, 1);
   // 成功段落的意見照常發布
   assert.equal(review.comments.length, 1);
 
@@ -268,7 +271,7 @@ test('沒有可審查的檔案：說明沒有可審查內容，結論為無疑�
   assert.match(review.body, /沒有可以審查的變更/);
   assert.match(review.body, /已略過的自動產生檔案（1 個）[\s\S]*`pnpm-lock\.yaml`/);
   assert.deepEqual(review.comments, []);
-  assert.deepEqual(outcome.keepThreadPaths, ['pnpm-lock.yaml']);
+  assert.deepEqual(outcome.threadActions, []);
 });
 
 test('段數超過 WARN_CHUNKS 時，本文開頭（識別標記之後）就是警告', () => {
@@ -311,7 +314,7 @@ test('本文超過長度上限時截斷並記錄警告，summary.md 保有全部
   assert.doesNotMatch(summaryMarkdown, /inline comment 無法發布/);
 });
 
-test('PR 修改 .gitattributes 時本文會提示；截斷、自動產生、二進位檔案上的舊討論串保留，刪除的不保留', () => {
+test('PR 修改 .gitattributes 時本文會提示，被截斷的檔案列在審查範圍', () => {
   const plan = makePlan([['a.ts', 'big.ts']], [
     { path: 'gen.yaml', oldPath: null, status: 'modified', category: 'generated', lines: 0, chunk: null, truncated: false },
     { path: 'img.png', oldPath: null, status: 'added', category: 'binary', lines: 0, chunk: null, truncated: false },
@@ -322,7 +325,7 @@ test('PR 修改 .gitattributes 時本文會提示；截斷、自動產生、二�
   const { review, outcome } = build(plan, [ok({ summary: 's', verdict: 'no_concerns', findings: [] })]);
   assert.match(review.body, /這個 PR 修改了 `\.gitattributes`/);
   assert.match(review.body, /只審查了前段：`big\.ts`/);
-  assert.deepEqual(outcome.keepThreadPaths.sort(), ['big.ts', 'gen.yaml', 'img.png']);
+  assert.deepEqual(outcome.threadActions, []);
 });
 
 // spectra-scenario: pr-ai-review / Model text is sanitized
@@ -378,4 +381,64 @@ test('標題的換行換成空白，內文未閉合的 code fence 會補上，�
   const closedAt = review.body.indexOf('const a = 1;\n  ```');
   assert.ok(closedAt > 0, review.body);
   assert.ok(closedAt < review.body.indexOf('下一項'));
+});
+
+// spectra-scenario: pr-ai-review / Confirmed fix resolves the thread with a reply
+// spectra-scenario: pr-ai-review / Unfixed issue keeps the thread open
+// spectra-scenario: pr-ai-review / Unfixed issue keeps the thread open / which threads are resolved
+test('上一輪的討論串：只有確認已修正與檔案已沒有變更的會收掉，並附上回覆', () => {
+  const plan = makePlan([['a.ts'], ['b.ts']]);
+  const thread = (ref, path, disposition, chunk = null, line = 3) => ({ ref, id: `T-${ref}`, path, filePath: path, line, comment: 'x', chunk, disposition });
+  plan.previousThreads = [
+    thread('P1', 'a.ts', 'ask', 1),
+    thread('P2', 'a.ts', 'ask', 1, 7),
+    thread('P3', 'a.ts', 'ask', 1, 9),
+    thread('P4', 'b.ts', 'ask', 2),
+    thread('P5', 'kept.ts', 'no-longer-changed'),
+    thread('P6', 'gone.ts', 'deleted'),
+    thread('P7', 'big.ts', 'keep'),
+  ];
+  const { review, outcome } = build(
+    plan,
+    [
+      ok({
+        summary: '一',
+        verdict: 'no_concerns',
+        findings: [],
+        previousThreads: [
+          { ref: 'P1', fixed: true, note: '已改用 @octocat 建議的寫法\n<!-- x -->' },
+          { ref: 'P2', fixed: false, note: '仍然存在' },
+          // P3 沒有判斷；P4 不屬於這一段，判斷會被忽略
+          { ref: 'P4', fixed: true, note: '不是這一段的討論串' },
+        ],
+      }),
+      { status: '1', out: '' },
+    ],
+  );
+  assert.deepEqual(
+    outcome.threadActions.map((action) => [action.id, action.reason]),
+    [
+      ['T-P1', 'fixed'],
+      ['T-P5', 'no-longer-changed'],
+      ['T-P6', 'deleted'],
+    ],
+  );
+  const fixedReply = outcome.threadActions[0].reply;
+  assert.match(fixedReply, /^✅ 新一輪 AI 審查（aaaaaaa）確認這個問題已修正：已改用 @\u200Boctocat 建議的寫法 &lt;!-- x --&gt;$/);
+  assert.match(outcome.threadActions[1].reply, /沒有可審查的內容（aaaaaaa）/);
+  assert.match(outcome.threadActions[2].reply, /已在最新的變更中刪除（aaaaaaa）/);
+  assert.deepEqual(outcome.threadSummary, { fixed: 1, notFixed: 2, noLongerChanged: 2, kept: 2 });
+  assert.match(review.body, /#### 上一輪意見的追蹤/);
+  assert.match(review.body, /- 確認已修正並收掉：1 則/);
+  assert.match(review.body, /- 仍未修正或沒有判斷（維持未 resolve）：2 則（`a\.ts:7`、`a\.ts:9`）/);
+  assert.match(review.body, /- 檔案已沒有可審查的變更而收掉：2 則/);
+  assert.match(review.body, /- 這一輪沒有重新審查而維持不動：2 則/);
+});
+
+test('沒有上一輪的討論串時，本文不出現追蹤區塊', () => {
+  const plan = makePlan([['a.ts']]);
+  const { review, outcome } = build(plan, [ok({ summary: 's', verdict: 'no_concerns', findings: [] })]);
+  assert.doesNotMatch(review.body, /上一輪意見的追蹤/);
+  assert.deepEqual(outcome.threadActions, []);
+  assert.deepEqual(outcome.threadSummary, { fixed: 0, notFixed: 0, noLongerChanged: 0, kept: 0 });
 });
