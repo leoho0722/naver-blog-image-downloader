@@ -399,3 +399,37 @@ test('刪除檔案上的討論串：留言建立時檔案還存在才分類為 d
     assert.equal(plan.files.find((file) => file.path === 'tests.ts').category, 'deleted');
   });
 });
+
+// spectra-scenario: pr-ai-review / Base commit is unavailable
+test('git check-attr 無法執行時（例如 Git 版本太舊），規劃以說明原因的訊息失敗，不印出 stack trace', () => {
+  withRepo(({ dir, write, commit }) => {
+    write('a.ts', 'export const a = 1;\n');
+    const base = commit('base');
+    write('a.ts', 'export const a = 2;\n');
+    const head = commit('head');
+
+    // 假的 git：check-attr 模擬舊版不認得 --source，其他指令交給真正的 git
+    const fakeBin = mkdtempSync(join(tmpdir(), 'ai-review-fake-git-'));
+    const realGit = execFileSync('which', ['git'], { encoding: 'utf8' }).trim();
+    writeFileSync(
+      join(fakeBin, 'git'),
+      `#!/bin/sh\ncase "$1" in check-attr) echo "error: unknown option source=x" >&2; exit 129;; esac\nexec "${realGit}" "$@"\n`,
+      { mode: 0o755 },
+    );
+    try {
+      const out = join(dir, 'out');
+      const result = spawnSync(process.execPath, [CLI, 'plan', '--base', base, '--head', head, '--out', out], {
+        cwd: dir,
+        encoding: 'utf8',
+        env: { ...process.env, PATH: `${fakeBin}:${process.env.PATH}` },
+      });
+      assert.equal(result.status, 1, result.stderr);
+      assert.match(result.stderr, /git check-attr --source 需要 Git 2\.40 以上（目前是 git version /);
+      assert.match(result.stderr, /git 的訊息：error: unknown option source=x/);
+      assert.doesNotMatch(result.stderr, /\n\s+at /);
+      assert.equal(existsSync(join(out, 'plan.json')), false);
+    } finally {
+      rmSync(fakeBin, { recursive: true, force: true });
+    }
+  });
+});

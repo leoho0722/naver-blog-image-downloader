@@ -566,3 +566,19 @@ test('彙整提示詞的整體結論計入仍未收掉的上一輪討論串，�
   const { outcome } = build(plan, chunks, { synthesisRaw: answer({ summary: '彙整', conclusion: '結論' }) });
   assert.equal(outcome.verdict, 'changes_suggested');
 });
+
+test('規劃檔不是合法的 JSON 時，命令列以 1 結束並印出可讀的訊息，不印出 stack trace', () => {
+  withResults([], (dir) => {
+    const planPath = join(dir, 'plan.json');
+    writeFileSync(planPath, '{ 壞掉的 JSON');
+    for (const args of [
+      ['build-review', '--plan', planPath, '--results', dir, '--head-sha', HEAD, '--run-id', RUN_ID, '--out', join(dir, 'review')],
+      ['synthesis-prompt', '--plan', planPath, '--results', dir, '--out', join(dir, 'synthesis.md')],
+    ]) {
+      const result = spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
+      assert.equal(result.status, 1, `${args[0]}：${result.stderr}`);
+      assert.match(result.stderr, /規劃檔 .*plan\.json 不是合法的 JSON/);
+      assert.doesNotMatch(result.stderr, /\n\s+at /);
+    }
+  });
+});

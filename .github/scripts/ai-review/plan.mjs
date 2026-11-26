@@ -88,11 +88,26 @@ function generatedPaths(cwd, baseSha, paths) {
     return new Set();
   }
   // -z 讓輸入與輸出都以 NUL 分隔，路徑含換行或特殊字元也不會出錯
-  const output = git(
-    cwd,
-    ['check-attr', '-z', '--stdin', `--source=${baseSha}`, 'linguist-generated'],
-    `${paths.join('\0')}\0`,
-  );
+  let output;
+  try {
+    output = git(
+      cwd,
+      ['check-attr', '-z', '--stdin', `--source=${baseSha}`, 'linguist-generated'],
+      `${paths.join('\0')}\0`,
+    );
+  } catch (error) {
+    // 最常見的原因是 git 版本太舊（--source 需要 2.40 以上）；附上目前的版本與 git 的訊息，方便判斷
+    let version = '無法取得';
+    try {
+      version = git(cwd, ['--version']).trim();
+    } catch {
+      // 取不到版本時只附上 git 的訊息
+    }
+    const detail = String(error.stderr ?? error.message).trim().split('\n')[0];
+    throw new PlanError(
+      `無法以 base commit 的 .gitattributes 判斷自動產生的檔案：git check-attr --source 需要 Git 2.40 以上（目前是 ${version}）。git 的訊息：${detail}`,
+    );
+  }
   const fields = output.split('\0');
   const result = new Set();
   // 輸出格式：<路徑> NUL <屬性名稱> NUL <值> NUL，重複多次

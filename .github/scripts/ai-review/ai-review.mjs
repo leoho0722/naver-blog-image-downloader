@@ -143,7 +143,12 @@ function readPlan(path) {
   if (!existsSync(path)) {
     throw new UsageError(`找不到規劃檔 ${path}`);
   }
-  return JSON.parse(readFileSync(path, 'utf8'));
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch (error) {
+    // 規劃檔壞掉代表前一個步驟有問題，以可讀的訊息結束，不印出 stack trace
+    throw new ReviewError(`規劃檔 ${path} 不是合法的 JSON：${error.message}`);
+  }
 }
 
 /**
