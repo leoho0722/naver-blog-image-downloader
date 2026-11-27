@@ -204,7 +204,7 @@
   - `plan.mjs` 取不到 `git merge-base` 時丟出 `PlanError`，訊息說明 PR 分支與 base 分支沒有共同的歷史，並建議 rebase 到最新的 base 分支
 
   verification：`plan.test.mjs` 把原本「取不到共同祖先時退回兩點 diff」的測試改為「沒有共同祖先時規劃失敗、命令列以 1 結束且不寫出任何檔案」；本機 e2e 新增情境：從 `file://` 的 origin 以 `--depth 1` clone 後執行 `plan`，確認會補抓完整歷史並正常規劃；`shellcheck` 沒有新增問題；並通過 `node --test`。
-- [ ] 7.23 [after: 7.22] 在 PR #36 實測：push 後確認「取不到 merge-base 時無聲地退回兩點 diff」的討論串處理結果。verification：記錄 run ID、該討論串的回覆內容與 resolve 狀態，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串；若有新的 🟡，先交給使用者決定。
+- [x] 7.23 [after: 7.22] 在 PR #36 實測：push 後確認「取不到 merge-base 時無聲地退回兩點 diff」的討論串處理結果。verification：記錄 run ID、該討論串的回覆內容與 resolve 狀態，以及 PR #36 是否還有未 resolve 的 🔴／🟡 討論串；若有新的 🟡，先交給使用者決定。
 
 ## 變更紀錄
 
@@ -334,3 +334,8 @@
 - 新一輪有 2 則 🟡：
   - `run-review.sh`「`${text//%/%25}` 的 `%` 會被當成結尾錨點」：以 runner 使用的 bash 3.2.57 實測可以正確跳脫所有 `%`（`50% done %x` → `50%25 done %25x`），說法不成立；依使用者的選擇，以 owner 帳號回覆實測結果後 resolve（discussion_r4709610583），不改程式。
   - `plan.mjs`「取不到 merge-base 時無聲地退回兩點 diff」：使用者選擇根本解，由 7.22 改為規劃失敗、不再猜測，7.23 實測。已完成的 1.4 中「退回兩點 diff」的規則與 design 先前補在 Risks 的說明，由這個做法取代。
+
+7.23 實測紀錄（2026-11-26，已完成）：
+
+- PR #36 第十八輪（run 45839382083，head `e108b3c`）：「取不到 merge-base 時無聲地退回兩點 diff」的討論串判定已修正，回覆「✅ 新一輪 AI 審查（e108b3c）確認這個問題已修正：plan.mjs 取不到 merge-base 時改為丟出 PlanError，不再退回兩點 diff；run-review.sh 在規劃前偵測 shallow repository…」並 resolve。
+- 整體結論為「🟢 沒有擋合併的問題」，4 項意見都是 🟢，只列在本文；PR #36 沒有任何未 resolve 的討論串，`github-scripts-test` 通過。
