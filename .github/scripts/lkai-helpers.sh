@@ -30,21 +30,33 @@ print_untrusted_text() {
   printf '::%s::\n' "$token"
 }
 
-# ask_lkai <提示詞檔案> <回答輸出檔案> [lkai 的其他選項...]
-# 以 LKAI_PROVIDER、LKAI_MODEL 送出一次對話請求，回答寫進輸出檔案；lkai 的訊息（stderr）
-# 經 print_untrusted_text 印到 log，因為模型拒答時，裡面會有模型自己寫的文字。
+# run_lkai <提示詞檔案> <回答輸出檔案> [lkai 的其他選項...]
+# 以 LKAI_PROVIDER、LKAI_MODEL 送出一次對話請求：回答寫進輸出檔案，lkai 的訊息（stderr）寫進
+# <回答輸出檔案>.err，不印出任何內容。多段同時送審時用這個函式，等全部結束後再依順序印出訊息：
+# 同時印出的話，不同段落的 ::stop-commands:: 區塊會交錯，文字裡的 workflow command 可能被執行。
 # 提示詞檔案的副檔名必須是 .txt 或 .md（lkai 的限制）。
 # 回傳 lkai 的退出碼：
 #   0   成功，輸出檔案是完整的回答
 #   1   服務回報錯誤、逾時或回應無法解讀，輸出檔案是空的
 #   2   回答不完整（例如達到輸出上限），輸出檔案是已經收到的部分
 #   64  命令列的輸入不合法
+run_lkai() {
+  local prompt_file="$1" output_file="$2" status=0
+  shift 2
+  lkai --provider "$LKAI_PROVIDER" --model "$LKAI_MODEL" --prompt-file "$prompt_file" \
+    --output-language zh-TW "$@" >"$output_file" 2>"${output_file}.err" || status=$?
+  return "$status"
+}
+
+# ask_lkai <提示詞檔案> <回答輸出檔案> [lkai 的其他選項...]
+# 和 run_lkai 相同，但結束後立刻把 lkai 的訊息（stderr）經 print_untrusted_text 印到 log，
+# 因為模型拒答時，裡面會有模型自己寫的文字。只送一次請求時使用。
+# 回傳值與 run_lkai 相同。
 ask_lkai() {
   local prompt_file="$1" output_file="$2" stderr_file status=0
   shift 2
   stderr_file="${output_file}.err"
-  lkai --provider "$LKAI_PROVIDER" --model "$LKAI_MODEL" --prompt-file "$prompt_file" \
-    --output-language zh-TW "$@" >"$output_file" 2>"$stderr_file" || status=$?
+  run_lkai "$prompt_file" "$output_file" "$@" || status=$?
   if [ -s "$stderr_file" ]; then
     # 印不出來（產生不了 token）時已經寫了錯誤訊息；原本的退出碼照常回傳
     print_untrusted_text "$(cat "$stderr_file")" >&2 || true

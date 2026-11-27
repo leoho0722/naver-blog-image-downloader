@@ -4,33 +4,49 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+# - pull-requests: write：建立 review。不再發一般留言，所以不需要 issues: write。
+# - contents: write：GITHUB_TOKEN 收掉（resolve）上一輪的 AI 討論串需要它；只有 pull-requests: write 時，
+#   resolveReviewThread 會回 Resource not accessible by integration（PR #36 實測）。
+# 有寫入權限的 token 只以 GH_TOKEN 交給「收集上一輪的 AI 討論串」與「發布審查結果」這兩步，checkout 也不保留 git 憑證，
+# 所以建置 lkai、規劃與送審的 script 環境中沒有 token（action 仍可自行引用 github.token，
+# 這裡使用的 action 只有 actions/checkout 與以 SHA 固定的 LKAIKit）。
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
-  issues: write
+
+# 同一個 PR 有新的 push 時，取消還在執行的舊審查。
+# 舊的執行若在「發布之後、收掉舊討論串之前」被取消，下一輪會重新收集並判斷那些討論串。
+concurrency:
+  group: pr-ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   ai-review:
     name: LKAIKit Review
-    # lkai 只能在 macOS runner 執行（見 .github/actions/setup-lkai）。
-    # 這台 runner 的 bash 是 3.2：變數後面緊接中文或全形標點時一律寫成 ${名稱}。
+    # lkai 只能在 macOS runner 執行（見 .github/actions/setup-lkai）
     runs-on: xcode-27
+    # 估計可容納 40 段以上（見 design「多段並行送審並延後印出 lkai 訊息」）
+    timeout-minutes: 60
     env:
       PR_NUMBER: ${{ github.event.pull_request.number }}
       REPO: ${{ github.repository }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      # 一律使用 PR 的 head commit，不使用 GitHub 為 PR 建立的 merge commit：
+      # inline comment 的 commit_id 必須是 PR 的 commit，行號也才會和 PR 頁面的 diff 一致
       HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      # 送進模型的 patch 行數上限。超大 PR（例如整個元件下架）的 diff 動輒數萬行，
-      # 全塞進去既浪費額度、模型也看不完。超過上限時會先省略純刪除檔案、
-      # 再視情況截斷，並把降階結果標註在 PR 留言裡。
-      MAX_DIFF_LINES: "6000"
+      # 每段的行數上限、同時送審的段數上限、超過多少段時發出警告（估計值，見 design）
+      MAX_CHUNK_LINES: "6000"
+      MAX_PARALLEL_CHUNKS: "3"
+      WARN_CHUNKS: "6"
     steps:
       - name: Checkout PR
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
+          # 不把 token 寫進 .git/config：後續步驟會執行 PR 的程式與建置 lkai，不需要也不應拿到 git 憑證
+          # （fetch base commit 走公開 repo 的匿名存取）
+          persist-credentials: false
 
       # 建置 lkai 並讀出 .github/lkai.json 中 review 設定的供應商與模型；要換審查用的模型只改那個設定
       - name: Setup lkai
@@ -39,7 +55,18 @@ jobs:
         with:
           profile: review
 
-      - name: Fetch PR diff and request AI review
+      # 收集上一輪仍未 resolve 的 AI 討論串；規劃時交給對應段落的模型判斷是否已修正
+      - name: 收集上一輪的 AI 討論串
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/ai-review/run-review.sh collect
+
+      # 產生 diff、依 base commit 的 .gitattributes 排除自動產生的檔案，並依相關性切段
+      - name: 規劃審查
+        run: bash .github/scripts/ai-review/run-review.sh plan
+
+      # 分批送審每一段（每批最多 MAX_PARALLEL_CHUNKS 段），需要時再送一次彙整請求，最後組出 review
+      - name: 分段送審
         env:
           LKAI_PROVIDER: ${{ steps.lkai.outputs.provider }}
           LKAI_MODEL: ${{ steps.lkai.outputs.model }}
@@ -47,122 +74,10 @@ jobs:
           LKAI_ANTHROPIC_API_KEY: ${{ secrets.LKAI_ANTHROPIC_API_KEY }}
           LKAI_OPENAI_API_KEY: ${{ secrets.LKAI_OPENAI_API_KEY }}
           LKAI_GEMINI_API_KEY: ${{ secrets.LKAI_GEMINI_API_KEY }}
-        run: |
-          source "$GITHUB_WORKSPACE/.github/scripts/lkai-helpers.sh"
+        run: bash .github/scripts/ai-review/run-review.sh review
 
-          # 用本地 clone 產生 diff，不走 `gh pr diff`。
-          # `gh pr diff` 打的是 GitHub API，超過 300 個檔案會回 HTTP 406 而整步中止，
-          # 大型重構（例如把一整個元件從 monorepo 下架）必定踩到這個上限。
-          # Checkout 步驟已帶 fetch-depth: 0，本地 git diff 沒有檔案數限制。
-          git fetch --no-tags --quiet origin "$BASE_SHA" 2>/dev/null || true
-
-          # 取不到 merge base 時（例如 base 分支被 force push）退回兩點 diff
-          RANGE="$BASE_SHA...$HEAD_SHA"
-          git merge-base "$BASE_SHA" "$HEAD_SHA" >/dev/null 2>&1 || RANGE="$BASE_SHA $HEAD_SHA"
-
-          # shellcheck disable=SC2086
-          git diff --stat $RANGE > /tmp/pr_stat.txt
-          # shellcheck disable=SC2086
-          git diff $RANGE > /tmp/pr_patch.txt
-          FULL_LINES=$(wc -l < /tmp/pr_patch.txt | tr -d ' ')
-          echo "完整 patch 行數：${FULL_LINES}（上限 ${MAX_DIFF_LINES}）"
-
-          # 超過上限時分兩段降階，盡量把額度留給值得審的內容：
-          #   1. 先排除純刪除的檔案——被刪掉的程式碼不會有 bug，佔掉額度只是浪費
-          #   2. 仍超過就直接截斷行數
-          # 無論降到哪一階，檔案總覽都完整附上，模型才知道自己沒看到什麼。
-          DIFF_NOTE=""
-          if [ "$FULL_LINES" -le "$MAX_DIFF_LINES" ]; then
-            cp /tmp/pr_patch.txt /tmp/pr_body.txt
-          else
-            # shellcheck disable=SC2086
-            git diff --diff-filter=d $RANGE > /tmp/pr_patch_nodel.txt
-            NODEL_LINES=$(wc -l < /tmp/pr_patch_nodel.txt | tr -d ' ')
-            echo "排除純刪除檔後行數：${NODEL_LINES}"
-            if [ "$NODEL_LINES" -le "$MAX_DIFF_LINES" ]; then
-              cp /tmp/pr_patch_nodel.txt /tmp/pr_body.txt
-              DIFF_NOTE=$(printf 'patch 共 %s 行超過 %s 行上限，已省略純刪除檔案的內容（新增與修改的部分完整保留）。' \
-                "$FULL_LINES" "$MAX_DIFF_LINES")
-            else
-              head -n "$MAX_DIFF_LINES" /tmp/pr_patch_nodel.txt > /tmp/pr_body.txt
-              DIFF_NOTE=$(printf 'patch 共 %s 行超過 %s 行上限，已省略純刪除檔案並截斷至前 %s 行。' \
-                "$FULL_LINES" "$MAX_DIFF_LINES" "$MAX_DIFF_LINES")
-            fi
-          fi
-
-          # lkai 只接受 .txt 或 .md 的提示詞檔案
-          {
-            cat <<'INSTRUCTIONS_EOF'
-          你是本 monorepo 的資深 code reviewer。請審查下方 PR 的所有變更，涵蓋：
-          1. 正確性：邏輯錯誤、邊界條件、race condition、資料一致性
-          2. 安全性：OWASP top 10、敏感資料處理、權限邊界
-          3. 可維護性：命名、模組邊界、重複程式碼、測試覆蓋
-          4. 專案規範：是否違反 root CLAUDE.md 與 apps/<component>/CLAUDE.md 裡的規則（註解正體中文、Conventional Commits、架構分層、版號管理）
-          5. 效能：明顯的 N+1、不必要的 allocation、阻塞主執行緒
-
-          輸出格式：
-          - 所有內容必須以正體中文撰寫
-          - 先給一段 2-3 句總評（blocker / 可接受但建議調整 / 無疑慮）
-          - 條列具體問題，每項標示嚴重程度（🔴 阻擋合併 / 🟡 建議修正 / 🟢 可選優化）
-          - 涉及特定檔案/行數的問題用 file:line 格式標記
-          - 最後一句最終結論
-
-          下方內容分兩段：先是完整的變更檔案總覽（git diff --stat），再是 patch 內容。
-          若 patch 結尾標示被截斷，代表這是超大 PR、只附上前段；此時請以檔案總覽判斷整體
-          變更範圍，並在總評中說明你只看到部分 patch，不要對未列出的檔案下結論。
-
-          PR 變更內容：
-          INSTRUCTIONS_EOF
-            printf '\n## 變更檔案總覽（git diff --stat，完整）\n\n'
-            cat /tmp/pr_stat.txt
-            printf '\n\n## Patch\n\n'
-            if [ -n "$DIFF_NOTE" ]; then
-              printf '[注意：%s未列出的檔案請以上方總覽判斷變更範圍。]\n\n' "$DIFF_NOTE"
-            fi
-            cat /tmp/pr_body.txt
-          } > /tmp/review_prompt.md
-          echo "送審提示詞行數：$(wc -l < /tmp/review_prompt.md | tr -d ' ')"
-
-          # 輸出上限要涵蓋模型的思考與回答（Claude 預設會先思考），給得太小回答會被截斷
-          STATUS=0
-          ask_lkai /tmp/review_prompt.md /tmp/review_answer.md --max-output-tokens 32000 --timeout 300 || STATUS=$?
-          echo "lkai 退出碼：${STATUS}"
-
-          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          review_failed=false
-          INCOMPLETE_NOTE=""
-          case "$STATUS" in
-            0)
-              REVIEW=$(cat /tmp/review_answer.md)
-              if [ -z "$REVIEW" ]; then
-                REVIEW="❌ AI review 失敗：lkai 回報成功但回答是空的，請查看 [workflow log](${RUN_URL})。"
-                review_failed=true
-              fi
-              ;;
-            2)
-              # 回答不完整：已收到的部分照樣貼出，但 workflow 判定為失敗，避免把半份審查當成通過
-              REVIEW=$(cat /tmp/review_answer.md)
-              INCOMPLETE_NOTE="回答達到輸出上限而被截斷，以下審查內容不完整；請調高 --max-output-tokens 或縮小 PR 後重跑。"
-              review_failed=true
-              ;;
-            *)
-              # 失敗原因（金鑰、模型名稱、逾時、服務錯誤）寫在 log 中 lkai 的訊息，不貼到 PR 留言
-              REVIEW="❌ AI review 失敗（lkai 退出碼 ${STATUS}），請查看 [workflow log](${RUN_URL}) 中 lkai 的錯誤訊息，並確認 .github/lkai.json 的模型與對應供應商的 API 金鑰（例如 LKAI_ANTHROPIC_API_KEY）是否正確。"
-              review_failed=true
-              ;;
-          esac
-
-          printf '### 🤖 LKAIKit Review（%s / %s）\n\n' "$LKAI_PROVIDER" "$LKAI_MODEL" > /tmp/ai_review.md
-          if [ -n "$DIFF_NOTE" ]; then
-            printf '> ⚠️ %s\n\n' "$DIFF_NOTE" >> /tmp/ai_review.md
-          fi
-          if [ -n "$INCOMPLETE_NOTE" ]; then
-            printf '> ⚠️ %s\n\n' "$INCOMPLETE_NOTE" >> /tmp/ai_review.md
-          fi
-          printf '%s\n' "$REVIEW" >> /tmp/ai_review.md
-          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/ai_review.md
-
-          if [ "$review_failed" = true ]; then
-            echo "::error::AI review 沒有成功完成（lkai 退出碼 ${STATUS}，${LKAI_PROVIDER} / ${LKAI_MODEL}），workflow 判定為 failed"
-            exit 1
-          fi
+      # 發布 review（被拒時改發只有本文的版本），對 AI 確認已修正的討論串回覆並收掉，並依審查結果判定成敗
+      - name: 發布審查結果
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/ai-review/run-review.sh publish

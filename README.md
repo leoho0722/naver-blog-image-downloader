@@ -87,8 +87,20 @@ pnpm dev      # 開發伺服器 http://localhost:5173
 | Backend CD | Backend CI 成功 | Docker build → ECR push → Lambda 更新 → git tag + Release |
 | Web CI | `apps/web/**` 變動 | TypeScript 檢查 + Vitest 測試 + Vite build + Prettier 格式檢查 |
 | Web CD | Web CI 成功 | 建立 git tag + GitHub Release（僅版號管理，不部署） |
-| PR AI Review | PR 開啟／更新 | 以 LKAIKit 審查 PR diff，並將正體中文審查意見留言至 PR |
+| PR AI Review | PR 開啟／更新 | 以 LKAIKit 審查 PR diff，以一次 PR review 發布正體中文審查意見：總評放在本文，問題以 inline comment 標在程式碼行上（詳見下方說明） |
 | Deploy Pages | `apps/web/**` 變動 | Build web app（含 landing 頁與 SPA） → 產出 `apps/web/dist/` → 複製為 Pages artifact（附 404.html SPA fallback）→ 部署至 GitHub Pages |
+
+### PR AI Review 的運作方式
+
+- **排除自動產生的檔案**：依 PR base commit 的 `.gitattributes` 中標記為 `linguist-generated` 的路徑（Spectra 產生的 skill、archify 輸出、lockfile）略過，只列在 review 的「已略過」清單；在 PR 中修改 `.gitattributes` 對該 PR 本身不生效。已刪除與二進位的檔案也只列出、不審查內容。
+- **只防誤標，不防修改審查流程**：workflow 執行的是 PR 中的審查 script，同 repo 的 PR 可以直接修改它，讓自己的程式碼跳過審查，也能用改過的 script 取得有寫入權限的 token。上面「修改 `.gitattributes` 不生效」只防止藉由這個檔案略過。同 repo 的 PR 只有具寫入權限的協作者能開，fork 的 PR 拿不到 secret 與寫入權限；修改 `.github/scripts/ai-review/` 或 workflow 的 PR 需要人工審查。
+- **依相關性分段並全部審查**：剩下的 patch 超過每段 6000 行時，依元件區域與功能分段（原始碼與對應的測試放在同一段），每段都會送審，一次最多同時送出 3 段；超過 6 段時照樣全部審查，但會提醒可以拆小 PR。多段時最後再彙整成一份總評。
+- **以一次 PR review 發布，依嚴重程度決定是否擋合併**：
+  - 🔴 阻擋合併與 🟡 建議修正：能對應到 diff 行的以 inline comment 標在該行，對應不到行的改發檔案層級留言（不指定行號、標在檔案上）。兩者都會形成討論串，main 要求所有對話 resolve 才能合併，所以修正或由人確認之前會擋住合併。
+  - 🟢 可選優化：只列在 review 本文，不開討論串、不擋合併。
+  - 整體結論由程式依意見與仍未 resolve 的上一輪 AI 討論串計算，與會不會擋合併一致，依序判斷：有 🔴 為「有阻擋合併的問題」；否則有段落送審失敗時為「審查不完整」；否則有 🟡 為「有建議修正的問題」；只剩 🟢 為「沒有擋合併的問題」。
+- **AI 確認已修正才收掉討論串**：push 新 commit 重新審查時，會把還沒 resolve 的 AI 討論串交給新一輪的 AI 判斷問題是否已修正。確認已修正的討論串會附上一則說明回覆並標為 resolved；還沒修正的維持未 resolve（繼續擋合併），新一輪也不會重複提出同一個問題。檔案的改動被還原，或留言講的程式碼所在的檔案被刪除（留言建立時檔案還存在）時，上面的 AI 討論串會附上說明後直接收掉；留言講的就是刪除本身時（例如「整個測試檔被移除」），維持未 resolve，交給人判斷。早期版本的 🟢 也會開討論串，這些留下來的 🟢 討論串會附上說明後收掉。送審失敗、被截斷、自動產生或二進位檔案上的討論串維持不動，需要時手動 resolve；由人開啟的討論串不會被動到。
+- **失敗判定**：任一段送審失敗或回答無法解讀時，仍會發布已取得的內容，但 workflow 判定為失敗；檔案層級留言重試後仍發布不了（那則 🔴／🟡 沒能擋住合併）時，workflow 也判定為失敗。意見的嚴重程度本身不影響 workflow 結果。
 
 ## 開發規範與共用準則
 

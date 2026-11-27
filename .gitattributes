@@ -1,0 +1,20 @@
+# 標記自動產生的檔案（linguist-generated）
+#
+# - GitHub 的 PR 頁面會預設摺疊這些檔案的 diff。
+# - PR AI 審查（.github/workflows/pr-ai-review.yml）不會送出這些檔案的內容，只在 review 本文列為「已略過」。
+#   審查以 PR 的 base commit 版本的這個檔案判斷，所以在 PR 中修改這裡，對該 PR 本身的審查不會生效。
+#   這只防止藉由修改這個檔案略過審查；審查 script 本身取自 PR，同 repo 的 PR 仍可直接修改它。
+#
+# 新增自動產生的路徑時加在這裡；不要把手寫的程式碼放進這些路徑，否則它們也不會被 AI 審查。
+
+# Spectra CLI 產生的 skill
+.agents/skills/** linguist-generated
+.claude/skills/** linguist-generated
+
+# archify 產生的架構圖
+.archify/** linguist-generated
+
+# 套件管理工具產生的 lockfile
+**/pnpm-lock.yaml linguist-generated
+**/package-lock.json linguist-generated
+**/uv.lock linguist-generated
